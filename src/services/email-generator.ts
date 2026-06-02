@@ -1,4 +1,4 @@
-import { getGeminiClient, GEMINI_MODEL } from "@/ai/gemini";
+import { generateWithFallback } from "@/ai/generation";
 import type { IndustryExpertise } from "@/services/prospect-recommendation";
 import type { MatchedChunk } from "@/types/database";
 import type { RankedContact } from "@/types/database";
@@ -21,7 +21,6 @@ export type GeneratedEmailContent = {
 export async function generateOutreachEmail(
   input: EmailGenerationInput
 ): Promise<GeneratedEmailContent> {
-  const ai = getGeminiClient();
   const contactName = [input.contact.first_name, input.contact.last_name]
     .filter(Boolean)
     .join(" ");
@@ -65,12 +64,8 @@ Requirements:
 Respond in JSON only with this exact shape:
 {"subject": "...", "body": "..."}`;
 
-  const response = await ai.models.generateContent({
-    model: GEMINI_MODEL,
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-    },
+  const response = await generateWithFallback(prompt, "EMAIL_GENERATION", {
+    responseMimeType: "application/json",
   });
 
   const text = response.text?.trim();

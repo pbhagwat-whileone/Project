@@ -2,16 +2,16 @@ import { NextResponse } from "next/server";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import {
   analyzeIndustryExpertise,
-  getCachedRecommendations,
+  generateAndCacheRecommendations,
 } from "@/services/prospect-recommendation";
 
-export async function GET(request: Request) {
+export async function POST(request: Request) {
   try {
     const user = await requireUser();
     const supabase = await createClient();
 
     const [recommendations, expertise] = await Promise.all([
-      getCachedRecommendations(supabase, user.id),
+      generateAndCacheRecommendations(supabase, user.id),
       analyzeIndustryExpertise(supabase, user.id),
     ]);
 
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ recommendations: ranked, expertise });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to load";
+    const message = err instanceof Error ? err.message : "Failed to generate recommendations";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

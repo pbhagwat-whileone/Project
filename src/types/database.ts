@@ -299,6 +299,7 @@ export type MatchedChunk = {
   project_name: string | null;
   industry: string | null;
   similarity: number;
+  reference_link?: string;
 };
 
 export type RankedContact = {

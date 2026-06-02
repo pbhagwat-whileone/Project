@@ -19,6 +19,25 @@ export function findBestContact(
 ): RankedContact | null {
   if (!connections.length) return null;
 
+  const normalizedQuery = normalizeCompany(companyQuery);
+
+  // 1. Partial/contains matching first
+  const containsMatches = connections.filter((c) => {
+    if (!c.company) return false;
+
+    const company = normalizeCompany(c.company);
+
+    return (
+      company.includes(normalizedQuery) ||
+      normalizedQuery.includes(company)
+    );
+  });
+
+  if (containsMatches.length > 0) {
+    return pickBestFromPool(containsMatches);
+  }
+
+  // 2. Build company list for fuzzy matching
   const companies = [
     ...new Set(
       connections
@@ -33,16 +52,25 @@ export function findBestContact(
   const results = fs.get(companyQuery, null, threshold);
 
   if (!results || results.length === 0) {
-    const normalizedQuery = normalizeCompany(companyQuery);
+    // 3. Exact normalized fallback
     const direct = connections.filter(
-      (c) => c.company && normalizeCompany(c.company) === normalizedQuery
+      (c) =>
+        c.company &&
+        normalizeCompany(c.company) === normalizedQuery
     );
+
     if (!direct.length) return null;
+
     return pickBestFromPool(direct);
   }
 
+  // 4. Best fuzzy match
   const matchedCompany = results[0][1] as string;
-  const pool = connections.filter((c) => c.company === matchedCompany);
+
+  const pool = connections.filter(
+    (c) => c.company === matchedCompany
+  );
+
   return pickBestFromPool(pool);
 }
 

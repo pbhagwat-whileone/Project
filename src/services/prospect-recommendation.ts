@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getGeminiClient, GEMINI_MODEL } from "@/ai/gemini";
+import { generateWithFallback } from "@/ai/generation";
 import type { Connection, Database, MatchedChunk } from "@/types/database";
 import type { RankedContact } from "@/types/database";
 import { searchKnowledgeChunks } from "@/services/vector-search";
@@ -25,15 +25,6 @@ export type CompanyRecommendation = {
   industryMatchScore: number;
   connectionScore: number;
   seniorityScore: number;
-};
-
-export type RecommendationFilters = {
-  industry?: string;
-  country?: string;
-  companySize?: string;
-  revenueBand?: string;
-  minScore?: number;
-  q?: string;
 };
 
 export type CompanyDetail = CompanyRecommendation & {
@@ -150,7 +141,6 @@ async function inferCompanyMetadata(
   const cached = cache.get(companyName);
   if (cached?.industry) return cached;
 
-  const ai = getGeminiClient();
   const titles = connections
     .map((c) => c.position)
     .filter(Boolean)
@@ -171,10 +161,8 @@ Return ONLY valid JSON:
 }`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: GEMINI_MODEL,
-      contents: prompt,
-      config: { responseMimeType: "application/json" },
+    const response = await generateWithFallback(prompt, "COMPANY_CLASSIFICATION", {
+      responseMimeType: "application/json",
     });
 
     const parsed = JSON.parse(response.text ?? "{}") as {
@@ -319,8 +307,7 @@ async function loadCompanyCache(
 
 export async function getCompanyRecommendations(
   supabase: SupabaseClient<Database>,
-  userId: string,
-  filters: RecommendationFilters = {}
+  userId: string
 ): Promise<CompanyRecommendation[]> {
   const [{ data: connections }, expertise, cache] = await Promise.all([
     supabase.from("connections").select("*").eq("user_id", userId),
@@ -329,7 +316,9 @@ export async function getCompanyRecommendations(
   ]);
 
   const grouped = groupConnectionsByCompany(connections ?? []);
-  if (!grouped.size) return [];
+  if (!grouped.size) {
+    return [];
+  }
 
   const maxConnections = Math.max(
     ...[...grouped.values()].map((g) => g.length),
@@ -382,39 +371,52 @@ export async function getCompanyRecommendations(
     });
   }
 
-  let filtered = recommendations.sort(
+
+  return recommendations.sort(
     (a, b) => b.recommendationScore - a.recommendationScore
   );
+}
 
-  if (filters.industry) {
-    filtered = filtered.filter((r) =>
-      industriesMatch(r.industry, filters.industry!)
-    );
-  }
-  if (filters.country) {
-    filtered = filtered.filter((r) => r.country === filters.country);
-  }
-  if (filters.companySize) {
-    filtered = filtered.filter((r) => r.companySize === filters.companySize);
-  }
-  if (filters.revenueBand) {
-    filtered = filtered.filter((r) => r.revenueBand === filters.revenueBand);
-  }
-  if (filters.minScore !== undefined) {
-    filtered = filtered.filter(
-      (r) => r.recommendationScore >= filters.minScore!
-    );
-  }
-  if (filters.q) {
-    const q = filters.q.toLowerCase();
-    filtered = filtered.filter(
-      (r) =>
-        r.company.toLowerCase().includes(q) ||
-        r.industry.toLowerCase().includes(q)
-    );
-  }
+const CACHE_COMPANY_NAME = "__CACHED_RECOMMENDATIONS__";
 
-  return filtered;
+export async function generateAndCacheRecommendations(
+  supabase: SupabaseClient<Database>,
+  userId: string
+): Promise<CompanyRecommendation[]> {
+  const recommendations = await getCompanyRecommendations(supabase, userId);
+  
+  await supabase.from("company_industry_cache").upsert({
+    user_id: userId,
+    company_name: CACHE_COMPANY_NAME,
+    industry: JSON.stringify(recommendations),
+    country: null,
+    company_size: null,
+    revenue_band: null,
+    updated_at: new Date().toISOString(),
+  });
+
+  return recommendations;
+}
+
+export async function getCachedRecommendations(
+  supabase: SupabaseClient<Database>,
+  userId: string
+): Promise<CompanyRecommendation[]> {
+  const { data } = await supabase
+    .from("company_industry_cache")
+    .select("industry")
+    .eq("user_id", userId)
+    .eq("company_name", CACHE_COMPANY_NAME)
+    .single();
+
+  if (!data?.industry) return [];
+
+  try {
+    return JSON.parse(data.industry) as CompanyRecommendation[];
+  } catch (error) {
+    console.error("Failed to parse cached recommendations", error);
+    return [];
+  }
 }
 
 export async function getCompanyDetail(
@@ -497,7 +499,6 @@ export async function getCompanyDetail(
     .map((e) => `${e.industry}: ${e.projectCount} projects`)
     .join("\n");
 
-  const ai = getGeminiClient();
   const outreachPrompt = `You are an outreach strategist for WhileOne, a technology consultancy.
 
 Target company: ${match.company}
@@ -515,10 +516,7 @@ Write a concise 3-4 sentence outreach recommendation explaining why this company
   let outreachRecommendation = match.suggestedReason;
 
   try {
-    const response = await ai.models.generateContent({
-      model: GEMINI_MODEL,
-      contents: outreachPrompt,
-    });
+    const response = await generateWithFallback(outreachPrompt, "RECOMMENDATION_REASONING");
     outreachRecommendation = response.text?.trim() || match.suggestedReason;
   } catch (error) {
     console.error("Outreach recommendation generation failed:", error);

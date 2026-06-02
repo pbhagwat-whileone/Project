@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { ExternalLink, Mail, RefreshCw, Search } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
@@ -48,7 +48,7 @@ import type { GeneratedEmail } from "@/types/database";
 type RankedRecommendation = CompanyRecommendation & { rank: number };
 
 export function ProspectsView() {
-  const [recommendations, setRecommendations] = useState<RankedRecommendation[]>(
+  const [allRecommendations, setAllRecommendations] = useState<RankedRecommendation[]>(
     []
   );
   const [expertise, setExpertise] = useState<IndustryExpertise[]>([]);
@@ -72,34 +72,23 @@ export function ProspectsView() {
 
   const load = useCallback(async () => {
     try {
-      const params = new URLSearchParams();
-      if (filters.q) params.set("q", filters.q);
-      if (filters.industry) params.set("industry", filters.industry);
-      if (filters.country) params.set("country", filters.country);
-      if (filters.companySize) params.set("companySize", filters.companySize);
-      if (filters.revenueBand) params.set("revenueBand", filters.revenueBand);
-      if (filters.minScore) params.set("minScore", filters.minScore);
-
-      const qs = params.toString() ? `?${params}` : "";
       const data = await apiFetch<{
         recommendations: RankedRecommendation[];
         expertise: IndustryExpertise[];
-      }>(`/api/prospects${qs}`);
+      }>("/api/prospects");
 
-      setRecommendations(data.recommendations);
+      setAllRecommendations(data.recommendations);
       setExpertise(data.expertise);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load");
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
-  }, [filters]);
+  }, []);
 
   useEffect(() => {
     setLoading(true);
-    const t = setTimeout(load, 300);
-    return () => clearTimeout(t);
+    load();
   }, [load]);
 
   async function openDetail(company: string) {
@@ -139,25 +128,64 @@ export function ProspectsView() {
     }
   }
 
-  function handleRefresh() {
+  async function handleRefresh() {
     setRefreshing(true);
-    load();
+    try {
+      const data = await apiFetch<{
+        recommendations: RankedRecommendation[];
+        expertise: IndustryExpertise[];
+      }>("/api/prospects/generate", {
+        method: "POST"
+      });
+      setAllRecommendations(data.recommendations);
+      setExpertise(data.expertise);
+      toast.success("Recommendations generated successfully");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Generation failed");
+    } finally {
+      setRefreshing(false);
+    }
   }
 
-  const filterOptions = {
-    industries: [
-      ...new Set(recommendations.map((r) => r.industry).filter(Boolean)),
-    ],
-    countries: [
-      ...new Set(recommendations.map((r) => r.country).filter(Boolean)),
-    ] as string[],
-    sizes: [
-      ...new Set(recommendations.map((r) => r.companySize).filter(Boolean)),
-    ] as string[],
-    revenues: [
-      ...new Set(recommendations.map((r) => r.revenueBand).filter(Boolean)),
-    ] as string[],
-  };
+  const filterOptions = useMemo(() => {
+    return {
+      industries: [...new Set(allRecommendations.map((r) => r.industry).filter(Boolean))].sort(),
+      countries: [...new Set(allRecommendations.map((r) => r.country).filter(Boolean))].sort() as string[],
+      sizes: [...new Set(allRecommendations.map((r) => r.companySize).filter(Boolean))].sort() as string[],
+      revenues: [...new Set(allRecommendations.map((r) => r.revenueBand).filter(Boolean))].sort() as string[],
+    };
+  }, [allRecommendations]);
+
+  const recommendations = useMemo(() => {
+    let filtered = allRecommendations;
+
+    if (filters.industry) {
+      filtered = filtered.filter((r) => r.industry === filters.industry);
+    }
+    if (filters.country) {
+      filtered = filtered.filter((r) => r.country === filters.country);
+    }
+    if (filters.companySize) {
+      filtered = filtered.filter((r) => r.companySize === filters.companySize);
+    }
+    if (filters.revenueBand) {
+      filtered = filtered.filter((r) => r.revenueBand === filters.revenueBand);
+    }
+    if (filters.minScore) {
+      const min = Number(filters.minScore);
+      filtered = filtered.filter((r) => r.recommendationScore >= min);
+    }
+    if (filters.q) {
+      const q = filters.q.toLowerCase();
+      filtered = filtered.filter(
+        (r) =>
+          r.company.toLowerCase().includes(q) ||
+          r.industry.toLowerCase().includes(q)
+      );
+    }
+
+    return filtered;
+  }, [allRecommendations, filters]);
 
   return (
     <div>
@@ -165,11 +193,11 @@ export function ProspectsView() {
         title="Recommended Companies"
         description="AI-ranked outreach targets based on project expertise and LinkedIn connections."
         action={
-          <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+          <Button onClick={handleRefresh} disabled={refreshing}>
             <RefreshCw
               className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
             />
-            Refresh
+            {refreshing ? "Generating..." : "Refresh Recommendations"}
           </Button>
         }
       />
@@ -289,12 +317,19 @@ export function ProspectsView() {
         />
       </div>
 
-      {loading ? (
+      {refreshing ? (
+        <LoadingSpinner label="Analyzing connection companies..." />
+      ) : loading ? (
         <LoadingSpinner />
+      ) : allRecommendations.length === 0 ? (
+        <EmptyState
+          title="No recommendations generated yet"
+          description="Click Refresh Recommendations to generate recommendations."
+        />
       ) : recommendations.length === 0 ? (
         <EmptyState
-          title="No recommendations yet"
-          description="Upload LinkedIn connections and sync your knowledge base to generate company recommendations."
+          title="No companies match the selected filters."
+          description="Try adjusting your search or filter criteria."
         />
       ) : (
         <div className="rounded-xl border">
@@ -320,15 +355,27 @@ export function ProspectsView() {
                 >
                   <TableCell className="font-medium">{rec.rank}</TableCell>
                   <TableCell className="font-medium">{rec.company}</TableCell>
-                  <TableCell>{rec.industry}</TableCell>
                   <TableCell>
-                    <Badge variant={rec.recommendationScore >= 70 ? "success" : "secondary"}>
-                      {rec.recommendationScore}
+                    <Badge variant="outline" className="text-muted-foreground">
+                      {rec.industry}
                     </Badge>
                   </TableCell>
-                  <TableCell>{rec.connectionCount}</TableCell>
+                  <TableCell>
+                    <Badge variant={rec.recommendationScore >= 70 ? "success" : "secondary"}>
+                      {rec.recommendationScore} Match
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+                      {rec.connectionCount} {rec.connectionCount === 1 ? "Connection" : "Connections"}
+                    </span>
+                  </TableCell>
                   <TableCell className="max-w-[160px] truncate">
-                    {rec.topContact?.position ?? "—"}
+                    {rec.topContact?.position ? (
+                      <span className="font-medium">{rec.topContact.position}</span>
+                    ) : (
+                      "—"
+                    )}
                   </TableCell>
                   <TableCell>{rec.matchingProjectCount}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
@@ -357,7 +404,7 @@ export function ProspectsView() {
           </DialogHeader>
 
           {detailLoading ? (
-            <LoadingSpinner label="Loading company detail…" />
+            <LoadingSpinner label="Evaluating company opportunities..." />
           ) : detail ? (
             <div className="grid gap-6 lg:grid-cols-2">
               <div className="space-y-4">
@@ -434,10 +481,21 @@ export function ProspectsView() {
                             {(p.similarity * 100).toFixed(0)}%
                           </span>
                         </div>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground mb-1">
                           {p.industry}
                         </p>
-                        <p className="mt-1">{p.chunk_text.slice(0, 150)}…</p>
+                        {p.reference_link && (
+                          <a
+                            href={p.reference_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Open Project Document
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
                       </div>
                     ))
                   )}
@@ -465,7 +523,7 @@ export function ProspectsView() {
                     disabled={generating || !detail.topContact}
                   >
                     <Mail className="mr-2 h-4 w-4" />
-                    {generating ? "Generating…" : "Generate Outreach Email"}
+                    {generating ? "Generating personalized outreach..." : "Generate Outreach Email"}
                   </Button>
                 )}
               </div>

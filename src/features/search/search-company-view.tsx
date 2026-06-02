@@ -129,7 +129,7 @@ export function SearchCompanyView() {
             </div>
             <Button type="submit" disabled={loading}>
               <Search className="mr-2 h-4 w-4" />
-              {loading ? "Searching…" : "Search"}
+              {loading ? "Analyzing company fit..." : "Search"}
             </Button>
           </form>
         </CardContent>
@@ -218,7 +218,17 @@ export function SearchCompanyView() {
                     <p className="text-xs text-muted-foreground">
                       {p.industry}
                     </p>
-                    <p className="mt-2 text-sm">{p.summary ?? p.chunk_text.slice(0, 200)}</p>
+                    {p.reference_link && (
+                      <a
+                        href={p.reference_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                      >
+                        Open Project Document
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
                   </div>
                 ))
               )}
@@ -229,7 +239,7 @@ export function SearchCompanyView() {
             <div className="lg:col-span-2">
               <Button onClick={handleGenerateEmail} disabled={generating}>
                 <Mail className="mr-2 h-4 w-4" />
-                {generating ? "Generating…" : "Generate Outreach Email"}
+                {generating ? "Generating personalized outreach..." : "Generate Outreach Email"}
               </Button>
             </div>
           )}

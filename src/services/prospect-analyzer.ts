@@ -1,10 +1,9 @@
-import { getGeminiClient, GEMINI_MODEL } from "@/ai/gemini";
+import { generateWithFallback } from "@/ai/generation";
 import type { Prospect } from "@/types/database";
 
 export async function generateProspectAnalysis(
   prospect: Prospect
 ): Promise<string> {
-  const ai = getGeminiClient();
 
   const prompt = `Analyze this prospective client for WhileOne, a technology consultancy specializing in AI, custom software, and digital transformation.
 
@@ -25,10 +24,7 @@ Provide a structured analysis in markdown with these sections:
 
 Be specific and actionable. Do not invent financial data not implied by the inputs.`;
 
-  const response = await ai.models.generateContent({
-    model: GEMINI_MODEL,
-    contents: prompt,
-  });
+  const response = await generateWithFallback(prompt, "PROSPECT_ANALYSIS");
 
   const text = response.text?.trim();
   if (!text) {

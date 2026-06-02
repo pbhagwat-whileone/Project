@@ -123,7 +123,7 @@ export function ConnectionsView() {
       ) : connections.length === 0 ? (
         <EmptyState
           title="No connections"
-          description="Upload a LinkedIn Connections.csv export to get started."
+          description="Upload your LinkedIn CSV to begin discovering opportunities."
           action={
             <Button onClick={() => fileRef.current?.click()}>
               Upload CSV

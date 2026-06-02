@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { OAuth2Client } from "google-auth-library";
-import { getGeminiClient, GEMINI_MODEL } from "@/ai/gemini";
+import { getGeminiClient } from "@/ai/gemini";
+import { generateWithFallback } from "@/ai/generation";
 import type { Database } from "@/types/database";
 import {
   embeddingToPgVector,
@@ -23,7 +24,6 @@ async function extractDocumentMetadata(
   documentName: string,
   textSample: string
 ): Promise<{ project_name: string; industry: string }> {
-  const ai = getGeminiClient();
 
   const prompt = `
 You are extracting metadata from a software project document.
@@ -50,12 +50,8 @@ Return:
 `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: GEMINI_MODEL,
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-      },
+    const response = await generateWithFallback(prompt, "METADATA_EXTRACTION", {
+      responseMimeType: "application/json",
     });
 
     const parsed = JSON.parse(response.text ?? "{}") as {

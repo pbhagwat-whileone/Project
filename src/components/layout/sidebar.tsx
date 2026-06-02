@@ -38,7 +38,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r bg-card">
+    <aside className="flex h-full w-64 flex-col border-r bg-card">
       <div className="border-b px-6 py-5">
         <p className="text-xs font-semibold uppercase tracking-wider text-primary">
           WhileOne
@@ -47,7 +47,7 @@ export function Sidebar() {
           AI Client Outreach Assistant
         </h1>
       </div>
-      <nav className="flex-1 space-y-1 p-3">
+      <nav className="flex-1 overflow-y-auto space-y-1 p-3">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active =
             pathname === href || pathname.startsWith(`${href}/`);

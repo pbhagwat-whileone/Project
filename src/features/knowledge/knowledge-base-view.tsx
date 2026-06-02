@@ -75,7 +75,7 @@ export function KnowledgeBaseView() {
             <RefreshCw
               className={`mr-2 h-4 w-4 ${syncing ? "animate-spin" : ""}`}
             />
-            Sync Now
+            {syncing ? "Processing project knowledge..." : "Sync Now"}
           </Button>
         }
       />
@@ -95,7 +95,7 @@ export function KnowledgeBaseView() {
       ) : documents.length === 0 ? (
         <EmptyState
           title="No documents yet"
-          description="Configure your Drive folder in Settings, connect Google, then sync."
+          description="Sync Google Drive documents to build your knowledge base."
           action={
             <Button onClick={handleSync} disabled={syncing}>
               Sync Knowledge Base
