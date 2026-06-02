@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
-import { prospectSchema } from "@/lib/validators";
 import { createClient, requireUser } from "@/lib/supabase/server";
+import {
+  analyzeIndustryExpertise,
+  getCompanyRecommendations,
+} from "@/services/prospect-recommendation";
 
 export async function GET(request: Request) {
   try {
@@ -8,71 +11,29 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
 
-    const { data, error } = await supabase
-      .from("prospects")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+    const minScoreParam = searchParams.get("minScore");
+    const filters = {
+      industry: searchParams.get("industry") ?? undefined,
+      country: searchParams.get("country") ?? undefined,
+      companySize: searchParams.get("companySize") ?? undefined,
+      revenueBand: searchParams.get("revenueBand") ?? undefined,
+      minScore: minScoreParam ? Number(minScoreParam) : undefined,
+      q: searchParams.get("q") ?? undefined,
+    };
 
-    if (error) throw error;
+    const [recommendations, expertise] = await Promise.all([
+      getCompanyRecommendations(supabase, user.id, filters),
+      analyzeIndustryExpertise(supabase, user.id),
+    ]);
 
-    let filtered = data ?? [];
-    const country = searchParams.get("country");
-    const industry = searchParams.get("industry");
-    const revenue = searchParams.get("revenue");
-    const employees = searchParams.get("employees");
-    const status = searchParams.get("status");
-    const q = searchParams.get("q")?.toLowerCase();
+    const ranked = recommendations.map((rec, index) => ({
+      rank: index + 1,
+      ...rec,
+    }));
 
-    if (country)
-      filtered = filtered.filter((p) => p.country === country);
-    if (industry)
-      filtered = filtered.filter((p) => p.industry === industry);
-    if (revenue)
-      filtered = filtered.filter((p) => p.revenue_range === revenue);
-    if (employees)
-      filtered = filtered.filter((p) => p.employee_count === employees);
-    if (status) filtered = filtered.filter((p) => p.status === status);
-    if (q)
-      filtered = filtered.filter((p) =>
-        p.company_name.toLowerCase().includes(q)
-      );
-
-    return NextResponse.json({ prospects: filtered });
+    return NextResponse.json({ recommendations: ranked, expertise });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to load";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    const user = await requireUser();
-    const body = await request.json();
-    const parsed = prospectSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message },
-        { status: 400 }
-      );
-    }
-
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("prospects")
-      .insert({
-        user_id: user.id,
-        ...parsed.data,
-        website: parsed.data.website || null,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return NextResponse.json({ prospect: data });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Create failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -1,16 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus, Sparkles, Upload, Zap } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { ExternalLink, Mail, RefreshCw, Search } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -34,74 +39,60 @@ import {
 } from "@/components/ui/table";
 import { apiFetch } from "@/lib/api";
 import type {
-  GeneratedEmail,
-  MatchedChunk,
-  Prospect,
-  ProspectStatus,
-  RankedContact,
-} from "@/types/database";
+  CompanyDetail,
+  CompanyRecommendation,
+  IndustryExpertise,
+} from "@/services/prospect-recommendation";
+import type { GeneratedEmail } from "@/types/database";
 
-const STATUSES: ProspectStatus[] = [
-  "Researching",
-  "Qualified",
-  "Outreach Planned",
-  "Contacted",
-  "Won",
-  "Lost",
-];
-
-const emptyForm = {
-  company_name: "",
-  website: "",
-  country: "",
-  industry: "",
-  revenue_range: "",
-  employee_count: "",
-  notes: "",
-  status: "Researching" as ProspectStatus,
-};
-
-type OutreachResult = {
-  contact: RankedContact | null;
-  projects: (MatchedChunk & { summary?: string })[];
-  email: GeneratedEmail | null;
-  message: string | null;
-};
+type RankedRecommendation = CompanyRecommendation & { rank: number };
 
 export function ProspectsView() {
-  const [prospects, setProspects] = useState<Prospect[]>([]);
+  const [recommendations, setRecommendations] = useState<RankedRecommendation[]>(
+    []
+  );
+  const [expertise, setExpertise] = useState<IndustryExpertise[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [filters, setFilters] = useState({
-    country: "",
-    industry: "",
-    revenue: "",
-    employees: "",
-    status: "",
     q: "",
+    industry: "",
+    country: "",
+    companySize: "",
+    revenueBand: "",
+    minScore: "",
   });
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Prospect | null>(null);
-  const [form, setForm] = useState(emptyForm);
-  const [analysis, setAnalysis] = useState<string | null>(null);
-  const [outreach, setOutreach] = useState<OutreachResult | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-  const importRef = useRef<HTMLInputElement>(null);
+  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+  const [detail, setDetail] = useState<CompanyDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [generatedEmail, setGeneratedEmail] = useState<GeneratedEmail | null>(
+    null
+  );
 
   const load = useCallback(async () => {
     try {
       const params = new URLSearchParams();
-      Object.entries(filters).forEach(([k, v]) => {
-        if (v) params.set(k === "q" ? "q" : k, v);
-      });
+      if (filters.q) params.set("q", filters.q);
+      if (filters.industry) params.set("industry", filters.industry);
+      if (filters.country) params.set("country", filters.country);
+      if (filters.companySize) params.set("companySize", filters.companySize);
+      if (filters.revenueBand) params.set("revenueBand", filters.revenueBand);
+      if (filters.minScore) params.set("minScore", filters.minScore);
+
       const qs = params.toString() ? `?${params}` : "";
-      const data = await apiFetch<{ prospects: Prospect[] }>(
-        `/api/prospects${qs}`
-      );
-      setProspects(data.prospects);
+      const data = await apiFetch<{
+        recommendations: RankedRecommendation[];
+        expertise: IndustryExpertise[];
+      }>(`/api/prospects${qs}`);
+
+      setRecommendations(data.recommendations);
+      setExpertise(data.expertise);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [filters]);
 
@@ -111,156 +102,127 @@ export function ProspectsView() {
     return () => clearTimeout(t);
   }, [load]);
 
-  function openCreate() {
-    setEditing(null);
-    setForm(emptyForm);
-    setDialogOpen(true);
-  }
-
-  function openEdit(p: Prospect) {
-    setEditing(p);
-    setForm({
-      company_name: p.company_name,
-      website: p.website ?? "",
-      country: p.country ?? "",
-      industry: p.industry ?? "",
-      revenue_range: p.revenue_range ?? "",
-      employee_count: p.employee_count ?? "",
-      notes: p.notes ?? "",
-      status: p.status,
-    });
-    setDialogOpen(true);
-  }
-
-  async function saveProspect() {
+  async function openDetail(company: string) {
+    setSelectedCompany(company);
+    setDetail(null);
+    setGeneratedEmail(null);
+    setDetailLoading(true);
     try {
-      if (editing) {
-        await apiFetch(`/api/prospects/${editing.id}`, {
-          method: "PATCH",
-          body: JSON.stringify(form),
-        });
-        toast.success("Prospect updated");
-      } else {
-        await apiFetch("/api/prospects", {
+      const data = await apiFetch<{ detail: CompanyDetail }>(
+        `/api/prospects/detail?company=${encodeURIComponent(company)}`
+      );
+      setDetail(data.detail);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load detail");
+      setSelectedCompany(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  }
+
+  async function generateOutreach(company: string) {
+    setGenerating(true);
+    try {
+      const data = await apiFetch<{ email: GeneratedEmail }>(
+        "/api/prospects/outreach",
+        {
           method: "POST",
-          body: JSON.stringify(form),
-        });
-        toast.success("Prospect created");
-      }
-      setDialogOpen(false);
-      await load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
-    }
-  }
-
-  async function deleteProspect(id: string) {
-    if (!confirm("Delete this prospect?")) return;
-    try {
-      await apiFetch(`/api/prospects/${id}`, { method: "DELETE" });
-      toast.success("Deleted");
-      await load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Delete failed");
-    }
-  }
-
-  async function runAnalysis(id: string) {
-    setBusy(`analysis-${id}`);
-    try {
-      const data = await apiFetch<{ analysis: { analysis: string } }>(
-        `/api/prospects/${id}/analysis`,
-        { method: "POST" }
+          body: JSON.stringify({ company_name: company }),
+        }
       );
-      setAnalysis(data.analysis.analysis);
+      setGeneratedEmail(data.email);
+      toast.success("Outreach email generated");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Analysis failed");
+      toast.error(e instanceof Error ? e.message : "Generation failed");
     } finally {
-      setBusy(null);
+      setGenerating(false);
     }
   }
 
-  async function runOutreach(id: string) {
-    setBusy(`outreach-${id}`);
-    try {
-      const data = await apiFetch<OutreachResult>(
-        `/api/prospects/${id}/outreach`,
-        { method: "POST" }
-      );
-      setOutreach(data);
-      if (data.message) toast.info(data.message);
-      else toast.success("Outreach generated");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Outreach failed");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function handleImport(file: File) {
-    const formData = new FormData();
-    formData.append("file", file);
-    try {
-      const res = await fetch("/api/prospects/import", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      toast.success(`Imported ${data.imported} prospects`);
-      await load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Import failed");
-    }
+  function handleRefresh() {
+    setRefreshing(true);
+    load();
   }
 
   const filterOptions = {
-    countries: [...new Set(prospects.map((p) => p.country).filter(Boolean))],
-    industries: [...new Set(prospects.map((p) => p.industry).filter(Boolean))],
+    industries: [
+      ...new Set(recommendations.map((r) => r.industry).filter(Boolean)),
+    ],
+    countries: [
+      ...new Set(recommendations.map((r) => r.country).filter(Boolean)),
+    ] as string[],
+    sizes: [
+      ...new Set(recommendations.map((r) => r.companySize).filter(Boolean)),
+    ] as string[],
     revenues: [
-      ...new Set(prospects.map((p) => p.revenue_range).filter(Boolean)),
-    ],
-    employees: [
-      ...new Set(prospects.map((p) => p.employee_count).filter(Boolean)),
-    ],
+      ...new Set(recommendations.map((r) => r.revenueBand).filter(Boolean)),
+    ] as string[],
   };
 
   return (
     <div>
       <PageHeader
-        title="Prospects"
-        description="Target companies pipeline with AI analysis and outreach."
+        title="Recommended Companies"
+        description="AI-ranked outreach targets based on project expertise and LinkedIn connections."
         action={
-          <div className="flex gap-2">
-            <input
-              ref={importRef}
-              type="file"
-              accept=".csv"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handleImport(f);
-                e.target.value = "";
-              }}
+          <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
             />
-            <Button variant="outline" onClick={() => importRef.current?.click()}>
-              <Upload className="mr-2 h-4 w-4" />
-              Import CSV
-            </Button>
-            <Button onClick={openCreate}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Prospect
-            </Button>
-          </div>
+            Refresh
+          </Button>
         }
       />
 
+      {expertise.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Industry Expertise</CardTitle>
+            <CardDescription>
+              Project history used to score recommendations
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {expertise.slice(0, 8).map((exp) => (
+                <Badge key={exp.industry} variant="secondary">
+                  {exp.industry}: {exp.projectCount} project
+                  {exp.projectCount === 1 ? "" : "s"}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-        <Input
-          placeholder="Search company…"
-          value={filters.q}
-          onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
-        />
+        <div className="relative lg:col-span-2">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            placeholder="Search company or industry…"
+            value={filters.q}
+            onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
+          />
+        </div>
+        <Select
+          value={filters.industry || "all"}
+          onValueChange={(v) =>
+            setFilters((f) => ({ ...f, industry: v === "all" ? "" : v }))
+          }
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Industry" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All industries</SelectItem>
+            {filterOptions.industries.map((i) => (
+              <SelectItem key={i} value={i}>
+                {i}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select
           value={filters.country || "all"}
           onValueChange={(v) =>
@@ -273,34 +235,34 @@ export function ProspectsView() {
           <SelectContent>
             <SelectItem value="all">All countries</SelectItem>
             {filterOptions.countries.map((c) => (
-              <SelectItem key={c} value={c!}>
+              <SelectItem key={c} value={c}>
                 {c}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         <Select
-          value={filters.industry || "all"}
+          value={filters.companySize || "all"}
           onValueChange={(v) =>
-            setFilters((f) => ({ ...f, industry: v === "all" ? "" : v }))
+            setFilters((f) => ({ ...f, companySize: v === "all" ? "" : v }))
           }
         >
           <SelectTrigger>
-            <SelectValue placeholder="Industry" />
+            <SelectValue placeholder="Company size" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All industries</SelectItem>
-            {filterOptions.industries.map((c) => (
-              <SelectItem key={c} value={c!}>
-                {c}
+            <SelectItem value="all">All sizes</SelectItem>
+            {filterOptions.sizes.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         <Select
-          value={filters.revenue || "all"}
+          value={filters.revenueBand || "all"}
           onValueChange={(v) =>
-            setFilters((f) => ({ ...f, revenue: v === "all" ? "" : v }))
+            setFilters((f) => ({ ...f, revenueBand: v === "all" ? "" : v }))
           }
         >
           <SelectTrigger>
@@ -308,114 +270,69 @@ export function ProspectsView() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All revenue</SelectItem>
-            {filterOptions.revenues.map((c) => (
-              <SelectItem key={c} value={c!}>
-                {c}
+            {filterOptions.revenues.map((r) => (
+              <SelectItem key={r} value={r}>
+                {r}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Select
-          value={filters.employees || "all"}
-          onValueChange={(v) =>
-            setFilters((f) => ({ ...f, employees: v === "all" ? "" : v }))
+        <Input
+          type="number"
+          min={0}
+          max={100}
+          placeholder="Min score"
+          value={filters.minScore}
+          onChange={(e) =>
+            setFilters((f) => ({ ...f, minScore: e.target.value }))
           }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Employees" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All sizes</SelectItem>
-            {filterOptions.employees.map((c) => (
-              <SelectItem key={c} value={c!}>
-                {c}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={filters.status || "all"}
-          onValueChange={(v) =>
-            setFilters((f) => ({ ...f, status: v === "all" ? "" : v }))
-          }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        />
       </div>
 
       {loading ? (
         <LoadingSpinner />
-      ) : prospects.length === 0 ? (
+      ) : recommendations.length === 0 ? (
         <EmptyState
-          title="No prospects"
-          description="Add target companies manually or import from CSV."
-          action={<Button onClick={openCreate}>Add Prospect</Button>}
+          title="No recommendations yet"
+          description="Upload LinkedIn connections and sync your knowledge base to generate company recommendations."
         />
       ) : (
         <div className="rounded-xl border">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">Rank</TableHead>
                 <TableHead>Company</TableHead>
                 <TableHead>Industry</TableHead>
-                <TableHead>Country</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Score</TableHead>
+                <TableHead>Connections</TableHead>
+                <TableHead>Top Contact</TableHead>
+                <TableHead>Projects</TableHead>
+                <TableHead className="min-w-[200px]">Reason</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {prospects.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-medium">{p.company_name}</TableCell>
-                  <TableCell>{p.industry ?? "—"}</TableCell>
-                  <TableCell>{p.country ?? "—"}</TableCell>
+              {recommendations.map((rec) => (
+                <TableRow
+                  key={rec.company}
+                  className="cursor-pointer"
+                  onClick={() => openDetail(rec.company)}
+                >
+                  <TableCell className="font-medium">{rec.rank}</TableCell>
+                  <TableCell className="font-medium">{rec.company}</TableCell>
+                  <TableCell>{rec.industry}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{p.status}</Badge>
+                    <Badge variant={rec.recommendationScore >= 70 ? "success" : "secondary"}>
+                      {rec.recommendationScore}
+                    </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => openEdit(p)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => runAnalysis(p.id)}
-                        disabled={busy === `analysis-${p.id}`}
-                      >
-                        <Sparkles className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => runOutreach(p.id)}
-                        disabled={busy === `outreach-${p.id}`}
-                      >
-                        <Zap className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive"
-                        onClick={() => deleteProspect(p.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
+                  <TableCell>{rec.connectionCount}</TableCell>
+                  <TableCell className="max-w-[160px] truncate">
+                    {rec.topContact?.position ?? "—"}
+                  </TableCell>
+                  <TableCell>{rec.matchingProjectCount}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {rec.suggestedReason}
                   </TableCell>
                 </TableRow>
               ))}
@@ -424,178 +341,136 @@ export function ProspectsView() {
         </div>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editing ? "Edit Prospect" : "Add Prospect"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4">
-            <div>
-              <Label>Company Name *</Label>
-              <Input
-                value={form.company_name}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, company_name: e.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label>Website</Label>
-                <Input
-                  value={form.website}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, website: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <Label>Country</Label>
-                <Input
-                  value={form.country}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, country: e.target.value }))
-                  }
-                />
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label>Industry</Label>
-                <Input
-                  value={form.industry}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, industry: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <Label>Status</Label>
-                <Select
-                  value={form.status}
-                  onValueChange={(v) =>
-                    setForm((f) => ({
-                      ...f,
-                      status: v as ProspectStatus,
-                    }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUSES.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label>Revenue Range</Label>
-                <Input
-                  value={form.revenue_range}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, revenue_range: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <Label>Employee Count</Label>
-                <Input
-                  value={form.employee_count}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      employee_count: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-            </div>
-            <div>
-              <Label>Notes</Label>
-              <Textarea
-                value={form.notes}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, notes: e.target.value }))
-                }
-              />
-            </div>
-            <Button onClick={saveProspect}>Save</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!analysis} onOpenChange={() => setAnalysis(null)}>
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Prospect Analysis</DialogTitle>
-          </DialogHeader>
-          <div className="prose prose-sm max-w-none whitespace-pre-wrap text-sm">
-            {analysis}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!outreach} onOpenChange={() => setOutreach(null)}>
+      <Dialog
+        open={!!selectedCompany}
+        onOpenChange={() => {
+          setSelectedCompany(null);
+          setDetail(null);
+          setGeneratedEmail(null);
+        }}
+      >
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Outreach Workflow Results</DialogTitle>
+            <DialogTitle>
+              {detail?.company ?? selectedCompany ?? "Company Detail"}
+            </DialogTitle>
           </DialogHeader>
-          {outreach && (
+
+          {detailLoading ? (
+            <LoadingSpinner label="Loading company detail…" />
+          ) : detail ? (
             <div className="grid gap-6 lg:grid-cols-2">
-              <div>
-                <h4 className="mb-2 font-medium">Contact</h4>
-                {!outreach.contact ? (
-                  <p className="text-sm text-muted-foreground">
-                    {outreach.message ?? "No connection found."}
-                  </p>
-                ) : (
+              <div className="space-y-4">
+                <div>
+                  <h4 className="mb-2 font-medium">Company Information</h4>
                   <dl className="space-y-1 text-sm">
-                    <dd className="font-medium">
-                      {[outreach.contact.first_name, outreach.contact.last_name]
-                        .filter(Boolean)
-                        .join(" ")}
-                    </dd>
-                    <dd>{outreach.contact.position}</dd>
-                    <dd>{outreach.contact.email}</dd>
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">Industry</dt>
+                      <dd>{detail.industry}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">Score</dt>
+                      <dd>{detail.recommendationScore}/100</dd>
+                    </div>
+                    {detail.country && (
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Country</dt>
+                        <dd>{detail.country}</dd>
+                      </div>
+                    )}
+                    {detail.companySize && (
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Size</dt>
+                        <dd>{detail.companySize}</dd>
+                      </div>
+                    )}
                   </dl>
-                )}
-                <h4 className="mb-2 mt-4 font-medium">Projects</h4>
-                {outreach.projects.map((p) => (
-                  <div key={p.id} className="mb-2 rounded border p-2 text-sm">
-                    <p className="font-medium">{p.project_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {(p.similarity * 100).toFixed(0)}% — {p.industry}
-                    </p>
-                  </div>
-                ))}
+                </div>
+
+                <div>
+                  <h4 className="mb-2 font-medium">
+                    Connections ({detail.connections.length})
+                  </h4>
+                  <ul className="max-h-40 space-y-2 overflow-y-auto text-sm">
+                    {detail.connections.map((c) => (
+                      <li key={c.id} className="rounded border p-2">
+                        <p className="font-medium">
+                          {[c.first_name, c.last_name].filter(Boolean).join(" ")}
+                        </p>
+                        <p className="text-muted-foreground">{c.position}</p>
+                        {c.profile_url && (
+                          <a
+                            href={c.profile_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Profile
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-              <div>
-                <h4 className="mb-2 font-medium">Generated Email</h4>
-                {outreach.email ? (
-                  <>
-                    <p className="text-sm font-medium">
-                      Subject: {outreach.email.subject}
+
+              <div className="space-y-4">
+                <div>
+                  <h4 className="mb-2 font-medium">Matching Projects</h4>
+                  {detail.matchingProjects.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No matching projects found.
                     </p>
-                    <pre className="mt-2 whitespace-pre-wrap rounded border p-3 text-sm">
-                      {outreach.email.body}
-                    </pre>
-                  </>
-                ) : (
+                  ) : (
+                    detail.matchingProjects.map((p) => (
+                      <div key={p.id} className="mb-2 rounded border p-3 text-sm">
+                        <div className="flex justify-between">
+                          <p className="font-medium">
+                            {p.project_name ?? "Project"}
+                          </p>
+                          <span className="text-xs text-muted-foreground">
+                            {(p.similarity * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {p.industry}
+                        </p>
+                        <p className="mt-1">{p.chunk_text.slice(0, 150)}…</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div>
+                  <h4 className="mb-2 font-medium">Outreach Recommendation</h4>
                   <p className="text-sm text-muted-foreground">
-                    No email generated.
+                    {detail.outreachRecommendation}
                   </p>
+                </div>
+
+                {generatedEmail ? (
+                  <div className="rounded border p-3">
+                    <p className="text-sm font-medium">
+                      Subject: {generatedEmail.subject}
+                    </p>
+                    <pre className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap text-sm">
+                      {generatedEmail.body}
+                    </pre>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={() => generateOutreach(detail.company)}
+                    disabled={generating || !detail.topContact}
+                  >
+                    <Mail className="mr-2 h-4 w-4" />
+                    {generating ? "Generating…" : "Generate Outreach Email"}
+                  </Button>
                 )}
               </div>
             </div>
-          )}
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>

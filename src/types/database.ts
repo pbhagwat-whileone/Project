@@ -232,6 +232,30 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["sync_logs"]["Insert"]>;
         Relationships: [];
       };
+      company_industry_cache: {
+        Row: {
+          user_id: string;
+          company_name: string;
+          industry: string | null;
+          country: string | null;
+          company_size: string | null;
+          revenue_band: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          company_name: string;
+          industry?: string | null;
+          country?: string | null;
+          company_size?: string | null;
+          revenue_band?: string | null;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["company_industry_cache"]["Insert"]
+        >;
+        Relationships: [];
+      };
     };
     Functions: {
       match_knowledge_chunks: {
@@ -287,3 +311,6 @@ export type RankedContact = {
   profile_url: string | null;
   score: number;
 };
+
+export type CompanyIndustryCache =
+  Database["public"]["Tables"]["company_industry_cache"]["Row"];

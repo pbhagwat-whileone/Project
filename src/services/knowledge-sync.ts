@@ -24,104 +24,93 @@ async function extractDocumentMetadata(
   textSample: string
 ): Promise<{ project_name: string; industry: string }> {
   const ai = getGeminiClient();
-  const prompt = `From this WhileOne project document, extract metadata.
 
-Document title: ${documentName}
-Content sample:
-${textSample.slice(0, 2500)}
+  const prompt = `
+You are extracting metadata from a software project document.
 
-Respond in JSON only: {"project_name": "...", "industry": "..."}
-Use the document title if no better project name is found.`;
+Rules:
+- Extract the project name.
+- Extract the industry/domain/sector/business vertical.
+- Prefer explicitly stated values over inferred values.
+- If the industry is not explicitly stated, infer the most likely industry.
+- Return ONLY valid JSON.
+- Do not include markdown fences.
+
+Document title:
+${documentName}
+
+Document content:
+${textSample.slice(0, 3000)}
+
+Return:
+{
+  "project_name": "...",
+  "industry": "..."
+}
+`;
 
   try {
     const response = await ai.models.generateContent({
       model: GEMINI_MODEL,
       contents: prompt,
-      config: { responseMimeType: "application/json" },
+      config: {
+        responseMimeType: "application/json",
+      },
     });
+
     const parsed = JSON.parse(response.text ?? "{}") as {
       project_name?: string;
       industry?: string;
     };
+
     return {
-      project_name: parsed.project_name ?? documentName,
-      industry: parsed.industry ?? "Technology",
+      project_name: parsed.project_name?.trim() || documentName,
+      industry: parsed.industry?.trim() || "Unknown",
     };
-  } catch {
-    return { project_name: documentName, industry: "Technology" };
+  } catch (error) {
+    console.error("Metadata extraction failed:", documentName, error);
+    return {
+      project_name: documentName,
+      industry: "Unknown",
+    };
   }
 }
 
 async function processDocument(
   supabase: SupabaseClient<Database>,
-  userId: string,
   auth: OAuth2Client,
   file: DriveDocument,
   documentId: string
 ) {
-  console.log("================================");
-  console.log("PROCESSING:", file.name);
-
   await supabase
     .from("knowledge_documents")
     .update({ status: "processing" })
     .eq("id", documentId);
 
   const text = await fetchDocumentText(auth, file);
-
-  console.log("TEXT LENGTH:", text?.length ?? 0);
-  console.log("TEXT SAMPLE:", text?.slice(0, 200));
-
   const chunks = chunkText(text);
-
-  console.log("CHUNK COUNT:", chunks.length);
-
   const metadata = await extractDocumentMetadata(file.name, text);
-
-  console.log("METADATA:", metadata);
 
   const { error: deleteError } = await supabase
     .from("knowledge_chunks")
     .delete()
     .eq("document_id", documentId);
 
-  if (deleteError) {
-    console.error("DELETE CHUNKS ERROR:", deleteError);
-    throw deleteError;
-  }
+  if (deleteError) throw deleteError;
 
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
+  for (const chunk of chunks) {
+    const embedding = await generateEmbedding(chunk);
+    const { error: insertError } = await supabase
+      .from("knowledge_chunks")
+      .insert({
+        document_id: documentId,
+        chunk_text: chunk,
+        project_name: metadata.project_name,
+        industry: metadata.industry,
+        embedding: embeddingToPgVector(embedding),
+      });
 
-    console.log(
-      `PROCESSING CHUNK ${i + 1}/${chunks.length} (${chunk.length} chars)`
-    );
-
-    try {
-      const embedding = await generateEmbedding(chunk);
-
-      console.log("EMBEDDING LENGTH:", embedding.length);
-
-      const { error: insertError } = await supabase
-        .from("knowledge_chunks")
-        .insert({
-          document_id: documentId,
-          chunk_text: chunk,
-          project_name: metadata.project_name,
-          industry: metadata.industry,
-          embedding: embeddingToPgVector(embedding),
-        });
-
-      if (insertError) {
-        console.error("CHUNK INSERT ERROR:", insertError);
-        throw insertError;
-      }
-
-      console.log(`CHUNK ${i + 1} INSERTED`);
-    } catch (err) {
-      console.error(`CHUNK ${i + 1} FAILED:`, err);
-      throw err;
-    }
+    if (insertError) throw insertError;
   }
 
   const { error: updateError } = await supabase
@@ -133,13 +122,7 @@ async function processDocument(
     })
     .eq("id", documentId);
 
-  if (updateError) {
-    console.error("DOCUMENT UPDATE ERROR:", updateError);
-    throw updateError;
-  }
-
-  console.log("DOCUMENT SYNCED:", file.name);
-  console.log("================================");
+  if (updateError) throw updateError;
 }
 
 export async function syncKnowledgeBase(
@@ -173,12 +156,10 @@ export async function syncKnowledgeBase(
 
       const isNew = !existing;
       const isModified =
-  existing &&
-  (
-    modified > existingModified ||
-    existing.status === "processing" ||
-    existing.status === "error"
-  );
+        existing &&
+        (modified > existingModified ||
+          existing.status === "processing" ||
+          existing.status === "error");
 
       if (!isNew && !isModified) continue;
 
@@ -204,11 +185,10 @@ export async function syncKnowledgeBase(
 
         if (!documentId) continue;
 
-        await processDocument(supabase, userId, auth, file, documentId);
+        await processDocument(supabase, auth, file, documentId);
         documentsProcessed++;
       } catch (err) {
-        console.error("DOCUMENT PROCESS ERROR:", err);
-      
+        console.error("Document process error:", file.name, err);
         const msg =
           err instanceof Error
             ? `${err.name}: ${err.message}`
@@ -254,6 +234,7 @@ export async function syncKnowledgeBase(
     return { documentsProcessed, status, message };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Sync failed";
+    console.error("Knowledge sync failed:", err);
     await supabase.from("sync_logs").insert({
       user_id: userId,
       documents_processed: documentsProcessed,

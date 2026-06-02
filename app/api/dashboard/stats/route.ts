@@ -13,11 +13,21 @@ export async function GET() {
 
     const docIds = (userDocs ?? []).map((d) => d.id);
 
+    const { data: connectionRows } = await supabase
+      .from("connections")
+      .select("company")
+      .eq("user_id", user.id);
+
+    const uniqueCompanies = new Set(
+      (connectionRows ?? [])
+        .map((c) => c.company?.trim())
+        .filter((c): c is string => Boolean(c))
+    );
+
     const [
       documents,
       chunks,
       connections,
-      prospects,
       emails,
       recentSync,
     ] = await Promise.all([
@@ -33,10 +43,6 @@ export async function GET() {
         : Promise.resolve({ count: 0, data: null, error: null }),
       supabase
         .from("connections")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id),
-      supabase
-        .from("prospects")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id),
       supabase
@@ -56,7 +62,7 @@ export async function GET() {
         documents: documents.count ?? 0,
         chunks: chunks.count ?? 0,
         connections: connections.count ?? 0,
-        prospects: prospects.count ?? 0,
+        prospects: uniqueCompanies.size,
         emails: emails.count ?? 0,
       },
       recentActivity: recentSync.data ?? [],

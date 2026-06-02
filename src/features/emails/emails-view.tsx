@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Copy, RefreshCw } from "lucide-react";
+import { Copy, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
@@ -32,9 +32,11 @@ export function EmailsView() {
   const [emails, setEmails] = useState<GeneratedEmail[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<GeneratedEmail | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<GeneratedEmail | null>(null);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [regenerating, setRegenerating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function load() {
     try {
@@ -87,6 +89,24 @@ export function EmailsView() {
     }
   }
 
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await apiFetch(`/api/emails/${deleteTarget.id}`, { method: "DELETE" });
+      toast.success("Email deleted");
+      if (selected?.id === deleteTarget.id) {
+        setSelected(null);
+      }
+      setDeleteTarget(null);
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -99,7 +119,7 @@ export function EmailsView() {
       ) : emails.length === 0 ? (
         <EmptyState
           title="No emails yet"
-          description="Generate emails from Search Company or Prospects outreach."
+          description="Generate emails from Search Company or Recommended Companies."
         />
       ) : (
         <div className="rounded-xl border">
@@ -110,7 +130,7 @@ export function EmailsView() {
                 <TableHead>Company</TableHead>
                 <TableHead>Contact</TableHead>
                 <TableHead>Created</TableHead>
-                <TableHead />
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -122,14 +142,24 @@ export function EmailsView() {
                   <TableCell>{email.company_name}</TableCell>
                   <TableCell>{email.contact_name ?? "—"}</TableCell>
                   <TableCell>{formatDate(email.created_at)}</TableCell>
-                  <TableCell>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => openEmail(email)}
-                    >
-                      View
-                    </Button>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openEmail(email)}
+                      >
+                        View
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setDeleteTarget(email)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -168,6 +198,30 @@ export function EmailsView() {
                 Regenerate
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Email</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete the email &ldquo;
+            {deleteTarget?.subject}&rdquo;? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting…" : "Delete"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

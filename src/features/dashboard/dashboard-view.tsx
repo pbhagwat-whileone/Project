@@ -82,7 +82,7 @@ export function DashboardView() {
     { label: "Documents", value: stats?.documents ?? 0, icon: BookOpen },
     { label: "Chunks", value: stats?.chunks ?? 0, icon: BookOpen },
     { label: "Connections", value: stats?.connections ?? 0, icon: Users },
-    { label: "Prospects", value: stats?.prospects ?? 0, icon: Building2 },
+    { label: "Companies", value: stats?.prospects ?? 0, icon: Building2 },
     { label: "Emails", value: stats?.emails ?? 0, icon: Mail },
   ];
 
@@ -140,7 +140,7 @@ export function DashboardView() {
             <Button variant="outline" className="justify-start gap-2" asChild>
               <Link href="/prospects">
                 <Building2 className="h-4 w-4" />
-                Add Prospect
+                View Recommendations
               </Link>
             </Button>
           </CardContent>

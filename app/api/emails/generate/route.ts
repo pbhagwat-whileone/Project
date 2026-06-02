@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { emailGenerateSchema } from "@/lib/validators";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { generateOutreachEmail } from "@/services/email-generator";
+import { getRecommendationForEmail } from "@/services/prospect-recommendation";
 import { searchKnowledgeChunks } from "@/services/vector-search";
 import type { MatchedChunk, RankedContact } from "@/types/database";
 
@@ -21,6 +22,15 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     let contact: RankedContact;
     let projects: MatchedChunk[];
+    let recommendationReason = parsed.data.recommendation_reason;
+    let expertise;
+    let matchingProjectCount: number | undefined;
+
+    const recContext = await getRecommendationForEmail(
+      supabase,
+      user.id,
+      parsed.data.company_name
+    );
 
     if (parsed.data.projects?.length) {
       projects = parsed.data.projects as MatchedChunk[];
@@ -35,6 +45,12 @@ export async function POST(request: Request) {
         profile_url: parsed.data.profile_url ?? null,
         score: 0,
       };
+    } else if (recContext.recommendation?.topContact) {
+      contact = recContext.recommendation.topContact;
+      projects = recContext.matchingProjects;
+      recommendationReason ??= recContext.recommendation.suggestedReason;
+      matchingProjectCount = recContext.recommendation.matchingProjectCount;
+      expertise = recContext.expertise;
     } else {
       const query = `${parsed.data.company_name} ${parsed.data.position ?? ""}`;
       projects = await searchKnowledgeChunks(supabase, user.id, query, 3);
@@ -49,23 +65,16 @@ export async function POST(request: Request) {
         profile_url: parsed.data.profile_url ?? null,
         score: 0,
       };
-    }
-
-    let prospectNotes: string | undefined;
-    if (parsed.data.prospect_id) {
-      const { data: prospect } = await supabase
-        .from("prospects")
-        .select("notes")
-        .eq("id", parsed.data.prospect_id)
-        .single();
-      prospectNotes = prospect?.notes ?? undefined;
+      expertise = recContext.expertise;
     }
 
     const emailContent = await generateOutreachEmail({
       targetCompany: parsed.data.company_name,
       contact,
       projects,
-      prospectNotes,
+      recommendationReason,
+      industryExpertise: expertise,
+      matchingProjectCount,
     });
 
     const { data: saved, error } = await supabase

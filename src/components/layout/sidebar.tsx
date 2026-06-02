@@ -21,7 +21,7 @@ const navItems = [
   { href: "/knowledge-base", label: "Knowledge Base", icon: BookOpen },
   { href: "/connections", label: "Connections", icon: Users },
   { href: "/search-company", label: "Search Company", icon: Search },
-  { href: "/prospects", label: "Prospects", icon: Building2 },
+  { href: "/prospects", label: "Recommendations", icon: Building2 },
   { href: "/emails", label: "Emails", icon: Mail },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
