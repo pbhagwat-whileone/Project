@@ -114,3 +114,33 @@ Configure folder ID in **Settings**, connect Google Drive, then use **Sync** on 
 - `npm run build` — production build
 - `npm run start` — production server
 - `npm run lint` — ESLint
+
+
+## Environment Example Setup
+
+# Supabase (https://supabase.com/dashboard)
+NEXT_PUBLIC_SUPABASE_URL=https://project name.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=publishable key
+SUPABASE_SERVICE_ROLE_KEY=secret key
+
+# App URL (required for Google OAuth callbacks)
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Gemini API (https://aistudio.google.com/apikey)
+GEMINI_API_KEY=
+
+# Google OAuth (https://console.cloud.google.com/apis/credentials)
+# Enable Google provider in Supabase Auth + create OAuth client with Drive scopes
+GOOGLE_CLIENT_ID=client-id
+GOOGLE_CLIENT_SECRET=client-secret
+
+#Add authorised redirect URL's:
+# http://localhost:3000/api/auth/callback/google
+# https://project name.supabase.co/auth/v1/callback
+# http://localhost:3000/api/google/callback
+
+#Enable google Drive and Google Docs API
+
+#In supabase- Auth->Providers, Enable Google and enter Client ID,secret and callback URL
+# Default Drive folder (can override per user in Settings)
+GOOGLE_DRIVE_FOLDER_ID=your-drive-folder-id
