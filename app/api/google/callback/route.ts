@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { exchangeCodeForTokens, saveTokens } from "@/google/oauth";
+import { exchangeCodeForTokens, saveTokens } from "@/services/google-oauth";
 import { getAppUrl } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
 

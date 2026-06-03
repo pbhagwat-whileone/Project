@@ -18,47 +18,7 @@ type SyncResult = {
   message: string;
 };
 
-const INDUSTRY_KEYWORDS: Record<string, string[]> = {
-  "Healthcare": ["hospital", "patient", "medical", "healthcare", "clinic", "ehr"],
-  "Semiconductor": ["semiconductor", "wafer", "chip", "asic", "fpga", "fab"],
-  "Financial Services": ["bank", "payment", "fintech", "insurance", "investment"],
-  "Manufacturing": ["factory", "production", "manufacturing", "industrial"],
-  "Enterprise Automation": ["workflow", "ocr", "invoice", "document processing", "automation"],
-  "Cloud Infrastructure": ["aws", "azure", "cloud", "kubernetes", "devops"],
-};
 
-async function extractDocumentMetadata(
-  documentName: string,
-  textSample: string
-): Promise<{ project_name: string; industry: string }> {
-  let projectName = documentName.trim();
-  const extMatch = projectName.match(/^(.*?)(\.[a-zA-Z0-9]+)$/);
-  if (extMatch) {
-    projectName = extMatch[1];
-  }
-
-  const contentToAnalyze = `${documentName} ${textSample.slice(0, 3000)}`.toLowerCase();
-
-  let detectedIndustry = "Unknown";
-  
-  for (const [industry, keywords] of Object.entries(INDUSTRY_KEYWORDS)) {
-    for (const keyword of keywords) {
-      const regex = new RegExp(`\\b${keyword}\\b`, 'i');
-      if (regex.test(contentToAnalyze)) {
-        detectedIndustry = industry;
-        break;
-      }
-    }
-    if (detectedIndustry !== "Unknown") {
-      break;
-    }
-  }
-
-  return {
-    project_name: projectName,
-    industry: detectedIndustry,
-  };
-}
 
 async function processDocument(
   supabase: SupabaseClient<Database>,
@@ -79,7 +39,12 @@ async function processDocument(
   }
 
   const chunks = chunkText(text);
-  const metadata = await extractDocumentMetadata(file.name, text);
+  
+  let projectName = file.name.trim();
+  const extMatch = projectName.match(/^(.*?)(\.[a-zA-Z0-9]+)$/);
+  if (extMatch) {
+    projectName = extMatch[1];
+  }
 
   const { error: deleteError } = await supabase
     .from("knowledge_chunks")
@@ -95,8 +60,8 @@ async function processDocument(
       .insert({
         document_id: documentId,
         chunk_text: chunk,
-        project_name: metadata.project_name,
-        industry: metadata.industry,
+        project_name: projectName,
+        industry: null,
         embedding: embeddingToPgVector(embedding),
       });
 

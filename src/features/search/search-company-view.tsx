@@ -21,6 +21,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { apiFetch } from "@/lib/api";
 import type { GeneratedEmail, MatchedChunk, RankedContact } from "@/types/database";
 
@@ -38,6 +45,12 @@ export function SearchCompanyView() {
   const [emailDialog, setEmailDialog] = useState<GeneratedEmail | null>(null);
   const [editedSubject, setEditedSubject] = useState("");
   const [editedBody, setEditedBody] = useState("");
+  
+  const [relationshipType, setRelationshipType] = useState("Unknown");
+  const [provider, setProvider] = useState("gemini");
+  
+  const [refinementInstruction, setRefinementInstruction] = useState("");
+  const [refining, setRefining] = useState(false);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -79,6 +92,8 @@ export function SearchCompanyView() {
             email: result.contact.email,
             profile_url: result.contact.profile_url,
             projects: result.projects,
+            relationship_type: relationshipType,
+            provider,
           }),
         }
       );
@@ -90,6 +105,40 @@ export function SearchCompanyView() {
       toast.error(err instanceof Error ? err.message : "Generation failed");
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function handleRefine() {
+    if (!emailDialog || !refinementInstruction.trim()) return;
+    setRefining(true);
+    try {
+      const data = await apiFetch<{ email: GeneratedEmail }>(
+        "/api/emails/refine",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            email_id: emailDialog.id,
+            current_subject: editedSubject,
+            current_body: editedBody,
+            instructions: refinementInstruction,
+            provider,
+            context: {
+              company: result?.contact?.company || company,
+              contactName: [result?.contact?.first_name, result?.contact?.last_name].filter(Boolean).join(" "),
+              relationship: relationshipType,
+            },
+          }),
+        }
+      );
+      setEditedSubject(data.email.subject);
+      setEditedBody(data.email.body);
+      setEmailDialog(data.email);
+      setRefinementInstruction("");
+      toast.success("Draft refined successfully");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Refinement failed");
+    } finally {
+      setRefining(false);
     }
   }
 
@@ -215,9 +264,7 @@ export function SearchCompanyView() {
                         {(p.similarity * 100).toFixed(0)}% match
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {p.industry}
-                    </p>
+
                     {p.reference_link && (
                       <a
                         href={p.reference_link}
@@ -236,7 +283,42 @@ export function SearchCompanyView() {
           </Card>
 
           {result.contact && result.projects.length > 0 && (
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 space-y-4">
+              <div className="flex flex-col gap-4 sm:flex-row">
+                <div className="w-full sm:w-1/3">
+                  <Label>Email Strategy</Label>
+                  <Select
+                    value={relationshipType}
+                    onValueChange={setRelationshipType}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Unknown">Unknown</SelectItem>
+                      <SelectItem value="Cold Outreach">Cold Outreach</SelectItem>
+                      <SelectItem value="Warm Introduction">Warm Introduction</SelectItem>
+                      <SelectItem value="Former Colleague">Former Colleague</SelectItem>
+                      <SelectItem value="Existing Client">Existing Client</SelectItem>
+                      <SelectItem value="Previous Client">Previous Client</SelectItem>
+                      <SelectItem value="Personal Contact">Personal Contact</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-full sm:w-1/3">
+                  <Label>AI Provider</Label>
+                  <Select value={provider} onValueChange={setProvider}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gemini">Gemini</SelectItem>
+                      <SelectItem value="claude">Claude</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <Button onClick={handleGenerateEmail} disabled={generating}>
                 <Mail className="mr-2 h-4 w-4" />
                 {generating ? "Generating personalized outreach..." : "Generate Outreach Email"}
@@ -269,6 +351,25 @@ export function SearchCompanyView() {
                 onChange={(e) => setEditedBody(e.target.value)}
               />
             </div>
+            
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <Label htmlFor="refine">Refine Draft</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="refine"
+                  placeholder="e.g. Make it shorter, Sound more formal..."
+                  value={refinementInstruction}
+                  onChange={(e) => setRefinementInstruction(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleRefine();
+                  }}
+                />
+                <Button onClick={handleRefine} disabled={refining || !refinementInstruction.trim()}>
+                  {refining ? "Refining..." : "Refine"}
+                </Button>
+              </div>
+            </div>
+
             <Button onClick={copyEmail}>Copy to Clipboard</Button>
           </div>
         </DialogContent>

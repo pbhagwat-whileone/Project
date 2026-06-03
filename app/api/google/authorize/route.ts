@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuthorizationUrl } from "@/google/oauth";
+import { getAuthorizationUrl } from "@/services/google-oauth";
 import { getAppUrl } from "@/lib/settings";
 import { requireUser } from "@/lib/supabase/server";
 

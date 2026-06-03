@@ -27,12 +27,34 @@ export const emailGenerateSchema = z.object({
     )
     .optional(),
   recommendation_reason: z.string().nullish(),
+  relationship_type: z.string().nullish(),
+  provider: z.string().nullish(),
+});
+
+export const emailRefineSchema = z.object({
+  email_id: z.string().uuid(),
+  current_subject: z.string().min(1),
+  current_body: z.string().min(1),
+  instructions: z.string().min(1),
+  provider: z.string().nullish(),
+  context: z.object({
+    company: z.string().nullish(),
+    contactName: z.string().nullish(),
+    relationship: z.string().nullish(),
+  }).optional(),
 });
 
 export const recommendationOutreachSchema = z.object({
   company_name: z.string().min(1, "Company name is required"),
+  relationship_type: z.string().nullish(),
+  provider: z.string().nullish(),
 });
 
 export const recommendationDetailSchema = z.object({
   company: z.string().min(1, "Company name is required"),
+});
+
+export const emailUpdateSchema = z.object({
+  subject: z.string().min(1, "Subject is required"),
+  body: z.string().min(1, "Body is required"),
 });

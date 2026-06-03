@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuthenticatedClient } from "@/google/oauth";
+import { getAuthenticatedClient } from "@/services/google-oauth";
 import { getAppUrl, getDriveFolderIds } from "@/lib/settings";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { syncKnowledgeBase } from "@/services/knowledge-sync";

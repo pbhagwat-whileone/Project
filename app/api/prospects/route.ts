@@ -1,26 +1,20 @@
 import { NextResponse } from "next/server";
 import { createClient, requireUser } from "@/lib/supabase/server";
-import {
-  analyzeIndustryExpertise,
-  getCachedRecommendations,
-} from "@/services/prospect-recommendation";
+import { getCompanyRecommendations } from "@/services/prospect-recommendation";
 
 export async function GET(request: Request) {
   try {
     const user = await requireUser();
     const supabase = await createClient();
 
-    const [recommendations, expertise] = await Promise.all([
-      getCachedRecommendations(supabase, user.id),
-      analyzeIndustryExpertise(supabase, user.id),
-    ]);
+    const recommendations = await getCompanyRecommendations(supabase, user.id);
 
     const ranked = recommendations.map((rec, index) => ({
       rank: index + 1,
       ...rec,
     }));
 
-    return NextResponse.json({ recommendations: ranked, expertise });
+    return NextResponse.json({ recommendations: ranked });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to load";
     return NextResponse.json({ error: message }, { status: 500 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Copy, RefreshCw, Trash2 } from "lucide-react";
+import { Copy, RefreshCw, Trash2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
@@ -13,6 +13,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,6 +45,11 @@ export function EmailsView() {
   const [regenerating, setRegenerating] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const [provider, setProvider] = useState("gemini");
+  const [refinementInstruction, setRefinementInstruction] = useState("");
+  const [refining, setRefining] = useState(false);
+  const [saving, setSaving] = useState(false);
+
   async function load() {
     try {
       const data = await apiFetch<{ emails: GeneratedEmail[] }>("/api/emails");
@@ -57,6 +69,8 @@ export function EmailsView() {
     setSelected(email);
     setSubject(email.subject);
     setBody(email.body);
+    setProvider(email.provider_used || "gemini");
+    setRefinementInstruction("");
   }
 
   function copyEmail() {
@@ -86,6 +100,83 @@ export function EmailsView() {
       toast.error(e instanceof Error ? e.message : "Regenerate failed");
     } finally {
       setRegenerating(false);
+    }
+  }
+
+  async function handleRefine() {
+    if (!selected) {
+      toast.error("No email selected.");
+      return;
+    }
+    
+    if (!refinementInstruction || typeof refinementInstruction !== "string" || !refinementInstruction.trim()) {
+      toast.error("Refinement instruction must be a non-empty string.");
+      return;
+    }
+
+    if (!subject || typeof subject !== "string") {
+      toast.error("Current subject must be a valid string.");
+      return;
+    }
+
+    if (!body || typeof body !== "string") {
+      toast.error("Current draft body must be a valid string.");
+      return;
+    }
+
+    const safeProvider = typeof provider === "string" && provider.trim() ? provider : "gemini";
+
+    setRefining(true);
+    try {
+      const data = await apiFetch<{ email: GeneratedEmail }>(
+        "/api/emails/refine",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            email_id: selected.id,
+            current_subject: subject,
+            current_body: body,
+            instructions: refinementInstruction,
+            provider: safeProvider,
+            context: {
+              company: selected.company_name,
+              contactName: selected.contact_name || "Unknown",
+            },
+          }),
+        }
+      );
+      setSubject(data.email.subject);
+      setBody(data.email.body);
+      setRefinementInstruction("");
+      toast.success("Draft refined successfully");
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Refinement failed");
+    } finally {
+      setRefining(false);
+    }
+  }
+
+  async function handleSave() {
+    if (!selected) return;
+    setSaving(true);
+    try {
+      await apiFetch<{ email: GeneratedEmail }>(
+        `/api/emails/${selected.id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            subject,
+            body,
+          }),
+        }
+      );
+      toast.success("Changes saved");
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -181,21 +272,61 @@ export function EmailsView() {
             <div>
               <Label>Body</Label>
               <Textarea
-                rows={14}
+                rows={10}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
               />
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={copyEmail}>
-                <Copy className="mr-2 h-4 w-4" />
-                Copy
-              </Button>
-              <Button onClick={regenerate} disabled={regenerating}>
-                <RefreshCw
-                  className={`mr-2 h-4 w-4 ${regenerating ? "animate-spin" : ""}`}
+
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <div className="flex flex-col gap-4 sm:flex-row">
+                <div className="w-full sm:w-1/2">
+                  <Label>AI Provider</Label>
+                  <Select value={provider} onValueChange={setProvider}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gemini">Gemini</SelectItem>
+                      <SelectItem value="claude">Claude</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <Label htmlFor="refine">Refine Draft</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="refine"
+                  placeholder="e.g. Make it shorter, Sound more formal..."
+                  value={refinementInstruction}
+                  onChange={(e) => setRefinementInstruction(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleRefine();
+                  }}
                 />
-                Regenerate
+                <Button onClick={handleRefine} disabled={refining || !refinementInstruction.trim()}>
+                  {refining ? "Refining..." : "Refine"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex justify-between">
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={copyEmail}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy
+                </Button>
+                <Button variant="outline" onClick={regenerate} disabled={regenerating}>
+                  <RefreshCw
+                    className={`mr-2 h-4 w-4 ${regenerating ? "animate-spin" : ""}`}
+                  />
+                  Regenerate
+                </Button>
+              </div>
+              <Button onClick={handleSave} disabled={saving}>
+                <Save className="mr-2 h-4 w-4" />
+                {saving ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </div>

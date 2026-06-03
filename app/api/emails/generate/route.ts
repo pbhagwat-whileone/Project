@@ -22,14 +22,10 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-
     const supabase = await createClient();
     let contact: RankedContact;
     let projects: MatchedChunk[];
     let recommendationReason = parsed.data.recommendation_reason;
-    let expertise;
-    let matchingProjectCount: number | undefined;
-
     const recContext = await getRecommendationForEmail(
       supabase,
       user.id,
@@ -53,8 +49,6 @@ export async function POST(request: Request) {
       contact = recContext.recommendation.topContact;
       projects = recContext.matchingProjects;
       recommendationReason ??= recContext.recommendation.suggestedReason;
-      matchingProjectCount = recContext.recommendation.matchingProjectCount;
-      expertise = recContext.expertise;
     } else {
       const query = `${parsed.data.company_name} ${parsed.data.position ?? ""}`;
       projects = await searchKnowledgeChunks(supabase, user.id, query, 3);
@@ -69,7 +63,6 @@ export async function POST(request: Request) {
         profile_url: parsed.data.profile_url ?? null,
         score: 0,
       };
-      expertise = recContext.expertise;
     }
 
     const emailContent = await generateOutreachEmail({
@@ -77,8 +70,8 @@ export async function POST(request: Request) {
       contact,
       projects,
       recommendationReason: recommendationReason ?? undefined,
-      industryExpertise: expertise,
-      matchingProjectCount,
+      relationshipType: parsed.data.relationship_type ?? undefined,
+      provider: parsed.data.provider ?? undefined,
     });
 
     const { data: saved, error } = await supabase
@@ -89,6 +82,8 @@ export async function POST(request: Request) {
         contact_name: parsed.data.contact_name ?? null,
         subject: emailContent.subject,
         body: emailContent.body,
+        provider_used: parsed.data.provider ?? "gemini",
+        relationship_type: parsed.data.relationship_type ?? "Unknown Relationship",
       })
       .select()
       .single();

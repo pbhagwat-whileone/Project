@@ -1,4 +1,4 @@
-import { google, drive_v3, docs_v1 } from "googleapis";
+import { google, docs_v1 } from "googleapis";
 import type { OAuth2Client } from "google-auth-library";
 import * as mammoth from "mammoth";
 
@@ -105,11 +105,3 @@ function flattenStructuralElements(
   return parts.join("\n").trim();
 }
 
-export function exportDriveFileAsText(
-  drive: drive_v3.Drive,
-  fileId: string
-): Promise<string> {
-  return drive.files
-    .export({ fileId, mimeType: "text/plain" })
-    .then((res) => String(res.data ?? ""));
-}

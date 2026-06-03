@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createClient();
-    const { recommendation, expertise, matchingProjects } =
+    const { recommendation, matchingProjects } =
       await getRecommendationForEmail(
         supabase,
         user.id,
@@ -37,8 +37,8 @@ export async function POST(request: Request) {
       contact: recommendation.topContact,
       projects: matchingProjects,
       recommendationReason: recommendation.suggestedReason,
-      industryExpertise: expertise,
-      matchingProjectCount: recommendation.matchingProjectCount,
+      relationshipType: parsed.data.relationship_type ?? undefined,
+      provider: parsed.data.provider ?? undefined,
     });
 
     const contactName = [
@@ -56,6 +56,8 @@ export async function POST(request: Request) {
         contact_name: contactName || null,
         subject: emailContent.subject,
         body: emailContent.body,
+        provider_used: parsed.data.provider ?? "gemini",
+        relationship_type: parsed.data.relationship_type ?? "Unknown Relationship",
       })
       .select()
       .single();

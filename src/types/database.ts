@@ -199,6 +199,10 @@ export interface Database {
           subject: string;
           body: string;
           created_at: string;
+          provider_used: string | null;
+          relationship_type: string | null;
+          edited_content: string | null;
+          refinement_history: any | null;
         };
         Insert: {
           id?: string;
@@ -208,6 +212,10 @@ export interface Database {
           subject: string;
           body: string;
           created_at?: string;
+          provider_used?: string | null;
+          relationship_type?: string | null;
+          edited_content?: string | null;
+          refinement_history?: any | null;
         };
         Update: Partial<Database["public"]["Tables"]["generated_emails"]["Insert"]>;
         Relationships: [];

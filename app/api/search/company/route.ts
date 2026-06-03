@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { companySearchSchema } from "@/lib/validators";
 import { createClient, requireUser } from "@/lib/supabase/server";
-import { findBestContact } from "@/utils/company-matching";
+import { findBestContact } from "@/utils/company-utils";
 import { searchKnowledgeChunks } from "@/services/vector-search";
 
 export async function POST(request: Request) {

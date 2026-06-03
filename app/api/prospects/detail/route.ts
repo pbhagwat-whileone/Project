@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { recommendationDetailSchema } from "@/lib/validators";
 import { createClient, requireUser } from "@/lib/supabase/server";
-import {
-  analyzeIndustryExpertise,
-  getCompanyDetail,
-} from "@/services/prospect-recommendation";
+import { getCompanyDetail } from "@/services/prospect-recommendation";
 
 export async function GET(request: Request) {
   try {
@@ -23,16 +20,13 @@ export async function GET(request: Request) {
       );
     }
 
-    const [detail, expertise] = await Promise.all([
-      getCompanyDetail(supabase, user.id, parsed.data.company),
-      analyzeIndustryExpertise(supabase, user.id),
-    ]);
+    const detail = await getCompanyDetail(supabase, user.id, parsed.data.company);
 
     if (!detail) {
       return NextResponse.json({ error: "Company not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ detail, expertise });
+    return NextResponse.json({ detail });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to load detail";
     return NextResponse.json({ error: message }, { status: 500 });
