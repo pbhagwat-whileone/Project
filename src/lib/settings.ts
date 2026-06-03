@@ -1,21 +1,21 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 
-export async function getDriveFolderId(
+export async function getDriveFolderIds(
   supabase: SupabaseClient<Database>,
   userId: string
-): Promise<string | null> {
+): Promise<string[]> {
   const { data } = await supabase
     .from("user_settings")
-    .select("google_drive_folder_id")
+    .select("google_drive_folder_ids")
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (data?.google_drive_folder_id) {
-    return data.google_drive_folder_id;
+  if (data?.google_drive_folder_ids && data.google_drive_folder_ids.length > 0) {
+    return data.google_drive_folder_ids;
   }
 
-  return process.env.GOOGLE_DRIVE_FOLDER_ID || null;
+  return process.env.GOOGLE_DRIVE_FOLDER_ID ? [process.env.GOOGLE_DRIVE_FOLDER_ID] : [];
 }
 
 export function getAppUrl(): string {

@@ -43,12 +43,12 @@ export interface Database {
       user_settings: {
         Row: {
           user_id: string;
-          google_drive_folder_id: string | null;
+          google_drive_folder_ids: string[] | null;
           updated_at: string;
         };
         Insert: {
           user_id: string;
-          google_drive_folder_id?: string | null;
+          google_drive_folder_ids?: string[] | null;
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["user_settings"]["Insert"]>;

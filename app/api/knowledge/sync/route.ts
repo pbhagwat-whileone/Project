@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedClient } from "@/google/oauth";
-import { getAppUrl, getDriveFolderId } from "@/lib/settings";
+import { getAppUrl, getDriveFolderIds } from "@/lib/settings";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { syncKnowledgeBase } from "@/services/knowledge-sync";
 
@@ -8,11 +8,11 @@ export async function POST() {
   try {
     const user = await requireUser();
     const supabase = await createClient();
-    const folderId = await getDriveFolderId(supabase, user.id);
+    const folderIds = await getDriveFolderIds(supabase, user.id);
 
-    if (!folderId) {
+    if (!folderIds || folderIds.length === 0) {
       return NextResponse.json(
-        { error: "Google Drive folder ID is not configured" },
+        { error: "No Google Drive folder IDs configured" },
         { status: 400 }
       );
     }
@@ -31,7 +31,7 @@ export async function POST() {
       supabase,
       user.id,
       auth,
-      folderId
+      folderIds
     );
 
     return NextResponse.json(result);

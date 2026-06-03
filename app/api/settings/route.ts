@@ -29,10 +29,9 @@ export async function GET() {
       ]);
 
     return NextResponse.json({
-      google_drive_folder_id:
-        settings?.google_drive_folder_id ??
-        process.env.GOOGLE_DRIVE_FOLDER_ID ??
-        "",
+      google_drive_folder_ids:
+        settings?.google_drive_folder_ids ??
+        (process.env.GOOGLE_DRIVE_FOLDER_ID ? [process.env.GOOGLE_DRIVE_FOLDER_ID] : []),
       last_sync: lastSync,
       google_connected: Boolean(googleToken),
     });
@@ -58,7 +57,7 @@ export async function PUT(request: Request) {
     const supabase = await createClient();
     const { error } = await supabase.from("user_settings").upsert({
       user_id: user.id,
-      google_drive_folder_id: parsed.data.google_drive_folder_id,
+      google_drive_folder_ids: parsed.data.google_drive_folder_ids,
       updated_at: new Date().toISOString(),
     });
 

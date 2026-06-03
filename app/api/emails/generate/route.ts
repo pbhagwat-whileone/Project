@@ -10,6 +10,10 @@ export async function POST(request: Request) {
   try {
     const user = await requireUser();
     const body = await request.json();
+
+    // TEMPORARY LOGGING: Inspect the full payload before schema validation
+    console.log("[EMAIL GENERATE ROUTE] Incoming Payload:", JSON.stringify(body, null, 2));
+
     const parsed = emailGenerateSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -72,7 +76,7 @@ export async function POST(request: Request) {
       targetCompany: parsed.data.company_name,
       contact,
       projects,
-      recommendationReason,
+      recommendationReason: recommendationReason ?? undefined,
       industryExpertise: expertise,
       matchingProjectCount,
     });

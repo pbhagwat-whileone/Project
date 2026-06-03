@@ -1,7 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { OAuth2Client } from "google-auth-library";
-import { getGeminiClient } from "@/ai/gemini";
-import { generateWithFallback } from "@/ai/generation";
 import type { Database } from "@/types/database";
 import {
   embeddingToPgVector,
@@ -20,56 +18,46 @@ type SyncResult = {
   message: string;
 };
 
+const INDUSTRY_KEYWORDS: Record<string, string[]> = {
+  "Healthcare": ["hospital", "patient", "medical", "healthcare", "clinic", "ehr"],
+  "Semiconductor": ["semiconductor", "wafer", "chip", "asic", "fpga", "fab"],
+  "Financial Services": ["bank", "payment", "fintech", "insurance", "investment"],
+  "Manufacturing": ["factory", "production", "manufacturing", "industrial"],
+  "Enterprise Automation": ["workflow", "ocr", "invoice", "document processing", "automation"],
+  "Cloud Infrastructure": ["aws", "azure", "cloud", "kubernetes", "devops"],
+};
+
 async function extractDocumentMetadata(
   documentName: string,
   textSample: string
 ): Promise<{ project_name: string; industry: string }> {
-
-  const prompt = `
-You are extracting metadata from a software project document.
-
-Rules:
-- Extract the project name.
-- Extract the industry/domain/sector/business vertical.
-- Prefer explicitly stated values over inferred values.
-- If the industry is not explicitly stated, infer the most likely industry.
-- Return ONLY valid JSON.
-- Do not include markdown fences.
-
-Document title:
-${documentName}
-
-Document content:
-${textSample.slice(0, 3000)}
-
-Return:
-{
-  "project_name": "...",
-  "industry": "..."
-}
-`;
-
-  try {
-    const response = await generateWithFallback(prompt, "METADATA_EXTRACTION", {
-      responseMimeType: "application/json",
-    });
-
-    const parsed = JSON.parse(response.text ?? "{}") as {
-      project_name?: string;
-      industry?: string;
-    };
-
-    return {
-      project_name: parsed.project_name?.trim() || documentName,
-      industry: parsed.industry?.trim() || "Unknown",
-    };
-  } catch (error) {
-    console.error("Metadata extraction failed:", documentName, error);
-    return {
-      project_name: documentName,
-      industry: "Unknown",
-    };
+  let projectName = documentName.trim();
+  const extMatch = projectName.match(/^(.*?)(\.[a-zA-Z0-9]+)$/);
+  if (extMatch) {
+    projectName = extMatch[1];
   }
+
+  const contentToAnalyze = `${documentName} ${textSample.slice(0, 3000)}`.toLowerCase();
+
+  let detectedIndustry = "Unknown";
+  
+  for (const [industry, keywords] of Object.entries(INDUSTRY_KEYWORDS)) {
+    for (const keyword of keywords) {
+      const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+      if (regex.test(contentToAnalyze)) {
+        detectedIndustry = industry;
+        break;
+      }
+    }
+    if (detectedIndustry !== "Unknown") {
+      break;
+    }
+  }
+
+  return {
+    project_name: projectName,
+    industry: detectedIndustry,
+  };
 }
 
 async function processDocument(
@@ -84,6 +72,12 @@ async function processDocument(
     .eq("id", documentId);
 
   const text = await fetchDocumentText(auth, file);
+
+  if (file.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    console.log(`Found DOCX: ${file.name}`);
+    console.log(`Extracted ${text.length} characters`);
+  }
+
   const chunks = chunkText(text);
   const metadata = await extractDocumentMetadata(file.name, text);
 
@@ -125,14 +119,29 @@ export async function syncKnowledgeBase(
   supabase: SupabaseClient<Database>,
   userId: string,
   auth: OAuth2Client,
-  folderId: string
+  folderIds: string[]
 ): Promise<SyncResult> {
   let documentsProcessed = 0;
   const errors: string[] = [];
 
   try {
-    const driveFiles = await listGoogleDocsInFolder(auth, folderId);
-    const driveFileIds = new Set(driveFiles.map((f) => f.id));
+    const driveFilesMap = new Map<string, DriveDocument>();
+    for (const fid of folderIds) {
+      try {
+        const files = await listGoogleDocsInFolder(auth, fid);
+        for (const file of files) {
+          if (!driveFilesMap.has(file.id)) {
+            driveFilesMap.set(file.id, file);
+          }
+        }
+      } catch (err) {
+        console.error(`Failed to list docs in folder ${fid}:`, err);
+        errors.push(`Folder ${fid}: ${err instanceof Error ? err.message : "List failed"}`);
+      }
+    }
+    
+    const driveFiles = Array.from(driveFilesMap.values());
+    const driveFileIds = new Set(driveFilesMap.keys());
 
     const { data: existingDocs } = await supabase
       .from("knowledge_documents")

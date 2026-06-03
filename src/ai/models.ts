@@ -16,10 +16,10 @@ export const MODELS = {
 };
 
 export const FALLBACK_CHAINS: Record<TaskType, string[]> = {
-  METADATA_EXTRACTION: ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"],
-  COMPANY_CLASSIFICATION: ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"],
-  RECOMMENDATION_REASONING: ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"],
-  PROSPECT_ANALYSIS: ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"],
-  EMAIL_GENERATION: ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"],
+  METADATA_EXTRACTION: ["gemini-2.5-flash", "gemini-2.0-flash"],
+  COMPANY_CLASSIFICATION: ["gemini-2.5-flash", "gemini-2.0-flash"],
+  RECOMMENDATION_REASONING: ["gemini-2.5-flash", "gemini-2.0-flash"],
+  PROSPECT_ANALYSIS: ["gemini-2.5-flash", "gemini-2.0-flash"],
+  EMAIL_GENERATION: ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"],
   EMBEDDINGS: ["gemini-embedding-001"],
 };

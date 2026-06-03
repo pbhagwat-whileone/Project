@@ -23,30 +23,51 @@ export async function POST(request: Request) {
       .select("*")
       .eq("user_id", user.id);
 
-      const contact = findBestContact(
-        parsed.data.company,
-        connections ?? []
-      );
-      
-      const query = contact
-        ? `${parsed.data.company} ${contact.position ?? ""}`.trim()
-        : parsed.data.company;
-      
-      const projects = await searchKnowledgeChunks(
-        supabase,
-        user.id,
-        query,
-        3
-      );
-      
-      return NextResponse.json({
-        contact,
-        projects: projects.map((p) => ({
-          ...p,
-          summary: p.chunk_text.slice(0, 200),
-        })),
-        message: contact ? null : "No LinkedIn connection found.",
-      });
+    const contact = findBestContact(
+      parsed.data.company,
+      connections ?? []
+    );
+
+    const { data: cacheRow } = await supabase
+      .from("company_industry_cache")
+      .select("industry")
+      .eq("user_id", user.id)
+      .eq("company_name", parsed.data.company)
+      .maybeSingle();
+
+    const industry = cacheRow?.industry && cacheRow.industry !== "Unknown" 
+      ? cacheRow.industry 
+      : "";
+
+    const query = industry
+      ? `${parsed.data.company} ${industry}`
+      : parsed.data.company;
+
+    console.log("SEARCH QUERY:", query);
+
+    const projects = await searchKnowledgeChunks(
+      supabase,
+      user.id,
+      query,
+      3
+    );
+
+    console.log(
+      "PROJECT MATCHES:",
+      projects.map((p) => ({
+        project: p.project_name,
+        similarity: p.similarity,
+        industry: p.industry,
+      }))
+    );
+    return NextResponse.json({
+      contact,
+      projects: projects.map((p) => ({
+        ...p,
+        summary: p.chunk_text.slice(0, 200),
+      })),
+      message: contact ? null : "No LinkedIn connection found.",
+    });
 
     return NextResponse.json({
       contact,

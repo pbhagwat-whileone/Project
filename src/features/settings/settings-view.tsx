@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -23,7 +23,7 @@ import type { SyncLog } from "@/types/database";
 
 export function SettingsView() {
   const searchParams = useSearchParams();
-  const [folderId, setFolderId] = useState("");
+  const [folderIds, setFolderIds] = useState("");
   const [lastSync, setLastSync] = useState<SyncLog | null>(null);
   const [googleConnected, setGoogleConnected] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -32,11 +32,11 @@ export function SettingsView() {
   async function load() {
     try {
       const data = await apiFetch<{
-        google_drive_folder_id: string;
+        google_drive_folder_ids: string[];
         last_sync: SyncLog | null;
         google_connected: boolean;
       }>("/api/settings");
-      setFolderId(data.google_drive_folder_id);
+      setFolderIds(data.google_drive_folder_ids?.join("\n") ?? "");
       setLastSync(data.last_sync);
       setGoogleConnected(data.google_connected);
     } catch (e) {
@@ -61,7 +61,12 @@ export function SettingsView() {
     try {
       await apiFetch("/api/settings", {
         method: "PUT",
-        body: JSON.stringify({ google_drive_folder_id: folderId }),
+        body: JSON.stringify({
+          google_drive_folder_ids: folderIds
+            .split("\n")
+            .map((id) => id.trim())
+            .filter(Boolean),
+        }),
       });
       toast.success("Settings saved");
     } catch (e) {
@@ -113,20 +118,21 @@ export function SettingsView() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Drive Folder</CardTitle>
+            <CardTitle>Drive Folders</CardTitle>
             <CardDescription>
-              Google Drive folder ID containing WhileOne project docs.
+              Google Drive folder IDs containing WhileOne project docs (one per line).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="folder">GOOGLE_DRIVE_FOLDER_ID</Label>
-              <Input
+              <Label htmlFor="folder">GOOGLE_DRIVE_FOLDER_IDS</Label>
+              <Textarea
                 id="folder"
-                className="mt-2"
-                placeholder="Folder ID from Drive URL"
-                value={folderId}
-                onChange={(e) => setFolderId(e.target.value)}
+                className="mt-2 font-mono"
+                placeholder="1AbCdEfGhIjKlMn&#10;2XyZaBcDeFgHiJk"
+                rows={4}
+                value={folderIds}
+                onChange={(e) => setFolderIds(e.target.value)}
               />
             </div>
             <Button onClick={saveSettings} disabled={saving}>

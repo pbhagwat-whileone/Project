@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const settingsSchema = z.object({
-  google_drive_folder_id: z.string().min(1, "Folder ID is required"),
+  google_drive_folder_ids: z.array(z.string()).min(1, "At least one folder ID is required"),
 });
 
 export const companySearchSchema = z.object({
@@ -10,11 +10,11 @@ export const companySearchSchema = z.object({
 
 export const emailGenerateSchema = z.object({
   company_name: z.string().min(1),
-  contact_name: z.string().optional(),
-  contact_id: z.string().uuid().optional(),
-  position: z.string().optional(),
-  email: z.string().optional(),
-  profile_url: z.string().optional(),
+  contact_name: z.string().nullish(),
+  contact_id: z.string().uuid().nullish(),
+  position: z.string().nullish(),
+  email: z.string().nullish(),
+  profile_url: z.string().nullish(),
   projects: z
     .array(
       z.object({
@@ -26,7 +26,7 @@ export const emailGenerateSchema = z.object({
       })
     )
     .optional(),
-  recommendation_reason: z.string().optional(),
+  recommendation_reason: z.string().nullish(),
 });
 
 export const recommendationOutreachSchema = z.object({

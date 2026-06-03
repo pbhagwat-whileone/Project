@@ -1,5 +1,6 @@
 import { google, drive_v3, docs_v1 } from "googleapis";
 import type { OAuth2Client } from "google-auth-library";
+import * as mammoth from "mammoth";
 
 export type DriveDocument = {
   id: string;
@@ -18,7 +19,7 @@ export async function listGoogleDocsInFolder(
 
   do {
     const response = await drive.files.list({
-      q: `'${folderId}' in parents and trashed = false and (mimeType = 'application/vnd.google-apps.document' or mimeType = 'text/plain')`,
+      q: `'${folderId}' in parents and trashed = false and (mimeType = 'application/vnd.google-apps.document' or mimeType = 'text/plain' or mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')`,
       fields: "nextPageToken, files(id, name, modifiedTime, mimeType)",
       pageSize: 100,
       pageToken,
@@ -52,6 +53,17 @@ export async function fetchDocumentText(
       { responseType: "text" }
     );
     return String(res.data ?? "");
+  }
+
+  if (file.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    const drive = google.drive({ version: "v3", auth });
+    const res = await drive.files.get(
+      { fileId: file.id, alt: "media" },
+      { responseType: "arraybuffer" }
+    );
+    const buffer = Buffer.from(res.data as ArrayBuffer);
+    const result = await mammoth.extractRawText({ buffer });
+    return result.value;
   }
 
   return extractGoogleDocText(auth, file.id);
