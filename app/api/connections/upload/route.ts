@@ -43,6 +43,25 @@ export async function POST(request: Request) {
       );
     }
 
+    const { data: existingConnections, error: fetchError } = await supabase
+      .from("connections")
+      .select("profile_url, first_name, last_name, company")
+      .eq("user_id", user.id);
+
+    if (fetchError) throw fetchError;
+
+    const profileUrls = new Set<string>();
+    const fallbackKeys = new Set<string>();
+
+    existingConnections?.forEach((c) => {
+      if (c.profile_url) {
+        profileUrls.add(c.profile_url.toLowerCase().trim());
+      } else {
+        const fallback = `${c.first_name?.toLowerCase()?.trim() || ""}|${c.last_name?.toLowerCase()?.trim() || ""}|${c.company?.toLowerCase()?.trim() || ""}`;
+        fallbackKeys.add(fallback);
+      }
+    });
+
     const rows = parsed.data
       .filter((row) => row["First Name"] || row.Company)
       .map((row) => ({
@@ -63,10 +82,42 @@ export async function POST(request: Request) {
       );
     }
 
-    const { error } = await supabase.from("connections").insert(rows);
-    if (error) throw error;
+    const newRows = [];
+    let skipped = 0;
 
-    return NextResponse.json({ imported: rows.length });
+    for (const row of rows) {
+      const urlKey = row.profile_url?.toLowerCase()?.trim();
+      const fallbackKey = `${row.first_name?.toLowerCase()?.trim() || ""}|${row.last_name?.toLowerCase()?.trim() || ""}|${row.company?.toLowerCase()?.trim() || ""}`;
+      
+      let isDuplicate = false;
+
+      if (urlKey) {
+        if (profileUrls.has(urlKey)) {
+          isDuplicate = true;
+        } else {
+          profileUrls.add(urlKey); // Add to memory map to catch internal CSV duplicates
+        }
+      } else {
+        if (fallbackKeys.has(fallbackKey)) {
+          isDuplicate = true;
+        } else {
+          fallbackKeys.add(fallbackKey);
+        }
+      }
+
+      if (isDuplicate) {
+        skipped++;
+      } else {
+        newRows.push(row);
+      }
+    }
+
+    if (newRows.length > 0) {
+      const { error } = await supabase.from("connections").insert(newRows);
+      if (error) throw error;
+    }
+
+    return NextResponse.json({ imported: newRows.length, updated: 0, skipped });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Upload failed";
     return NextResponse.json({ error: message }, { status: 500 });

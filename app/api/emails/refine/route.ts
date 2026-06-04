@@ -43,7 +43,8 @@ export async function POST(request: Request) {
         company: existingEmail.company_name,
         contactName: existingEmail.contact_name || "Unknown",
         relationship: relationship,
-      }
+      },
+      parsed.data.model || undefined
     );
 
     // Build the new history object

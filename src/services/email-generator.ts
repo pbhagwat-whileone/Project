@@ -10,6 +10,7 @@ export type EmailGenerationInput = {
   recommendationReason?: string;
   relationshipType?: string;
   provider?: string;
+  model?: string;
 };
 
 export type GeneratedEmailContent = {
@@ -62,9 +63,13 @@ Respond in JSON only with this exact shape:
 {"subject": "...", "body": "..."}`;
 
   const providerName = input.provider || "gemini";
-  const provider = getEmailProvider(providerName);
+  const provider = getEmailProvider();
   
-  return provider.generateEmail({ prompt });
+  return provider.generateEmail({ 
+    prompt, 
+    provider: providerName, 
+    model: input.model 
+  });
 }
 
 export async function refineOutreachEmail(
@@ -76,7 +81,8 @@ export async function refineOutreachEmail(
     company: string;
     contactName: string;
     relationship: string;
-  }
+  },
+  modelName?: string
 ): Promise<GeneratedEmailContent> {
   const relationship = context?.relationship || "Unknown Relationship";
   const skillMarkdown = await getEmailSkill(relationship);
@@ -111,7 +117,12 @@ Apply the instructions carefully to the existing draft.
 Respond in JSON only with this exact shape (with the updated subject and body):
 {"subject": "...", "body": "..."}`;
 
-  const provider = getEmailProvider(providerName);
+  const provider = getEmailProvider();
   
-  return provider.generateEmail({ prompt, isRefinement: true });
+  return provider.generateEmail({ 
+    prompt, 
+    isRefinement: true, 
+    provider: providerName, 
+    model: modelName 
+  });
 }

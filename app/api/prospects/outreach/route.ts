@@ -39,6 +39,7 @@ export async function POST(request: Request) {
       recommendationReason: recommendation.suggestedReason,
       relationshipType: parsed.data.relationship_type ?? undefined,
       provider: parsed.data.provider ?? undefined,
+      model: parsed.data.model ?? undefined,
     });
 
     const contactName = [

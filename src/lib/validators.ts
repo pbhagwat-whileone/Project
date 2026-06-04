@@ -29,6 +29,7 @@ export const emailGenerateSchema = z.object({
   recommendation_reason: z.string().nullish(),
   relationship_type: z.string().nullish(),
   provider: z.string().nullish(),
+  model: z.string().nullish(),
 });
 
 export const emailRefineSchema = z.object({
@@ -37,6 +38,7 @@ export const emailRefineSchema = z.object({
   current_body: z.string().min(1),
   instructions: z.string().min(1),
   provider: z.string().nullish(),
+  model: z.string().nullish(),
   context: z.object({
     company: z.string().nullish(),
     contactName: z.string().nullish(),
@@ -48,6 +50,7 @@ export const recommendationOutreachSchema = z.object({
   company_name: z.string().min(1, "Company name is required"),
   relationship_type: z.string().nullish(),
   provider: z.string().nullish(),
+  model: z.string().nullish(),
 });
 
 export const recommendationDetailSchema = z.object({

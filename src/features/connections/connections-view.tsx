@@ -63,7 +63,12 @@ export function ConnectionsView() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast.success(`Imported ${data.imported} connections`);
+      
+      let message = `Imported: ${data.imported}`;
+      if (data.updated > 0) message += ` | Updated: ${data.updated}`;
+      if (data.skipped > 0) message += ` | Skipped: ${data.skipped} duplicates`;
+      
+      toast.success(message);
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Upload failed");

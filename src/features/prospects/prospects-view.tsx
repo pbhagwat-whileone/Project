@@ -43,6 +43,7 @@ import type {
   CompanyRecommendation,
 } from "@/services/prospect-recommendation";
 import type { GeneratedEmail } from "@/types/database";
+import { PROVIDER_MODELS, type ProviderType } from "@/ai/models";
 
 type RankedRecommendation = CompanyRecommendation & { rank: number };
 
@@ -62,10 +63,37 @@ export function ProspectsView() {
   
   const [editedSubject, setEditedSubject] = useState("");
   const [editedBody, setEditedBody] = useState("");
-  const [relationshipType, setRelationshipType] = useState("Unknown");
-  const [provider, setProvider] = useState("gemini");
+  const [relationshipType, setRelationshipType] = useState("Cold Outreach");
+  const [provider, setProvider] = useState<ProviderType>("gemini");
+  const [model, setModel] = useState<string>("gemini-2.5-pro");
   const [refinementInstruction, setRefinementInstruction] = useState("");
   const [refining, setRefining] = useState(false);
+
+  useEffect(() => {
+    const savedProvider = localStorage.getItem("preferred_provider") as ProviderType;
+    const savedModel = localStorage.getItem("preferred_model");
+    if (savedProvider && PROVIDER_MODELS[savedProvider]) {
+      setProvider(savedProvider);
+      if (savedModel && PROVIDER_MODELS[savedProvider].includes(savedModel)) {
+        setModel(savedModel);
+      } else {
+        setModel(PROVIDER_MODELS[savedProvider][0]);
+      }
+    }
+  }, []);
+
+  const handleProviderChange = (newProvider: ProviderType) => {
+    setProvider(newProvider);
+    const newModel = PROVIDER_MODELS[newProvider][0];
+    setModel(newModel);
+    localStorage.setItem("preferred_provider", newProvider);
+    localStorage.setItem("preferred_model", newModel);
+  };
+
+  const handleModelChange = (newModel: string) => {
+    setModel(newModel);
+    localStorage.setItem("preferred_model", newModel);
+  };
 
   const load = useCallback(async () => {
     try {
@@ -115,6 +143,7 @@ export function ProspectsView() {
             company_name: company,
             relationship_type: relationshipType,
             provider,
+            model,
           }),
         }
       );
@@ -143,6 +172,7 @@ export function ProspectsView() {
             current_body: editedBody,
             instructions: refinementInstruction,
             provider,
+            model,
             context: {
               company: detail.company,
               contactName: detail.topContact ? [detail.topContact.first_name, detail.topContact.last_name].filter(Boolean).join(" ") : "Unknown",
@@ -444,25 +474,39 @@ export function ProspectsView() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Unknown">Unknown</SelectItem>
                             <SelectItem value="Cold Outreach">Cold Outreach</SelectItem>
                             <SelectItem value="Warm Introduction">Warm Introduction</SelectItem>
                             <SelectItem value="Former Colleague">Former Colleague</SelectItem>
-                            <SelectItem value="Existing Client">Existing Client</SelectItem>
-                            <SelectItem value="Previous Client">Previous Client</SelectItem>
-                            <SelectItem value="Personal Contact">Personal Contact</SelectItem>
+                            <SelectItem value="Follow Up">Follow Up</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="w-full sm:w-1/2">
                         <label className="text-sm font-medium">AI Provider</label>
-                        <Select value={provider} onValueChange={setProvider}>
+                        <Select value={provider} onValueChange={(val) => handleProviderChange(val as ProviderType)}>
                           <SelectTrigger className="mt-1">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="gemini">Gemini</SelectItem>
                             <SelectItem value="claude">Claude</SelectItem>
+                            <SelectItem value="openai">OpenAI</SelectItem>
+                            <SelectItem value="grok">Grok</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="w-full sm:w-1/2">
+                        <label className="text-sm font-medium">AI Model</label>
+                        <Select value={model} onValueChange={handleModelChange}>
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PROVIDER_MODELS[provider]?.map((m) => (
+                              <SelectItem key={m} value={m}>
+                                {m}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>

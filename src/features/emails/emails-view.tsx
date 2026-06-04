@@ -34,6 +34,7 @@ import {
 import { apiFetch } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import type { GeneratedEmail } from "@/types/database";
+import { PROVIDER_MODELS, type ProviderType } from "@/ai/models";
 
 export function EmailsView() {
   const [emails, setEmails] = useState<GeneratedEmail[]>([]);
@@ -45,10 +46,37 @@ export function EmailsView() {
   const [regenerating, setRegenerating] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const [provider, setProvider] = useState("gemini");
+  const [provider, setProvider] = useState<ProviderType>("gemini");
+  const [model, setModel] = useState<string>("gemini-2.5-pro");
   const [refinementInstruction, setRefinementInstruction] = useState("");
   const [refining, setRefining] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const savedProvider = localStorage.getItem("preferred_provider") as ProviderType;
+    const savedModel = localStorage.getItem("preferred_model");
+    if (savedProvider && PROVIDER_MODELS[savedProvider]) {
+      setProvider(savedProvider);
+      if (savedModel && PROVIDER_MODELS[savedProvider].includes(savedModel)) {
+        setModel(savedModel);
+      } else {
+        setModel(PROVIDER_MODELS[savedProvider][0]);
+      }
+    }
+  }, []);
+
+  const handleProviderChange = (newProvider: ProviderType) => {
+    setProvider(newProvider);
+    const newModel = PROVIDER_MODELS[newProvider][0];
+    setModel(newModel);
+    localStorage.setItem("preferred_provider", newProvider);
+    localStorage.setItem("preferred_model", newModel);
+  };
+
+  const handleModelChange = (newModel: string) => {
+    setModel(newModel);
+    localStorage.setItem("preferred_model", newModel);
+  };
 
   async function load() {
     try {
@@ -69,7 +97,11 @@ export function EmailsView() {
     setSelected(email);
     setSubject(email.subject);
     setBody(email.body);
-    setProvider(email.provider_used || "gemini");
+    const savedProvider = (email.provider_used as ProviderType) || "gemini";
+    setProvider(savedProvider);
+    if (PROVIDER_MODELS[savedProvider]) {
+      setModel(PROVIDER_MODELS[savedProvider][0]);
+    }
     setRefinementInstruction("");
   }
 
@@ -138,6 +170,7 @@ export function EmailsView() {
             current_body: body,
             instructions: refinementInstruction,
             provider: safeProvider,
+            model,
             context: {
               company: selected.company_name,
               contactName: selected.contact_name || "Unknown",
@@ -282,13 +315,30 @@ export function EmailsView() {
               <div className="flex flex-col gap-4 sm:flex-row">
                 <div className="w-full sm:w-1/2">
                   <Label>AI Provider</Label>
-                  <Select value={provider} onValueChange={setProvider}>
+                  <Select value={provider} onValueChange={(val) => handleProviderChange(val as ProviderType)}>
                     <SelectTrigger className="mt-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="gemini">Gemini</SelectItem>
                       <SelectItem value="claude">Claude</SelectItem>
+                      <SelectItem value="openai">OpenAI</SelectItem>
+                      <SelectItem value="grok">Grok</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-full sm:w-1/2">
+                  <Label>AI Model</Label>
+                  <Select value={model} onValueChange={handleModelChange}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROVIDER_MODELS[provider]?.map((m) => (
+                        <SelectItem key={m} value={m}>
+                          {m}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

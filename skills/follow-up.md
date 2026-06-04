@@ -1,10 +1,10 @@
-# Warm Introduction
+# Follow Up
 
 **Goal:**
-Establish a connection based on a mutual contact or shared context, expressing excitement to collaborate.
+Reach out to an existing or previous client to continue the conversation, propose an expansion, or introduce new opportunities.
 
 **Tone:**
-Friendly, professional, and enthusiastic. Assume familiarity.
+Direct, familiar, and highly professional.
 
 **Important Guidelines:**
 - Structure your thoughts internally as Why (relevance) → How (credibility/expertise) → What (next step), but write the final email so it flows naturally. Do NOT use headings or section labels like "Why" or "How".
@@ -19,7 +19,8 @@ Friendly, professional, and enthusiastic. Assume familiarity.
 - Keep the email concise and executive-friendly.
 
 **Instructions:**
-- The opening should establish relevance immediately by mentioning the mutual connection or context of the introduction.
-- After establishing familiarity, naturally transition into how your expertise aligns with their goals.
-- Use project evidence to demonstrate credibility organically.
-- The closing should naturally lead into an open discussion or exchange of experiences.
+- Skip formal introductions. Avoid re-introducing WhileOne.
+- The opening should establish relevance by directly referencing prior business relationships, previous conversations, or active engagements.
+- Transition naturally into how a new initiative or insight might add value.
+- Use project evidence and recommendation context to suggest these new ideas naturally.
+- The closing should propose a natural continuation or collaborative next step.

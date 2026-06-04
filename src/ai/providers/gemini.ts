@@ -8,9 +8,7 @@ export class GeminiProvider implements EmailProvider {
     const response = await generateWithFallback(
       config.prompt,
       "EMAIL_GENERATION",
-      {
-        responseMimeType: "application/json",
-      }
+      { isJson: true }
     );
 
     const text = response.text?.trim();

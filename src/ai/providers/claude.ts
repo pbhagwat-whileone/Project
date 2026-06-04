@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { EmailProvider, EmailGenerationConfig } from "./index";
+import { generateWithFallback } from "../generation";
 
 let anthropicClient: Anthropic | null = null;
 
@@ -15,45 +16,55 @@ function getAnthropicClient() {
   return anthropicClient;
 }
 
+export async function generateClaude(prompt: string, model: string, isJson: boolean = false): Promise<string> {
+  const ai = getAnthropicClient();
+
+  const response = await ai.messages.create({
+    model,
+    max_tokens: 1024,
+    system: isJson ? "You are an expert copywriter. Respond in strict JSON format matching the requested schema. Do NOT include markdown blocks like ```json." : undefined,
+    messages: [
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
+  });
+
+  if (response.content.length === 0 || response.content[0].type !== "text") {
+    throw new Error("Invalid response format from Claude");
+  }
+
+  let text = response.content[0].text.trim();
+  if (isJson) {
+    text = text.replace(/^```json/, "").replace(/```$/, "").trim();
+  }
+  return text;
+}
+
 export class ClaudeProvider implements EmailProvider {
   async generateEmail(
     config: EmailGenerationConfig
   ): Promise<{ subject: string; body: string }> {
-    const ai = getAnthropicClient();
+    const response = await generateWithFallback(
+      config.prompt,
+      "EMAIL_GENERATION",
+      { isJson: true }
+    );
 
-    const response = await ai.messages.create({
-      model: "claude-3-haiku-20240307",
-      max_tokens: 1024,
-      system: "You are an expert copywriter. Respond in strict JSON format matching the requested schema. Do NOT include markdown blocks like ```json.",
-      messages: [
-        {
-          role: "user",
-          content: config.prompt,
-        },
-      ],
-    });
-
-    if (response.content.length === 0 || response.content[0].type !== "text") {
-      throw new Error("Invalid response format from Claude");
-    }
-
-    const text = response.content[0].text.trim();
+    const text = response.text?.trim();
     if (!text) {
       throw new Error("Empty response from Claude");
     }
 
     try {
-      // Claude might wrap the output in markdown json block anyway, strip it if present
-      const cleanedText = text.replace(/^```json/, "").replace(/```$/, "").trim();
-      const parsed = JSON.parse(cleanedText) as { subject: string; body: string };
-      
+      const parsed = JSON.parse(text) as { subject: string; body: string };
       if (!parsed.subject || !parsed.body) {
-        throw new Error("Missing subject or body in Claude JSON response");
+        throw new Error("Missing subject or body in JSON response");
       }
-
       return parsed;
     } catch (e) {
-      throw new Error("Failed to parse JSON response from Claude");
+      throw new Error("Failed to parse JSON response");
     }
   }
 }
