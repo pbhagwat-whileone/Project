@@ -21,8 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { EmailEditor, formatEmailBodyToHtml } from "@/components/ui/email-editor";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -105,9 +105,23 @@ export function EmailsView() {
     setRefinementInstruction("");
   }
 
-  function copyEmail() {
-    navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
-    toast.success("Copied");
+  async function copyEmail() {
+    try {
+      const plainText = `Subject: ${subject}\n\n${body.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')}`;
+      const htmlText = `<p><strong>Subject:</strong> ${subject}</p><br/>${formatEmailBodyToHtml(body)}`;
+      const blobHtml = new Blob([htmlText], { type: "text/html" });
+      const blobText = new Blob([plainText], { type: "text/plain" });
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/html": blobHtml,
+          "text/plain": blobText,
+        })
+      ]);
+      toast.success("Copied to clipboard");
+    } catch (err) {
+      navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
+      toast.success("Copied");
+    }
   }
 
   async function regenerate() {
@@ -304,10 +318,10 @@ export function EmailsView() {
             </div>
             <div>
               <Label>Body</Label>
-              <Textarea
+              <EmailEditor
                 rows={10}
                 value={body}
-                onChange={(e) => setBody(e.target.value)}
+                onChange={setBody}
               />
             </div>
 

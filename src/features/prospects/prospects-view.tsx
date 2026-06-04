@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState, useMemo } from "react";
-import { ExternalLink, Mail, RefreshCw, Search } from "lucide-react";
+import { ExternalLink, Mail, RefreshCw, Search, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { EmailEditor, formatEmailBodyToHtml } from "@/components/ui/email-editor";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -435,10 +437,9 @@ export function ProspectsView() {
                     </div>
                     <div>
                       <h4 className="text-sm font-medium mb-1">Body</h4>
-                      <textarea
-                        className="flex min-h-[200px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      <EmailEditor
                         value={editedBody}
-                        onChange={(e) => setEditedBody(e.target.value)}
+                        onChange={setEditedBody}
                       />
                     </div>
                     
@@ -459,9 +460,23 @@ export function ProspectsView() {
                       </div>
                     </div>
 
-                    <Button onClick={() => {
-                      navigator.clipboard.writeText(`Subject: ${editedSubject}\n\n${editedBody}`);
-                      toast.success("Copied to clipboard");
+                    <Button onClick={async () => {
+                      try {
+                        const plainText = `Subject: ${editedSubject}\n\n${editedBody.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')}`;
+                        const htmlText = `<p><strong>Subject:</strong> ${editedSubject}</p><br/>${formatEmailBodyToHtml(editedBody)}`;
+                        const blobHtml = new Blob([htmlText], { type: "text/html" });
+                        const blobText = new Blob([plainText], { type: "text/plain" });
+                        await navigator.clipboard.write([
+                          new ClipboardItem({
+                            "text/html": blobHtml,
+                            "text/plain": blobText,
+                          })
+                        ]);
+                        toast.success("Copied to clipboard");
+                      } catch (err) {
+                        navigator.clipboard.writeText(`Subject: ${editedSubject}\n\n${editedBody}`);
+                        toast.success("Copied to clipboard");
+                      }
                     }}>Copy to Clipboard</Button>
                   </div>
                 ) : (

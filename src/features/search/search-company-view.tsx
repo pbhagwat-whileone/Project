@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ExternalLink, Mail, Search } from "lucide-react";
+import { ExternalLink, Mail, Search, Loader2, Settings2, UserPlus, Sparkles, BookOpen, Send, MapPin, Building, Activity, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { EmailEditor, formatEmailBodyToHtml } from "@/components/ui/email-editor";
 import {
   Card,
   CardContent,
@@ -14,7 +15,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -173,11 +173,26 @@ export function SearchCompanyView() {
     }
   }
 
-  function copyEmail() {
-    navigator.clipboard.writeText(
-      `Subject: ${editedSubject}\n\n${editedBody}`
-    );
-    toast.success("Copied to clipboard");
+  async function copyEmail() {
+    try {
+      const plainText = `Subject: ${editedSubject}\n\n${editedBody.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')}`;
+      const htmlText = `<p><strong>Subject:</strong> ${editedSubject}</p><br/>${formatEmailBodyToHtml(editedBody)}`;
+      
+      const blobHtml = new Blob([htmlText], { type: "text/html" });
+      const blobText = new Blob([plainText], { type: "text/plain" });
+      
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/html": blobHtml,
+          "text/plain": blobText,
+        })
+      ]);
+      toast.success("Copied to clipboard");
+    } catch (err) {
+      // Fallback
+      navigator.clipboard.writeText(`Subject: ${editedSubject}\n\n${editedBody}`);
+      toast.success("Copied to clipboard");
+    }
   }
 
   return (
@@ -389,11 +404,9 @@ export function SearchCompanyView() {
             </div>
             <div>
               <Label htmlFor="body">Body</Label>
-              <Textarea
-                id="body"
-                rows={12}
+              <EmailEditor
                 value={editedBody}
-                onChange={(e) => setEditedBody(e.target.value)}
+                onChange={setEditedBody}
               />
             </div>
             
