@@ -34,7 +34,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-            WhileOne
+            Whileone
           </p>
           <CardTitle className="mt-2 text-xl">
             AI Client Outreach Assistant

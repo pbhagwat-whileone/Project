@@ -5,9 +5,10 @@ class ConfiguredEmailProvider implements EmailProvider {
   async generateEmail(
     config: EmailGenerationConfig
   ): Promise<{ subject: string; body: string }> {
+    const taskType = config.isRefinement ? "EMAIL_REFINEMENT" : "EMAIL_GENERATION";
     const response = await generateWithFallback(
       config.prompt,
-      "EMAIL_GENERATION",
+      taskType,
       { 
         isJson: true,
         overrideProvider: config.provider as any,

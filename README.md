@@ -1,9 +1,9 @@
 # WhileOne Outreach Assistant
 
 ## Project Overview
-The WhileOne Outreach Assistant is a highly intelligent, AI-powered internal tool designed to automate and optimize the process of discovering and reaching out to potential client prospects.
+The Whileone Outreach Assistant is a highly intelligent, AI-powered internal tool designed to automate and optimize the process of discovering and reaching out to potential client prospects.
 
-The system ingests the user's professional network (via LinkedIn CSV exports), deeply analyzes the target companies against WhileOne's proprietary knowledge base of past projects (synced from Google Drive DOCX files), and surfaces the most relevant companies. It then uses state-of-the-art LLMs to draft hyper-personalized outreach emails focusing on business outcomes and project relevance.
+The system ingests the user's professional network (via LinkedIn CSV exports), deeply analyzes the target companies against Whileone's proprietary knowledge base of past projects (synced from Google Drive DOCX files), and surfaces the most relevant companies. It then uses state-of-the-art LLMs to draft hyper-personalized outreach emails focusing on business outcomes and project relevance.
 
 ## Core Features
 - **LinkedIn CSV Import:** Seamlessly ingest and parse first-degree connections.
@@ -11,7 +11,7 @@ The system ingests the user's professional network (via LinkedIn CSV exports), d
 - **Company Search & Fuzzy Matching:** Robust resolution of company names (e.g., resolving typos like "Nvidea" to "NVIDIA").
 - **Google Drive Sync:** Automated fetching of past project documentation (DOCX format) directly from Google Drive.
 - **Knowledge Base Indexing & Vector Search:** Chunks and generates embeddings for past projects, allowing semantic similarity searches.
-- **Project Relevance Scoring:** Evaluates how well a prospect company aligns with WhileOne's historical project expertise.
+- **Project Relevance Scoring:** Evaluates how well a prospect company aligns with Whileone's historical project expertise.
 - **Seniority Ranking:** Ranks target contacts within a company based on their role and seniority.
 - **Recommendation Engine (with Caching):** Aggregates connection strength, seniority, and project relevance into a unified score. Results are progressively streamed (SSE) and persistently cached to avoid rate limits.
 - **Multi-Provider LLM Support:** Leverages Gemini, Claude, OpenAI, and Grok for content generation with built-in fallbacks.

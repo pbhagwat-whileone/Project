@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       query.eq("user_id", exactRows?.[0]?.user_id || userId);
     }
     
-    const allRecords = await fetchAllRecords(query);
+    const allRecords = await fetchAllRecords<any>(query);
     const allIds = allRecords.map(r => r.id);
     const duplicates = allIds.filter((id, index) => allIds.indexOf(id) !== index);
     

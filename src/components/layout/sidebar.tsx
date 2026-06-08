@@ -41,7 +41,7 @@ export function Sidebar() {
     <aside className="flex h-full w-64 flex-col border-r bg-card">
       <div className="border-b px-6 py-5">
         <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-          WhileOne
+          Whileone
         </p>
         <h1 className="mt-1 text-sm font-semibold leading-tight">
           AI Client Outreach Assistant

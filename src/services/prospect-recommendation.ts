@@ -107,7 +107,7 @@ function scoreRecommendation(
   };
 }
 
-export type RecommendationStreamEvent = 
+export type RecommendationStreamEvent =
   | { type: 'cached_batch'; data: CompanyRecommendation[] }
   | { type: 'calculated'; data: CompanyRecommendation }
   | { type: 'error'; data: string }
@@ -134,7 +134,7 @@ export async function* getCompanyRecommendationsStream(
     .select("*")
     .eq("user_id", userId)
     .order("id", { ascending: true });
-    
+
   const connections = await fetchAllRecords<Connection>(connectionsQuery);
 
   const grouped = groupConnectionsByCompany(connections ?? []);
@@ -205,15 +205,15 @@ export async function* getCompanyRecommendationsStream(
       const queryParts = [company];
       if (topContact?.position) queryParts.push(topContact.position);
       if (industry && industry !== "Unknown") queryParts.push(industry);
-      
+
       const query = queryParts.join(" ");
       let matchingProjects = await searchKnowledgeChunks(supabase, userId, query, 3);
-      
+
       if (matchingProjects.length === 0) {
         const fallbackQueryParts = [];
         if (industry && industry !== "Unknown") fallbackQueryParts.push(industry);
         if (topContact?.position) fallbackQueryParts.push(topContact.position);
-        
+
         const fallbackQuery = fallbackQueryParts.join(" ").trim();
         if (fallbackQuery && fallbackQuery !== query) {
           matchingProjects = await searchKnowledgeChunks(supabase, userId, fallbackQuery, 3);
@@ -229,7 +229,7 @@ export async function* getCompanyRecommendationsStream(
         projectScore = Math.min(100, Math.round(avgSimilarity * 100));
         topProjects.push(...matchingProjects.map(p => p.project_name || p.document_id));
       }
-      
+
       const scores = scoreRecommendation(
         projectScore,
         companyConnections.length,
@@ -279,7 +279,7 @@ export async function getCompanyRecommendations(
 ): Promise<CompanyRecommendation[]> {
   const recommendations: CompanyRecommendation[] = [];
   const generator = getCompanyRecommendationsStream(supabase, userId);
-  
+
   for await (const event of generator) {
     if (event.type === 'cached_batch') {
       recommendations.push(...event.data);
@@ -303,7 +303,7 @@ export async function getCompanyDetail(
     .select("*")
     .eq("user_id", userId)
     .order("id", { ascending: true });
-    
+
   const fetchedConnections = await fetchAllRecords<Connection>(connectionsQuery);
   const uniqueConns = new Map<string, Connection>();
   fetchedConnections.forEach((c) => uniqueConns.set(c.id, c));
@@ -350,7 +350,7 @@ export async function getCompanyDetail(
     const fallbackQueryParts = [];
     if (industry) fallbackQueryParts.push(industry);
     if (topContact?.position) fallbackQueryParts.push(topContact.position);
-    
+
     const fallbackQuery = fallbackQueryParts.join(" ").trim();
     if (fallbackQuery && fallbackQuery !== query) {
       matchingProjects = await searchKnowledgeChunks(

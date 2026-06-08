@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WhileOne AI Client Outreach Assistant",
+  title: "Whileone AI Client Outreach Assistant",
   description:
     "Internal outreach platform for knowledge sync, contact matching, and personalized emails.",
 };

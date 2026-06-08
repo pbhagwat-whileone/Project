@@ -112,7 +112,7 @@ Requirements:
 Respond in JSON only with this exact shape:
 {"subject": "...", "body": "..."}`;
 
-  const providerName = input.provider || "gemini";
+  const providerName = input.provider;
   const provider = getEmailProvider();
   
   return provider.generateEmail({ 
@@ -126,7 +126,7 @@ export async function refineOutreachEmail(
   currentSubject: string,
   currentBody: string,
   instructions: string,
-  providerName: string = "gemini",
+  providerName?: string,
   context?: {
     company: string;
     contactName: string;

@@ -3,6 +3,7 @@ import { TASK_MODEL_CONFIG, TaskType, PROVIDER_MODELS, ProviderType } from "./mo
 import { generateOpenAI } from "./providers/openai";
 import { generateGrok } from "./providers/grok";
 import { generateClaude } from "./providers/claude";
+import { generateCerebras } from "./providers/cerebras";
 
 type ModelStatus = {
   unavailableUntil: number;
@@ -38,6 +39,15 @@ export async function generateWithFallback(
     throw new Error(`No fallback chain configured for task: ${task} with provider: ${provider}`);
   }
 
+  if (provider === "cerebras") {
+    const validModels = PROVIDER_MODELS["cerebras"];
+    for (const m of chain) {
+      if (!validModels.includes(m)) {
+        throw new Error(`Invalid model '${m}' configured for task '${task}' with provider 'cerebras'. Valid models are: ${validModels.join(", ")}`);
+      }
+    }
+  }
+
   if (chain.every((m) => modelHealth[m]?.unavailableUntil > Date.now())) {
     throw new Error(
       `All models in fallback chain for task ${task} are currently in cooldown due to quota limits.`
@@ -52,6 +62,8 @@ export async function generateWithFallback(
     if (status && status.unavailableUntil > Date.now()) {
       continue;
     }
+
+    const startTime = Date.now();
 
     try {
       let text: string;
@@ -71,13 +83,19 @@ export async function generateWithFallback(
         text = await generateGrok(prompt, model, options?.isJson);
       } else if (provider === "claude") {
         text = await generateClaude(prompt, model, options?.isJson);
+      } else if (provider === "cerebras") {
+        text = await generateCerebras(prompt, model, options?.isJson);
       } else {
         throw new Error(`Unknown provider: ${provider}`);
       }
 
-      console.log(`[LLM] Task: ${task} Provider: ${provider} Model: ${model}`);
+      const duration = Date.now() - startTime;
+      console.log(`[AI] Task=${task} Provider=${provider} Model=${model} Duration=${duration}ms Success=true`);
       return { text };
     } catch (error: any) {
+      const duration = Date.now() - startTime;
+      console.error(`[AI] Task=${task} Provider=${provider} Model=${model} Duration=${duration}ms Success=false Error=${error?.message}`);
+      
       lastError = error;
       const msg = error?.message?.toLowerCase() || "";
       const status = error?.status || error?.code;

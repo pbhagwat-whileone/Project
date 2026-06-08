@@ -47,10 +47,36 @@ export function findBestContact(
 
   const normalizedQuery = normalizeCompany(companyQuery);
 
+  console.log("RAW QUERY:", companyQuery);
+  console.log("NORMALIZED QUERY:", normalizedQuery);
+
+  const siPearlExists = connections.some(
+    c => c.company === "SiPearl"
+  );
+  if (companyQuery === "SiPearl") {
+    console.log("SIPEARL EXISTS:", siPearlExists);
+  }
+
+  const siPearlCompanies = connections
+    .filter(c => c.company?.includes("SiPearl"))
+    .map(c => ({
+      original: c.company,
+      normalized: normalizeCompany(c.company as string)
+    }));
+  console.log("SIPEARL COMPANIES:", siPearlCompanies);
+
   const exactMatches = connections.filter((c) => {
     if (!c.company) return false;
     return normalizeCompany(c.company) === normalizedQuery;
   });
+
+  console.log("EXACT MATCH COUNT:", exactMatches.length);
+  if (exactMatches.length > 0) {
+    console.log(
+      "EXACT MATCH COMPANIES:",
+      exactMatches.map(c => c.company)
+    );
+  }
 
   const prefixMatches = connections.filter((c) => {
     if (!c.company) return false;
@@ -64,6 +90,8 @@ export function findBestContact(
     return company.startsWith(normalizedQuery);
   });
 
+  console.log("PREFIX MATCH COUNT:", prefixMatches.length);
+
   const containsMatches = connections.filter((c) => {
     if (!c.company) return false;
 
@@ -76,19 +104,25 @@ export function findBestContact(
     return company.includes(normalizedQuery);
   });
 
+  console.log("CONTAINS MATCH COUNT:", containsMatches.length);
+
   if (exactMatches.length > 0) {
+    console.log("RETURNING EXACT MATCH");
     return pickBestFromPool(exactMatches);
   }
 
   if (prefixMatches.length > 0) {
+    console.log("RETURNING PREFIX MATCH");
     return pickBestFromPool(prefixMatches);
   }
 
   if (containsMatches.length > 0) {
+    console.log("RETURNING CONTAINS MATCH");
     return pickBestFromPool(containsMatches);
   }
 
   if (normalizedQuery.length <= 4) {
+    console.log("NO MATCH FOUND");
     return null;
   }
 
@@ -105,10 +139,14 @@ export function findBestContact(
   const results = fs.get(companyQuery, null, threshold);
 
   if (!results || results.length === 0) {
+    console.log("NO MATCH FOUND");
     return null;
   }
 
+  console.log("FUZZY RESULTS:", results);
   const matchedCompany = results[0][1] as string;
+
+  console.log("RETURNING FUZZY MATCH:", matchedCompany);
 
   const pool = connections.filter(
     (c) => c.company === matchedCompany

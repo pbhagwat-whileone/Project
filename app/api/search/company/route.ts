@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { companySearchSchema } from "@/lib/validators";
 import { createClient, requireUser } from "@/lib/supabase/server";
+import { fetchAllRecords } from "@/utils/supabase-utils";
 import { findBestContact } from "@/utils/company-utils";
 import { searchKnowledgeChunks } from "@/services/vector-search";
 
@@ -18,10 +19,38 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createClient();
-    const { data: connections } = await supabase
+
+    const { count: actualCount } = await supabase
+      .from("connections")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id);
+
+    const queryBuilder = supabase
       .from("connections")
       .select("*")
       .eq("user_id", user.id);
+
+    const connections = await fetchAllRecords<any>(queryBuilder);
+
+    console.log("Actual Connection Count:", actualCount);
+    console.log("Returned Connection Count:", connections.length);
+
+    if (parsed.data.company === "SiPearl") {
+      const siPearlExistsInFetch = connections.some(
+        c => c.company?.toLowerCase().includes("sipearl")
+      );
+      console.log("SiPearl exists in fetched data:", siPearlExistsInFetch);
+    }
+
+    console.log("SEARCH QUERY:", parsed.data.company);
+    console.log("TOTAL CONNECTIONS:", connections?.length);
+
+    const siPearlRecords = (connections ?? []).filter(
+      c => c.company === "SiPearl"
+    );
+
+    console.log("SIPEARL RECORDS FOUND:", siPearlRecords.length);
+    console.log("SIPEARL RECORDS:", siPearlRecords);
 
     const contact = findBestContact(
       parsed.data.company,

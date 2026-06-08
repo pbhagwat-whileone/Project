@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select";
 import { apiFetch } from "@/lib/api";
 import type { GeneratedEmail, MatchedChunk, RankedContact } from "@/types/database";
-import { PROVIDER_MODELS, type ProviderType } from "@/ai/models";
+import { PROVIDER_MODELS, PROVIDERS, type ProviderType } from "@/ai/models";
 import { useEffect } from "react";
 
 type SearchResult = {
@@ -63,7 +63,9 @@ export function SearchCompanyView() {
       if (savedModel && PROVIDER_MODELS[savedProvider].includes(savedModel)) {
         setModel(savedModel);
       } else {
-        setModel(PROVIDER_MODELS[savedProvider][0]);
+        const fallbackModel = PROVIDER_MODELS[savedProvider][0];
+        setModel(fallbackModel);
+        localStorage.setItem("preferred_model", fallbackModel);
       }
     }
   }, []);
@@ -231,6 +233,12 @@ export function SearchCompanyView() {
       </Card>
 
       {result && (
+        <>
+          {result.contact && result.message && (
+            <div className="mb-6 p-4 rounded-md bg-blue-50 text-blue-800 text-sm border border-blue-200">
+              {result.message}
+            </div>
+          )}
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
@@ -328,7 +336,7 @@ export function SearchCompanyView() {
             </CardContent>
           </Card>
 
-          {result.contact && result.projects.length > 0 && (
+          {result.contact && (
             <div className="lg:col-span-2 space-y-4">
               <div className="flex flex-col gap-4 sm:flex-row">
                 <div className="w-full sm:w-1/3">
@@ -355,10 +363,11 @@ export function SearchCompanyView() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="gemini">Gemini</SelectItem>
-                      <SelectItem value="claude">Claude</SelectItem>
-                      <SelectItem value="openai">OpenAI</SelectItem>
-                      <SelectItem value="grok">Grok</SelectItem>
+                      {PROVIDERS.map((p) => (
+                        <SelectItem key={p.value} value={p.value}>
+                          {p.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -386,6 +395,7 @@ export function SearchCompanyView() {
             </div>
           )}
         </div>
+        </>
       )}
 
       <Dialog open={!!emailDialog} onOpenChange={() => setEmailDialog(null)}>

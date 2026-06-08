@@ -45,7 +45,7 @@ import type {
   CompanyRecommendation,
 } from "@/services/prospect-recommendation";
 import type { GeneratedEmail } from "@/types/database";
-import { PROVIDER_MODELS, type ProviderType } from "@/ai/models";
+import { PROVIDER_MODELS, PROVIDERS, type ProviderType } from "@/ai/models";
 
 type RankedRecommendation = CompanyRecommendation & { rank: number };
 
@@ -79,7 +79,9 @@ export function ProspectsView() {
       if (savedModel && PROVIDER_MODELS[savedProvider].includes(savedModel)) {
         setModel(savedModel);
       } else {
-        setModel(PROVIDER_MODELS[savedProvider][0]);
+        const fallbackModel = PROVIDER_MODELS[savedProvider][0];
+        setModel(fallbackModel);
+        localStorage.setItem("preferred_model", fallbackModel);
       }
     }
   }, []);
@@ -576,10 +578,11 @@ export function ProspectsView() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="gemini">Gemini</SelectItem>
-                            <SelectItem value="claude">Claude</SelectItem>
-                            <SelectItem value="openai">OpenAI</SelectItem>
-                            <SelectItem value="grok">Grok</SelectItem>
+                            {PROVIDERS.map((p) => (
+                              <SelectItem key={p.value} value={p.value}>
+                                {p.label}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>

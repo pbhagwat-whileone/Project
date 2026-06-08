@@ -34,7 +34,7 @@ import {
 import { apiFetch } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import type { GeneratedEmail } from "@/types/database";
-import { PROVIDER_MODELS, type ProviderType } from "@/ai/models";
+import { PROVIDER_MODELS, PROVIDERS, type ProviderType } from "@/ai/models";
 
 export function EmailsView() {
   const [emails, setEmails] = useState<GeneratedEmail[]>([]);
@@ -60,7 +60,9 @@ export function EmailsView() {
       if (savedModel && PROVIDER_MODELS[savedProvider].includes(savedModel)) {
         setModel(savedModel);
       } else {
-        setModel(PROVIDER_MODELS[savedProvider][0]);
+        const fallbackModel = PROVIDER_MODELS[savedProvider][0];
+        setModel(fallbackModel);
+        localStorage.setItem("preferred_model", fallbackModel);
       }
     }
   }, []);
@@ -334,10 +336,11 @@ export function EmailsView() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="gemini">Gemini</SelectItem>
-                      <SelectItem value="claude">Claude</SelectItem>
-                      <SelectItem value="openai">OpenAI</SelectItem>
-                      <SelectItem value="grok">Grok</SelectItem>
+                      {PROVIDERS.map((p) => (
+                        <SelectItem key={p.value} value={p.value}>
+                          {p.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
