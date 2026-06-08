@@ -25,6 +25,7 @@ export async function searchKnowledgeChunks(
   }
 
   const chunks = (data ?? []) as MatchedChunk[];
+  const preFilterCount = chunks.length;
   
   const uniqueProjects = new Map<string, MatchedChunk>();
   for (const chunk of chunks) {
@@ -43,6 +44,7 @@ export async function searchKnowledgeChunks(
     .sort((a, b) => b.similarity - a.similarity)
     .slice(0, matchCount);
 
+  // Return early if no relevant projects are found
   if (topUnique.length === 0) return topUnique;
 
   const docIds = [...new Set(topUnique.map(c => c.document_id))];

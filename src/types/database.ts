@@ -264,6 +264,38 @@ export interface Database {
         >;
         Relationships: [];
       };
+      company_score_cache: {
+        Row: {
+          user_id: string;
+          company_name: string;
+          project_relevance_score: number;
+          recommendation_score: number;
+          matching_project_count: number;
+          average_similarity: number;
+          connection_score: number;
+          seniority_score: number;
+          top_project_names: string[];
+          industry: string | null;
+          last_calculated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          company_name: string;
+          project_relevance_score?: number;
+          recommendation_score?: number;
+          matching_project_count?: number;
+          average_similarity?: number;
+          connection_score?: number;
+          seniority_score?: number;
+          top_project_names?: string[];
+          industry?: string | null;
+          last_calculated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["company_score_cache"]["Insert"]
+        >;
+        Relationships: [];
+      };
     };
     Functions: {
       match_knowledge_chunks: {

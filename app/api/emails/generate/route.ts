@@ -50,8 +50,33 @@ export async function POST(request: Request) {
       projects = recContext.matchingProjects;
       recommendationReason ??= recContext.recommendation.suggestedReason;
     } else {
-      const query = `${parsed.data.company_name} ${parsed.data.position ?? ""}`;
+      const { data: cacheRow } = await supabase
+        .from("company_industry_cache")
+        .select("industry")
+        .eq("user_id", user.id)
+        .ilike("company_name", parsed.data.company_name)
+        .maybeSingle();
+
+      const industry = cacheRow?.industry && cacheRow.industry !== "Unknown" ? cacheRow.industry : "";
+
+      const queryParts = [parsed.data.company_name];
+      if (parsed.data.position) queryParts.push(parsed.data.position);
+      if (industry) queryParts.push(industry);
+
+      const query = queryParts.join(" ");
       projects = await searchKnowledgeChunks(supabase, user.id, query, 3);
+
+      if (projects.length === 0) {
+        const fallbackQueryParts = [];
+        if (industry) fallbackQueryParts.push(industry);
+        if (parsed.data.position) fallbackQueryParts.push(parsed.data.position);
+        
+        const fallbackQuery = fallbackQueryParts.join(" ").trim();
+        if (fallbackQuery && fallbackQuery !== query) {
+          projects = await searchKnowledgeChunks(supabase, user.id, fallbackQuery, 3);
+        }
+      }
+
       contact = {
         id: "",
         first_name: parsed.data.contact_name?.split(" ")[0] ?? null,

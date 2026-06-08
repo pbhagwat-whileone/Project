@@ -4,6 +4,7 @@ import type { Connection, Database, MatchedChunk } from "@/types/database";
 import type { RankedContact } from "@/types/database";
 import { searchKnowledgeChunks } from "@/services/vector-search";
 import { scorePosition } from "@/utils/company-utils";
+import { fetchAllRecords } from "@/utils/supabase-utils";
 
 export type CompanyRecommendation = {
   company: string;
@@ -13,6 +14,7 @@ export type CompanyRecommendation = {
   suggestedReason: string;
   connectionScore: number;
   seniorityScore: number;
+  projectScore: number;
 };
 
 export type CompanyDetail = CompanyRecommendation & {
@@ -78,6 +80,7 @@ function buildSuggestedReason(
 }
 
 function scoreRecommendation(
+  projectScore: number,
   connectionCount: number,
   maxConnections: number,
   seniorityScore: number
@@ -85,34 +88,59 @@ function scoreRecommendation(
   recommendationScore: number;
   connectionScore: number;
   seniorityScoreNormalized: number;
+  projectScore: number;
 } {
   const connectionScore =
     maxConnections > 0 ? (connectionCount / maxConnections) * 100 : 0;
   const seniorityScoreNormalized = Math.min(seniorityScore, 100);
 
   const recommendationScore =
-    connectionScore * 0.5 +
-    seniorityScoreNormalized * 0.5;
+    projectScore * 0.50 +
+    connectionScore * 0.25 +
+    seniorityScoreNormalized * 0.25;
 
   return {
     recommendationScore: Math.round(recommendationScore),
     connectionScore: Math.round(connectionScore),
     seniorityScoreNormalized: Math.round(seniorityScoreNormalized),
+    projectScore: Math.round(projectScore),
   };
 }
 
-export async function getCompanyRecommendations(
+export type RecommendationStreamEvent = 
+  | { type: 'cached_batch'; data: CompanyRecommendation[] }
+  | { type: 'calculated'; data: CompanyRecommendation }
+  | { type: 'error'; data: string }
+  | { type: 'complete' };
+
+/**
+ * Generates an asynchronous stream of company recommendations.
+ * 
+ * Flow:
+ * 1. Fetches all known connections and groups them by company.
+ * 2. Pre-loads all previously cached recommendation scores from `company_score_cache`.
+ * 3. Immediately yields a bulk `cached_batch` event containing all pre-computed companies.
+ * 4. Iterates over remaining uncached companies, scores them against the vector DB,
+ *    caches the result, and yields them individually via `calculated` events.
+ * 
+ * This enables Server-Sent Events (SSE) progressive rendering on the frontend.
+ */
+export async function* getCompanyRecommendationsStream(
   supabase: SupabaseClient<Database>,
   userId: string
-): Promise<CompanyRecommendation[]> {
-  const { data: connections } = await supabase
+): AsyncGenerator<RecommendationStreamEvent, void, unknown> {
+  const connectionsQuery = supabase
     .from("connections")
     .select("*")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .order("id", { ascending: true });
+    
+  const connections = await fetchAllRecords<Connection>(connectionsQuery);
 
   const grouped = groupConnectionsByCompany(connections ?? []);
   if (!grouped.size) {
-    return [];
+    yield { type: 'complete' };
+    return;
   }
 
   const maxConnections = Math.max(
@@ -120,30 +148,144 @@ export async function getCompanyRecommendations(
     1
   );
 
-  const recommendations: CompanyRecommendation[] = [];
+  const { data: cacheRows } = await supabase
+    .from("company_industry_cache")
+    .select("company_name, industry")
+    .eq("user_id", userId);
+
+  const industryMap = new Map<string, string>();
+  for (const row of cacheRows ?? []) {
+    industryMap.set(row.company_name.toLowerCase(), row.industry || "");
+  }
+
+  const { data: scoreCacheRows } = await supabase
+    .from("company_score_cache")
+    .select("*")
+    .eq("user_id", userId);
+
+  const dbCache = new Map<string, any>();
+  for (const row of scoreCacheRows ?? []) {
+    dbCache.set(row.company_name.toLowerCase(), row);
+  }
+
+  const cachedBatch: CompanyRecommendation[] = [];
+  const uncachedList: [string, any[]][] = [];
 
   for (const [company, companyConnections] of grouped) {
+    const cached = dbCache.get(company.toLowerCase());
+    if (cached) {
+      const topContact = pickTopContact(companyConnections);
+      cachedBatch.push({
+        company,
+        recommendationScore: cached.recommendation_score,
+        connectionCount: companyConnections.length,
+        topContact,
+        suggestedReason: buildSuggestedReason(companyConnections.length, topContact),
+        connectionScore: cached.connection_score,
+        seniorityScore: cached.seniority_score,
+        projectScore: cached.project_relevance_score,
+      });
+    } else {
+      uncachedList.push([company, companyConnections]);
+    }
+  }
+
+  // 1. Immediately yield all cached companies in a single batch
+  if (cachedBatch.length > 0) {
+    yield { type: 'cached_batch', data: cachedBatch };
+  }
+
+  // 2. Process uncached companies progressively
+  for (const [company, companyConnections] of uncachedList) {
     const topContact = pickTopContact(companyConnections);
     const seniorityRaw = topContact?.score ?? 0;
 
-    const scores = scoreRecommendation(
-      companyConnections.length,
-      maxConnections,
-      seniorityRaw
-    );
+    try {
+      const industry = industryMap.get(company.toLowerCase());
+      const queryParts = [company];
+      if (topContact?.position) queryParts.push(topContact.position);
+      if (industry && industry !== "Unknown") queryParts.push(industry);
+      
+      const query = queryParts.join(" ");
+      let matchingProjects = await searchKnowledgeChunks(supabase, userId, query, 3);
+      
+      if (matchingProjects.length === 0) {
+        const fallbackQueryParts = [];
+        if (industry && industry !== "Unknown") fallbackQueryParts.push(industry);
+        if (topContact?.position) fallbackQueryParts.push(topContact.position);
+        
+        const fallbackQuery = fallbackQueryParts.join(" ").trim();
+        if (fallbackQuery && fallbackQuery !== query) {
+          matchingProjects = await searchKnowledgeChunks(supabase, userId, fallbackQuery, 3);
+        }
+      }
 
-    recommendations.push({
-      company,
-      recommendationScore: scores.recommendationScore,
-      connectionCount: companyConnections.length,
-      topContact,
-      suggestedReason: buildSuggestedReason(
+      let projectScore = 0;
+      let avgSimilarity = 0;
+      const topProjects: string[] = [];
+
+      if (matchingProjects.length > 0) {
+        avgSimilarity = matchingProjects.reduce((acc, p) => acc + p.similarity, 0) / matchingProjects.length;
+        projectScore = Math.min(100, Math.round(avgSimilarity * 100));
+        topProjects.push(...matchingProjects.map(p => p.project_name || p.document_id));
+      }
+      
+      const scores = scoreRecommendation(
+        projectScore,
         companyConnections.length,
-        topContact
-      ),
-      connectionScore: scores.connectionScore,
-      seniorityScore: scores.seniorityScoreNormalized,
-    });
+        maxConnections,
+        seniorityRaw
+      );
+
+      const rec: CompanyRecommendation = {
+        company,
+        recommendationScore: scores.recommendationScore,
+        connectionCount: companyConnections.length,
+        topContact,
+        suggestedReason: buildSuggestedReason(companyConnections.length, topContact),
+        connectionScore: scores.connectionScore,
+        seniorityScore: scores.seniorityScoreNormalized,
+        projectScore: scores.projectScore,
+      };
+
+      await supabase.from("company_score_cache").upsert({
+        user_id: userId,
+        company_name: company,
+        project_relevance_score: scores.projectScore,
+        recommendation_score: scores.recommendationScore,
+        matching_project_count: matchingProjects.length,
+        average_similarity: avgSimilarity,
+        connection_score: scores.connectionScore,
+        seniority_score: scores.seniorityScoreNormalized,
+        top_project_names: topProjects,
+        industry: industry || null,
+        last_calculated_at: new Date().toISOString(),
+      });
+
+      yield { type: 'calculated', data: rec };
+    } catch (error) {
+      console.error("Vector search quota/rate limit hit during company scoring. Exiting loop.", error);
+      yield { type: 'error', data: 'Embedding quota reached or vector search failed. Resuming next time.' };
+      break;
+    }
+  }
+
+  yield { type: 'complete' };
+}
+
+export async function getCompanyRecommendations(
+  supabase: SupabaseClient<Database>,
+  userId: string
+): Promise<CompanyRecommendation[]> {
+  const recommendations: CompanyRecommendation[] = [];
+  const generator = getCompanyRecommendationsStream(supabase, userId);
+  
+  for await (const event of generator) {
+    if (event.type === 'cached_batch') {
+      recommendations.push(...event.data);
+    } else if (event.type === 'calculated') {
+      recommendations.push(event.data);
+    }
   }
 
   return recommendations.sort(
@@ -156,12 +298,18 @@ export async function getCompanyDetail(
   userId: string,
   companyName: string
 ): Promise<CompanyDetail | null> {
-  const { data: connections } = await supabase
+  const connectionsQuery = supabase
     .from("connections")
     .select("*")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .order("id", { ascending: true });
+    
+  const fetchedConnections = await fetchAllRecords<Connection>(connectionsQuery);
+  const uniqueConns = new Map<string, Connection>();
+  fetchedConnections.forEach((c) => uniqueConns.set(c.id, c));
+  const connections = Array.from(uniqueConns.values());
 
-  const grouped = groupConnectionsByCompany(connections ?? []);
+  const grouped = groupConnectionsByCompany(connections);
   const companyConnections = [...grouped.entries()].find(
     ([name]) => name.toLowerCase() === companyName.toLowerCase()
   );
@@ -175,7 +323,57 @@ export async function getCompanyDetail(
     ...[...grouped.values()].map((g) => g.length),
     1
   );
+
+  const { data: cacheRow } = await supabase
+    .from("company_industry_cache")
+    .select("industry")
+    .eq("user_id", userId)
+    .ilike("company_name", company)
+    .maybeSingle();
+
+  const industry = cacheRow?.industry && cacheRow.industry !== "Unknown" ? cacheRow.industry : "";
+
+  const queryParts = [company];
+  if (topContact?.position) queryParts.push(topContact.position);
+  if (industry) queryParts.push(industry);
+
+  const query = queryParts.join(" ");
+
+  let matchingProjects = await searchKnowledgeChunks(
+    supabase,
+    userId,
+    query,
+    5
+  );
+
+  if (matchingProjects.length === 0) {
+    const fallbackQueryParts = [];
+    if (industry) fallbackQueryParts.push(industry);
+    if (topContact?.position) fallbackQueryParts.push(topContact.position);
+    
+    const fallbackQuery = fallbackQueryParts.join(" ").trim();
+    if (fallbackQuery && fallbackQuery !== query) {
+      matchingProjects = await searchKnowledgeChunks(
+        supabase,
+        userId,
+        fallbackQuery,
+        5
+      );
+    }
+  }
+
+  let projectScore = 0;
+  let avgSimilarity = 0;
+  const topProjects: string[] = [];
+
+  if (matchingProjects.length > 0) {
+    avgSimilarity = matchingProjects.reduce((acc, p) => acc + p.similarity, 0) / matchingProjects.length;
+    projectScore = Math.min(100, Math.round(avgSimilarity * 100));
+    topProjects.push(...matchingProjects.map(p => p.project_name || p.document_id));
+  }
+
   const scores = scoreRecommendation(
+    projectScore,
     companyConns.length,
     maxConnections,
     topContact?.score ?? 0
@@ -192,15 +390,22 @@ export async function getCompanyDetail(
     ),
     connectionScore: scores.connectionScore,
     seniorityScore: scores.seniorityScoreNormalized,
+    projectScore: scores.projectScore,
   };
 
-  const query = `${match.company} ${match.topContact?.position ?? ""}`;
-  const matchingProjects = await searchKnowledgeChunks(
-    supabase,
-    userId,
-    query,
-    5
-  );
+  await supabase.from("company_score_cache").upsert({
+    user_id: userId,
+    company_name: company,
+    project_relevance_score: scores.projectScore,
+    recommendation_score: scores.recommendationScore,
+    matching_project_count: matchingProjects.length,
+    average_similarity: avgSimilarity,
+    connection_score: scores.connectionScore,
+    seniority_score: scores.seniorityScoreNormalized,
+    top_project_names: topProjects,
+    industry: industry || null,
+    last_calculated_at: new Date().toISOString(),
+  });
 
   const outreachPrompt = `You are an outreach strategist for WhileOne, a technology consultancy.
 

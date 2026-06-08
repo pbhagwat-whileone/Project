@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import Papa from "papaparse";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 import { createClient, requireUser } from "@/lib/supabase/server";
+import { fetchAllRecords } from "@/utils/supabase-utils";
 
 type LinkedInRow = {
   "First Name"?: string;
@@ -43,17 +49,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: existingConnections, error: fetchError } = await supabase
+    const query = supabase
       .from("connections")
       .select("profile_url, first_name, last_name, company")
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .order("id", { ascending: true });
 
-    if (fetchError) throw fetchError;
+    const existingConnections = await fetchAllRecords(query);
 
     const profileUrls = new Set<string>();
     const fallbackKeys = new Set<string>();
 
-    existingConnections?.forEach((c) => {
+    existingConnections?.forEach((c: any) => {
       if (c.profile_url) {
         profileUrls.add(c.profile_url.toLowerCase().trim());
       } else {
@@ -113,8 +120,12 @@ export async function POST(request: Request) {
     }
 
     if (newRows.length > 0) {
-      const { error } = await supabase.from("connections").insert(newRows);
-      if (error) throw error;
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < newRows.length; i += BATCH_SIZE) {
+        const batch = newRows.slice(i, i + BATCH_SIZE);
+        const { error } = await supabase.from("connections").insert(batch);
+        if (error) throw error;
+      }
     }
 
     return NextResponse.json({ imported: newRows.length, updated: 0, skipped });

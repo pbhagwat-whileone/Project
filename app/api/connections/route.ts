@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient, requireUser } from "@/lib/supabase/server";
+import { fetchAllRecords } from "@/utils/supabase-utils";
 import type { Connection } from "@/types/database";
 
 export async function GET(request: Request) {
@@ -14,12 +15,15 @@ export async function GET(request: Request) {
       .from("connections")
       .select("*")
       .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true });
 
-    const { data, error } = await query;
-    if (error) throw error;
-
-    let filtered: Connection[] = data ?? [];
+    let fetched: Connection[] = await fetchAllRecords<Connection>(query);
+    
+    // Safety net: Deduplicate records by ID to prevent Postgres offset shifting or DB duplication from causing React key collisions
+    const uniqueMap = new Map<string, Connection>();
+    fetched.forEach((c) => uniqueMap.set(c.id, c));
+    let filtered = Array.from(uniqueMap.values());
 
     if (search) {
       filtered = filtered.filter((c) => {

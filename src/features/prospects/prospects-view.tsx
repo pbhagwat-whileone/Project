@@ -50,12 +50,12 @@ import { PROVIDER_MODELS, type ProviderType } from "@/ai/models";
 type RankedRecommendation = CompanyRecommendation & { rank: number };
 
 export function ProspectsView() {
-  const [allRecommendations, setAllRecommendations] = useState<RankedRecommendation[]>(
-    []
-  );
+  const [allRecommendations, setAllRecommendations] = useState<CompanyRecommendation[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [cachedCount, setCachedCount] = useState(0);
+  const [calculatedCount, setCalculatedCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
   const [detail, setDetail] = useState<CompanyDetail | null>(null);
@@ -197,14 +197,62 @@ export function ProspectsView() {
 
   async function handleRefresh() {
     setRefreshing(true);
+    setAllRecommendations([]);
+    setCachedCount(0);
+    setCalculatedCount(0);
+
     try {
-      const data = await apiFetch<{
-        recommendations: RankedRecommendation[];
-      }>("/api/prospects/generate", {
+      const response = await fetch("/api/prospects/generate", {
         method: "POST"
       });
-      setAllRecommendations(data.recommendations);
-      toast.success("Recommendations generated successfully");
+
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No stream found");
+      
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+      let currentRecs: CompanyRecommendation[] = [];
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        
+        let boundary = buffer.indexOf("\n\n");
+        while (boundary !== -1) {
+          const message = buffer.slice(0, boundary);
+          buffer = buffer.slice(boundary + 2);
+          
+          if (message.startsWith("data: ")) {
+            const dataStr = message.slice(6);
+            try {
+              const event = JSON.parse(dataStr);
+              if (event.type === "cached_batch") {
+                const newRecs = event.data as CompanyRecommendation[];
+                currentRecs = [...currentRecs, ...newRecs];
+                setAllRecommendations(currentRecs);
+                setCachedCount(prev => prev + newRecs.length);
+              } else if (event.type === "calculated") {
+                const newRec = event.data as CompanyRecommendation;
+                currentRecs = [...currentRecs, newRec];
+                setAllRecommendations(currentRecs);
+                setCalculatedCount(prev => prev + 1);
+              } else if (event.type === "error") {
+                toast.error(event.data);
+              }
+            } catch (e) {
+              console.error("Failed to parse SSE message", e);
+            }
+          }
+          boundary = buffer.indexOf("\n\n");
+        }
+      }
+      toast.success("Recommendation refresh completed");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Generation failed");
     } finally {
@@ -218,12 +266,17 @@ export function ProspectsView() {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        (r) =>
-          r.company.toLowerCase().includes(q)
+        (r) => r.company.toLowerCase().includes(q)
       );
     }
 
-    return filtered;
+    // Sort by recommendationScore descending and map to RankedRecommendation
+    return filtered
+      .sort((a, b) => b.recommendationScore - a.recommendationScore)
+      .map((r, index) => ({
+        ...r,
+        rank: index + 1,
+      }));
   }, [allRecommendations, searchQuery]);
 
   return (
@@ -232,12 +285,20 @@ export function ProspectsView() {
         title="Recommended Companies"
         description="AI-ranked outreach targets based on project expertise and LinkedIn connections."
         action={
-          <Button onClick={handleRefresh} disabled={refreshing}>
-            <RefreshCw
-              className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
-            />
-            {refreshing ? "Generating..." : "Refresh Recommendations"}
-          </Button>
+          <div className="flex flex-col items-end gap-2">
+            <Button onClick={handleRefresh} disabled={refreshing}>
+              <RefreshCw
+                className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+              />
+              {refreshing ? "Generating..." : "Refresh Recommendations"}
+            </Button>
+            {refreshing && (
+              <div className="flex gap-2 text-xs font-medium">
+                <Badge variant="outline" className="bg-primary/10 animate-pulse">Cached: {cachedCount}</Badge>
+                <Badge variant="outline" className="bg-primary/10 animate-pulse">Calculated: {calculatedCount}</Badge>
+              </div>
+            )}
+          </div>
         }
       />
 
@@ -255,8 +316,8 @@ export function ProspectsView() {
         </div>
       </div>
 
-      {refreshing ? (
-        <LoadingSpinner label="Analyzing connection companies..." />
+      {refreshing && allRecommendations.length === 0 ? (
+        <LoadingSpinner label="Loading cached connections..." />
       ) : loading ? (
         <LoadingSpinner />
       ) : allRecommendations.length === 0 ? (
@@ -346,9 +407,21 @@ export function ProspectsView() {
                   <h4 className="mb-2 font-medium">Company Information</h4>
                   <dl className="space-y-1 text-sm">
 
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Score</dt>
+                    <div className="flex justify-between font-semibold text-primary">
+                      <dt>Overall Match Score</dt>
                       <dd>{detail.recommendationScore}/100</dd>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground pt-2">
+                      <dt>Project Relevance (50%)</dt>
+                      <dd>{detail.projectScore}/100</dd>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <dt>Connection Score (25%)</dt>
+                      <dd>{detail.connectionScore}/100</dd>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <dt>Seniority Score (25%)</dt>
+                      <dd>{detail.seniorityScore}/100</dd>
                     </div>
 
                   </dl>

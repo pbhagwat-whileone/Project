@@ -1,146 +1,86 @@
-# WhileOne AI Client Outreach Assistant
+# WhileOne Outreach Assistant
 
-Internal web application for syncing project knowledge from Google Drive, matching LinkedIn connections to target companies, and generating personalized outreach emails with Gemini AI.
+## Project Overview
+The WhileOne Outreach Assistant is a highly intelligent, AI-powered internal tool designed to automate and optimize the process of discovering and reaching out to potential client prospects.
 
-## Tech Stack
+The system ingests the user's professional network (via LinkedIn CSV exports), deeply analyzes the target companies against WhileOne's proprietary knowledge base of past projects (synced from Google Drive DOCX files), and surfaces the most relevant companies. It then uses state-of-the-art LLMs to draft hyper-personalized outreach emails focusing on business outcomes and project relevance.
 
-- **Next.js 16** (App Router)
-- **TypeScript**, **Tailwind CSS**, **shadcn/ui**
-- **Supabase** (PostgreSQL, Auth, pgvector)
-- **Google Drive & Docs API**, **Gemini 2.5 Pro**, **Gemini Embeddings**
+## Core Features
+- **LinkedIn CSV Import:** Seamlessly ingest and parse first-degree connections.
+- **Duplicate Contact Handling:** Intelligently merge and manage duplicate entries.
+- **Company Search & Fuzzy Matching:** Robust resolution of company names (e.g., resolving typos like "Nvidea" to "NVIDIA").
+- **Google Drive Sync:** Automated fetching of past project documentation (DOCX format) directly from Google Drive.
+- **Knowledge Base Indexing & Vector Search:** Chunks and generates embeddings for past projects, allowing semantic similarity searches.
+- **Project Relevance Scoring:** Evaluates how well a prospect company aligns with WhileOne's historical project expertise.
+- **Seniority Ranking:** Ranks target contacts within a company based on their role and seniority.
+- **Recommendation Engine (with Caching):** Aggregates connection strength, seniority, and project relevance into a unified score. Results are progressively streamed (SSE) and persistently cached to avoid rate limits.
+- **Multi-Provider LLM Support:** Leverages Gemini, Claude, OpenAI, and Grok for content generation with built-in fallbacks.
+- **Email Generation & Refinement:** Generates outcome-focused outreach drafts using specialized relationship skills (e.g., "Cold Outreach", "Warm Introduction") and allows interactive refinement.
 
-## Getting Started
+## Architecture Flow
 
-### 1. Install dependencies
-
-```bash
-npm install
+```mermaid
+graph TD
+    A[LinkedIn CSV] -->|Import| B(Connections Table)
+    C[Google Drive DOCX] -->|Sync & Extract| D(Knowledge Chunks)
+    D -->|Embeddings| E(Vector Search)
+    B --> F[Recommendation Engine]
+    E -->|Project Relevance| F
+    F -->|Ranked Companies| G(Prospects View)
+    G -->|Context| H[Multi-LLM Email Generator]
+    H -->|Outcome-Focused Draft| I[Email Editor]
 ```
 
-### 2. Environment variables
+## Database Schema
 
-Copy `.env.example` to `.env.local` and fill in values:
+The application runs on Supabase (PostgreSQL). The core active tables are:
 
-| Variable | Description |
-|----------|-------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/public key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service role key (server only) |
-| `NEXT_PUBLIC_APP_URL` | App URL for OAuth callbacks (`http://localhost:3000`) |
-| `GEMINI_API_KEY` | Google AI Studio API key |
-| `GOOGLE_CLIENT_ID` | OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | OAuth client secret |
-| `GOOGLE_DRIVE_FOLDER_ID` | Default Drive folder ID (optional if set in Settings) |
+- **`profiles`**: Stores user authentication and profile data.
+- **`connections`**: Stores raw imported LinkedIn connections. Includes a unique constraint to prevent duplicate profile URLs.
+- **`knowledge_documents`**: Tracks metadata for DOCX files synced from Google Drive.
+- **`knowledge_chunks`**: Stores text chunks and their pgvector embeddings derived from `knowledge_documents`. Used for semantic search.
+- **`company_industry_cache`**: Caches basic metadata (industry, size, etc.) about companies to prevent repeated lookups.
+- **`company_score_cache`**: Persistently stores the highly-computed recommendation breakdown (project relevance, connection strength, seniority) to provide fast, resilient load times.
+- **`prospects`**: Tracks manually saved or evaluated prospects.
+- **`generated_emails`**: Stores generated drafts and tracks refinement history for analytics.
+- **`sync_logs`**: Audit trail for Google Drive synchronization runs.
 
-### 3. Supabase setup
+## LLM Providers
+The application leverages an abstraction layer (`src/ai/models.ts`) to route generation tasks:
+- **Gemini (Google):** Default provider (`gemini-2.5-pro` for reasoning, `gemini-2.5-flash` for fast tasks).
+- **Claude (Anthropic):** Supported via `claude-3-5-sonnet-20241022` and `claude-3-haiku-20240307`.
+- **OpenAI:** Supported via `gpt-4o` and `gpt-4o-mini`.
+- **Grok (xAI):** Supported via `grok-2-latest`.
 
-1. Create a Supabase project.
-2. Run the SQL migration in `supabase/migrations/001_initial_schema.sql` via the Supabase SQL Editor (or CLI).
-3. Enable **Google** provider under Authentication → Providers.
-4. Add redirect URL: `http://localhost:3000/auth/callback` (and production URL).
-5. In Google Cloud Console, add OAuth redirect URIs:
-   - `https://<project-ref>.supabase.co/auth/v1/callback` (Supabase Auth)
-   - `http://localhost:3000/api/google/callback` (Drive API)
+## Environment Variables
+Create a `.env.local` file with the following required variables:
 
-### 4. Google Cloud setup
+```env
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL="your_supabase_project_url"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="your_supabase_anon_key"
 
-1. Enable **Google Drive API** and **Google Docs API**.
-2. Create OAuth 2.0 credentials (Web application).
-3. Add authorized redirect URIs (see above).
-4. For Drive sync, users connect Drive from **Settings** (separate OAuth with `drive.readonly` + `documents.readonly` scopes).
+# LLM Provider API Keys
+GOOGLE_GENAI_API_KEY="your_gemini_key"
+ANTHROPIC_API_KEY="your_anthropic_key"
+OPENAI_API_KEY="your_openai_key"
+XAI_API_KEY="your_grok_key"
 
-### 5. Run the app
-
-```bash
-npm run dev
+# Google Drive Integration
+GOOGLE_DRIVE_FOLDER_ID="target_folder_id"
+GOOGLE_SERVICE_ACCOUNT_EMAIL="service_account_email"
+GOOGLE_PRIVATE_KEY="service_account_private_key"
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+## Setup & Local Development
+1. Clone the repository.
+2. Run `npm install` to install dependencies.
+3. Configure your `.env.local` file.
+4. Run Supabase migrations (`npm run supabase migration up` if applicable) to ensure the vector database and caching tables are initialized.
+5. Run `npm run dev` to start the Next.js development server.
+6. Navigate to `http://localhost:3000`.
 
-## Application Routes
-
-| Route | Description |
-|-------|-------------|
-| `/dashboard` | Stats, recent sync activity, quick actions |
-| `/knowledge-base` | Document sync from Google Drive |
-| `/connections` | LinkedIn CSV upload and search |
-| `/search-company` | Fuzzy company match + semantic project search + email |
-| `/prospects` | CRM for target companies, analysis, outreach workflow |
-| `/emails` | Generated email history |
-| `/settings` | Drive folder ID, Google connection, sync status |
-
-## LinkedIn CSV Format
-
-Expected columns (LinkedIn export):
-
-- First Name, Last Name, Company, Position, Email Address, Profile URL, Connected On
-
-## Project Structure
-
-```
-app/             # App Router routes and API handlers
-src/
-  components/    # UI and layout
-  features/      # Page-level feature views
-  lib/           # Supabase clients, validators, utilities
-  services/      # Business logic (sync, embeddings, email)
-  ai/            # Gemini client config
-  google/        # OAuth helpers
-  types/         # TypeScript database types
-  utils/         # Chunking, matching, ranking
-supabase/
-  migrations/    # PostgreSQL schema + pgvector
-```
-
-## Knowledge Base Sync
-
-Manual sync only (no cron). On sync:
-
-- **New** Drive files → ingest, chunk (~500 tokens, 50 overlap), embed, store
-- **Modified** files → reprocess chunks
-- **Deleted** files → remove from database
-
-Configure folder ID in **Settings**, connect Google Drive, then use **Sync** on Dashboard or Knowledge Base.
-
-## Security Notes
-
-- Service role key is server-side only (`lib/supabase/admin.ts`).
-- All API inputs validated with Zod.
-- Row Level Security enabled on all user tables.
-
-## Scripts
-
-- `npm run dev` — development server
-- `npm run build` — production build
-- `npm run start` — production server
-- `npm run lint` — ESLint
-
-
-## Environment Example Setup
-
-# Supabase (https://supabase.com/dashboard)
-NEXT_PUBLIC_SUPABASE_URL=https://project name.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=publishable key
-SUPABASE_SERVICE_ROLE_KEY=secret key
-
-# App URL (required for Google OAuth callbacks)
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-
-# Gemini API (https://aistudio.google.com/apikey)
-GEMINI_API_KEY=
-
-# Google OAuth (https://console.cloud.google.com/apis/credentials)
-# Enable Google provider in Supabase Auth + create OAuth client with Drive scopes
-GOOGLE_CLIENT_ID=client-id
-GOOGLE_CLIENT_SECRET=client-secret
-
-#Add authorised redirect URL's:
-# http://localhost:3000/api/auth/callback/google
-# https://project name.supabase.co/auth/v1/callback
-# http://localhost:3000/api/google/callback
-
-#Enable google Drive and Google Docs API
-
-#In supabase- Auth->Providers, Enable Google and enter Client ID,secret and callback URL
-# Default Drive folder (can override per user in Settings)
-GOOGLE_DRIVE_FOLDER_ID=your-drive-folder-id
+## Current Limitations
+- **Google Drive Rate Limits:** Very large DOCX syncs may encounter Google API rate limits. The sync log will note partial completions.
+- **Vector Search Quotas:** The system relies on an external embedding provider. While results are progressively cached to mitigate this, generating recommendations for 1,000+ brand-new companies in a single pass may temporarily exhaust embedding quotas.
+- **Incomplete Industry Data:** If a company lacks sufficient online presence, the industry resolution might fall back to "Unknown", which slightly weakens project matching accuracy.

@@ -41,19 +41,11 @@ export function findBestContact(
   connections: Connection[],
   threshold = 0.75
 ): RankedContact | null {
-  console.log("========================================");
-  console.log("FIND BEST CONTACT START");
-  console.log("RAW QUERY:", companyQuery);
-
   if (!connections.length) {
-    console.log("NO CONNECTIONS");
     return null;
   }
 
   const normalizedQuery = normalizeCompany(companyQuery);
-
-  console.log("NORMALIZED QUERY:", normalizedQuery);
-  console.log("TOTAL CONNECTIONS:", connections.length);
 
   const exactMatches = connections.filter((c) => {
     if (!c.company) return false;
@@ -84,72 +76,19 @@ export function findBestContact(
     return company.includes(normalizedQuery);
   });
 
-  console.log(
-    "EXACT MATCHES:",
-    exactMatches.map((c) => ({
-      company: c.company,
-      position: c.position,
-    }))
-  );
-
-  console.log(
-    "PREFIX MATCHES:",
-    prefixMatches.map((c) => ({
-      company: c.company,
-      position: c.position,
-    }))
-  );
-
-  console.log(
-    "CONTAINS MATCHES:",
-    containsMatches.map((c) => ({
-      company: c.company,
-      position: c.position,
-    }))
-  );
-
   if (exactMatches.length > 0) {
-    const result = pickBestFromPool(exactMatches);
-
-    console.log("RETURNING EXACT MATCH:");
-    console.log({
-      company: result?.company,
-      name: `${result?.first_name ?? ""} ${result?.last_name ?? ""}`.trim(),
-      position: result?.position,
-    });
-
-    return result;
+    return pickBestFromPool(exactMatches);
   }
 
   if (prefixMatches.length > 0) {
-    const result = pickBestFromPool(prefixMatches);
-
-    console.log("RETURNING PREFIX MATCH:");
-    console.log({
-      company: result?.company,
-      name: `${result?.first_name ?? ""} ${result?.last_name ?? ""}`.trim(),
-      position: result?.position,
-    });
-
-    return result;
+    return pickBestFromPool(prefixMatches);
   }
 
   if (containsMatches.length > 0) {
-    const result = pickBestFromPool(containsMatches);
-
-    console.log("RETURNING CONTAINS MATCH:");
-    console.log({
-      company: result?.company,
-      name: `${result?.first_name ?? ""} ${result?.last_name ?? ""}`.trim(),
-      position: result?.position,
-    });
-
-    return result;
+    return pickBestFromPool(containsMatches);
   }
 
   if (normalizedQuery.length <= 4) {
-    console.log("SHORT QUERY PROTECTION TRIGGERED");
-    console.log("NO MATCH FOUND");
     return null;
   }
 
@@ -161,60 +100,21 @@ export function findBestContact(
     ),
   ];
 
-  console.log("UNIQUE COMPANIES:", companies.length);
-
-  console.log(
-    "COMPANIES CONTAINING QUERY:",
-    companies.filter((c) =>
-      normalizeCompany(c).includes(normalizedQuery)
-    )
-  );
-
-  console.log(
-    "FIRST 50 COMPANIES:",
-    companies.slice(0, 50)
-  );
-
   const fs = new FuzzySet(companies);
 
   const results = fs.get(companyQuery, null, threshold);
 
   if (!results || results.length === 0) {
-    console.log("NO FUZZY MATCHES");
     return null;
   }
 
-  console.log("FUZZY RESULTS:");
-  console.log(results.slice(0, 10));
-
   const matchedCompany = results[0][1] as string;
-
-  console.log("SELECTED FUZZY COMPANY:", matchedCompany);
 
   const pool = connections.filter(
     (c) => c.company === matchedCompany
   );
 
-  console.log(
-    "FUZZY POOL:",
-    pool.map((c) => ({
-      company: c.company,
-      position: c.position,
-    }))
-  );
-
-  const result = pickBestFromPool(pool);
-
-  console.log("RETURNING FUZZY MATCH:");
-  console.log({
-    company: result?.company,
-    name: `${result?.first_name ?? ""} ${result?.last_name ?? ""}`.trim(),
-    position: result?.position,
-  });
-
-  console.log("========================================");
-
-  return result;
+  return pickBestFromPool(pool);
 }
 
 function pickBestFromPool(pool: Connection[]): RankedContact | null {

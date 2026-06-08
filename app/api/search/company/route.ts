@@ -28,38 +28,63 @@ export async function POST(request: Request) {
       connections ?? []
     );
 
+    if (!contact) {
+      return NextResponse.json({
+        contact: null,
+        projects: [],
+        message: "No matching company could be identified, so project recommendations were not generated.",
+      });
+    }
+
+    const rawQuery = parsed.data.company;
+    const normalizedQuery = rawQuery.toLowerCase().trim();
+    const resolvedCompany = contact?.company || rawQuery;
+    const contactTitle = contact?.position || "";
+
     const { data: cacheRow } = await supabase
       .from("company_industry_cache")
       .select("industry")
       .eq("user_id", user.id)
-      .eq("company_name", parsed.data.company)
+      .ilike("company_name", resolvedCompany)
       .maybeSingle();
 
     const industry = cacheRow?.industry && cacheRow.industry !== "Unknown" 
       ? cacheRow.industry 
       : "";
 
-    const query = industry
-      ? `${parsed.data.company} ${industry}`
-      : parsed.data.company;
+    const queryParts = [resolvedCompany];
+    if (contactTitle) queryParts.push(contactTitle);
+    if (industry) queryParts.push(industry);
+    
+    // Build semantic query using company, role, and industry
+    const finalQuery = queryParts.join(" ").trim();
 
-    console.log("SEARCH QUERY:", query);
-
-    const projects = await searchKnowledgeChunks(
+    let projects = await searchKnowledgeChunks(
       supabase,
       user.id,
-      query,
+      finalQuery,
       3
     );
 
-    console.log(
-      "PROJECT MATCHES:",
-      projects.map((p) => ({
-        project: p.project_name,
-        similarity: p.similarity,
-        industry: p.industry,
-      }))
-    );
+    if (projects.length === 0) {
+      // Fallback search if exact company name matching yields zero results
+      const fallbackQueryParts = [];
+      if (industry) fallbackQueryParts.push(industry);
+      if (contactTitle) fallbackQueryParts.push(contactTitle);
+      
+      const fallbackQuery = fallbackQueryParts.join(" ").trim();
+      
+      if (fallbackQuery && fallbackQuery !== finalQuery) {
+        projects = await searchKnowledgeChunks(
+          supabase,
+          user.id,
+          fallbackQuery,
+          3
+        );
+      }
+    }
+
+
     return NextResponse.json({
       contact,
       projects: projects.map((p) => ({
@@ -69,14 +94,7 @@ export async function POST(request: Request) {
       message: contact ? null : "No LinkedIn connection found.",
     });
 
-    return NextResponse.json({
-      contact,
-      projects: projects.map((p) => ({
-        ...p,
-        summary: p.chunk_text.slice(0, 200),
-      })),
-      message: null,
-    });
+
   } catch (err) {
     const message = err instanceof Error ? err.message : "Search failed";
     return NextResponse.json({ error: message }, { status: 500 });

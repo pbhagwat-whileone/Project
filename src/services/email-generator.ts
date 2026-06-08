@@ -83,6 +83,17 @@ ${projectContext || "No specific project context available — keep the email ge
 ${input.recommendationReason ? `Why this company is recommended:\n${input.recommendationReason}\n` : ""}
 ${input.prospectNotes ? `Additional notes:\n${input.prospectNotes}` : ""}
 
+Whileone Messaging & Vocabulary:
+- Use Whileone core vocabulary naturally when relevant (do NOT force keywords or sound like marketing copy): Reliable AI, AI-powered solutions, ML-powered solutions, performance tuning, workload characterization, unbiased benchmarking, cloud optimization, simplified cloud cost management, intelligent frameworks, in-house developed frameworks, deep domain expertise, practical experience, engineering productivity, reliability, performance optimization, scalability, HPC, edge computing, ER&D.
+- Adapt language to the target company (${input.targetCompany}):
+  * Semiconductor (AMD, NVIDIA, Qualcomm, Intel, TSMC, Broadcom): prefer performance tuning, benchmarking, validation, ARM, RISC-V, HPC, scalability, reliability.
+  * Cloud (AWS, Microsoft, Google, Oracle, Equinix): prefer cloud optimization, workload characterization, cloud cost management, scalability, reliability, performance.
+  * AI: prefer AI infrastructure, ML workloads, performance optimization, intelligent frameworks, scalability.
+  * Automotive/Manufacturing: prefer reliability, validation, optimization, engineering productivity, practical deployment.
+- Implicitly reflect the vision of being a trusted partner in Cloud, HPC, AI, and Edge, without explicitly quoting it.
+- Implicitly reflect the mission (delivering measurable business value, reliable engineering services, intelligent frameworks, deep domain expertise, practical implementation) without mechanical repetition.
+- Outcome-Driven Messaging Rule: Always lead with value before implementation details. For example, prefer "reduced validation effort" over "implemented automated testing", "improved workload efficiency" over "developed optimization tooling", "accelerated performance analysis" over "built benchmarking frameworks".
+
 Requirements:
 - Subject line must be 5-9 words, curiosity-driven, highly relevant, and NOT spammy.
 - Incorporate the company name (${input.targetCompany}) into the subject line naturally if possible. Prioritize in this order: 1) Relevance 2) Company Name 3) Curiosity 4) Brevity.
@@ -147,6 +158,17 @@ ${currentBody}
 
 Refinement Instructions from User:
 "${instructions}"
+
+Whileone Messaging & Vocabulary:
+- Use Whileone core vocabulary naturally when relevant (do NOT force keywords or sound like marketing copy): Reliable AI, AI-powered solutions, ML-powered solutions, performance tuning, workload characterization, unbiased benchmarking, cloud optimization, simplified cloud cost management, intelligent frameworks, in-house developed frameworks, deep domain expertise, practical experience, engineering productivity, reliability, performance optimization, scalability, HPC, edge computing, ER&D.
+- Adapt language to the target company (${context ? context.company : "their company"}):
+  * Semiconductor (AMD, NVIDIA, Qualcomm, Intel, TSMC, Broadcom): prefer performance tuning, benchmarking, validation, ARM, RISC-V, HPC, scalability, reliability.
+  * Cloud (AWS, Microsoft, Google, Oracle, Equinix): prefer cloud optimization, workload characterization, cloud cost management, scalability, reliability, performance.
+  * AI: prefer AI infrastructure, ML workloads, performance optimization, intelligent frameworks, scalability.
+  * Automotive/Manufacturing: prefer reliability, validation, optimization, engineering productivity, practical deployment.
+- Implicitly reflect the vision of being a trusted partner in Cloud, HPC, AI, and Edge, without explicitly quoting it.
+- Implicitly reflect the mission (delivering measurable business value, reliable engineering services, intelligent frameworks, deep domain expertise, practical implementation) without mechanical repetition.
+- Outcome-Driven Messaging Rule: Always lead with value before implementation details. For example, prefer "reduced validation effort" over "implemented automated testing", "improved workload efficiency" over "developed optimization tooling", "accelerated performance analysis" over "built benchmarking frameworks".
 
 Apply the instructions carefully to the existing draft. 
 - Do NOT generate a completely unrelated email. Modify the existing one.
