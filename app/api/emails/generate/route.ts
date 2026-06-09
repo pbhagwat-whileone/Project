@@ -44,6 +44,12 @@ export async function POST(request: Request) {
         email: parsed.data.email ?? null,
         profile_url: parsed.data.profile_url ?? null,
         score: 0,
+        conversation_summary: parsed.data.conversation_summary,
+        discussion_topics: parsed.data.discussion_topics,
+        interaction_timeline: parsed.data.interaction_timeline,
+        recent_highlights: parsed.data.recent_highlights,
+        total_messages: parsed.data.total_messages ?? undefined,
+        last_interaction_date: parsed.data.last_interaction_date,
       };
     } else if (recContext.recommendation?.topContact) {
       contact = recContext.recommendation.topContact;
@@ -99,6 +105,11 @@ export async function POST(request: Request) {
       provider: parsed.data.provider ?? undefined,
       model: parsed.data.model ?? undefined,
       relationshipSummary: contact?.conversation_summary ?? undefined,
+      discussionTopics: contact?.discussion_topics ?? undefined,
+      recentHighlights: contact?.recent_highlights ?? undefined,
+      interactionTimeline: contact?.interaction_timeline ?? undefined,
+      messageCount: contact?.total_messages ?? undefined,
+      lastInteractionDate: contact?.last_interaction_date ?? undefined,
     });
 
     const { data: saved, error } = await supabase

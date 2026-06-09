@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
@@ -30,6 +31,8 @@ export function ConnectionsView() {
   const fileRef = useRef<HTMLInputElement>(null);
   const messagesFileRef = useRef<HTMLInputElement>(null);
   const [selectedConnection, setSelectedConnection] = useState<Connection | null>(null);
+  const searchParams = useSearchParams();
+  const [hasAutoOpened, setHasAutoOpened] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -55,6 +58,17 @@ export function ConnectionsView() {
     }, 300);
     return () => clearTimeout(t);
   }, [load]);
+
+  useEffect(() => {
+    const connectionId = searchParams.get("connection_id");
+    if (connectionId && connections.length > 0 && !hasAutoOpened) {
+      const conn = connections.find(c => c.id === connectionId);
+      if (conn) {
+        setSelectedConnection(conn);
+        setHasAutoOpened(true);
+      }
+    }
+  }, [searchParams, connections, hasAutoOpened]);
 
   async function handleUpload(file: File) {
     setUploading(true);

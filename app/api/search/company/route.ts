@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { companySearchSchema } from "@/lib/validators";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { fetchAllRecords } from "@/utils/supabase-utils";
-import { findBestContact } from "@/utils/company-utils";
+import { findRecommendedContacts, rankContactsWithMetrics } from "@/utils/company-utils";
 import { searchKnowledgeChunks } from "@/services/vector-search";
 
 export async function POST(request: Request) {
@@ -52,34 +52,41 @@ export async function POST(request: Request) {
     console.log("SIPEARL RECORDS FOUND:", siPearlRecords.length);
     console.log("SIPEARL RECORDS:", siPearlRecords);
 
-    const contact = findBestContact(
+    const recommendedContacts = findRecommendedContacts(
       parsed.data.company,
       connections ?? []
     );
 
-    if (!contact) {
+    if (!recommendedContacts.length) {
       return NextResponse.json({
-        contact: null,
+        contacts: [],
         projects: [],
         message: "No matching company could be identified, so project recommendations were not generated.",
       });
     }
 
-    const { data: metrics } = await supabase
+    // Fetch metrics for all recommended contacts
+    const contactIds = recommendedContacts.map(c => c.id);
+
+    const { data: metricsData } = await supabase
       .from("connection_relationship_metrics")
       .select("*")
-      .eq("connection_id", contact.id)
-      .single();
+      .in("connection_id", contactIds);
 
-    if (metrics) {
-      contact.relationship_score = metrics.relationship_score;
-      contact.conversation_summary = metrics.conversation_summary;
-    }
+    const metricsMap: Record<string, any> = {};
+    metricsData?.forEach(m => {
+      metricsMap[m.connection_id] = m;
+    });
+
+    const rankedContacts = rankContactsWithMetrics(recommendedContacts, metricsMap);
+    
+    // Default to the very top contact to drive semantic search
+    const primaryContact = rankedContacts[0];
 
     const rawQuery = parsed.data.company;
     const normalizedQuery = rawQuery.toLowerCase().trim();
-    const resolvedCompany = contact?.company || rawQuery;
-    const contactTitle = contact?.position || "";
+    const resolvedCompany = primaryContact?.company || rawQuery;
+    const contactTitle = primaryContact?.position || "";
 
     const { data: cacheRow } = await supabase
       .from("company_industry_cache")
@@ -126,12 +133,12 @@ export async function POST(request: Request) {
 
 
     return NextResponse.json({
-      contact,
+      contacts: rankedContacts,
       projects: projects.map((p) => ({
         ...p,
         summary: p.chunk_text.slice(0, 200),
       })),
-      message: contact ? null : "No LinkedIn connection found.",
+      message: rankedContacts.length ? null : "No LinkedIn connection found.",
     });
 
 

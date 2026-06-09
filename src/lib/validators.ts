@@ -30,6 +30,12 @@ export const emailGenerateSchema = z.object({
   relationship_type: z.string().nullish(),
   provider: z.string().nullish(),
   model: z.string().nullish(),
+  conversation_summary: z.string().nullish(),
+  discussion_topics: z.string().nullish(),
+  recent_highlights: z.string().nullish(),
+  interaction_timeline: z.string().nullish(),
+  total_messages: z.number().nullish(),
+  last_interaction_date: z.string().nullish(),
 });
 
 export const emailRefineSchema = z.object({

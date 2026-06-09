@@ -7,6 +7,7 @@ export type TaskType =
   | "PROJECT_RELEVANCE"
   | "COMPANY_FIT_ANALYSIS"
   | "RECOMMENDATION_SCORING"
+  | "CONVERSATION_SUMMARY"
   | "EMBEDDINGS";
 
 export type ProviderType = "gemini" | "claude" | "openai" | "grok" | "cerebras";
@@ -62,6 +63,10 @@ export const TASK_MODEL_CONFIG: Record<TaskType, TaskConfig> = {
     models: ["gpt-oss-120b"],
   },
   RECOMMENDATION_SCORING: {
+    provider: "cerebras",
+    models: ["gpt-oss-120b"],
+  },
+  CONVERSATION_SUMMARY: {
     provider: "cerebras",
     models: ["gpt-oss-120b"],
   },

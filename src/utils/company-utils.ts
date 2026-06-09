@@ -36,129 +36,63 @@ export function normalizeCompany(name: string): string {
     .trim();
 }
 
-export function findBestContact(
+export function findRecommendedContacts(
   companyQuery: string,
   connections: Connection[],
   threshold = 0.75
-): RankedContact | null {
+): RankedContact[] {
   if (!connections.length) {
-    return null;
+    return [];
   }
 
   const normalizedQuery = normalizeCompany(companyQuery);
-
-  console.log("RAW QUERY:", companyQuery);
-  console.log("NORMALIZED QUERY:", normalizedQuery);
-
-  const siPearlExists = connections.some(
-    c => c.company === "SiPearl"
-  );
-  if (companyQuery === "SiPearl") {
-    console.log("SIPEARL EXISTS:", siPearlExists);
-  }
-
-  const siPearlCompanies = connections
-    .filter(c => c.company?.includes("SiPearl"))
-    .map(c => ({
-      original: c.company,
-      normalized: normalizeCompany(c.company as string)
-    }));
-  console.log("SIPEARL COMPANIES:", siPearlCompanies);
 
   const exactMatches = connections.filter((c) => {
     if (!c.company) return false;
     return normalizeCompany(c.company) === normalizedQuery;
   });
 
-  console.log("EXACT MATCH COUNT:", exactMatches.length);
-  if (exactMatches.length > 0) {
-    console.log(
-      "EXACT MATCH COMPANIES:",
-      exactMatches.map(c => c.company)
-    );
-  }
-
   const prefixMatches = connections.filter((c) => {
     if (!c.company) return false;
-
     const company = normalizeCompany(c.company);
-
-    if (!company || !normalizedQuery) {
-      return false;
-    }
-
-    return company.startsWith(normalizedQuery);
+    return company && normalizedQuery && company.startsWith(normalizedQuery);
   });
-
-  console.log("PREFIX MATCH COUNT:", prefixMatches.length);
 
   const containsMatches = connections.filter((c) => {
     if (!c.company) return false;
-
     const company = normalizeCompany(c.company);
-
-    if (!company || !normalizedQuery) {
-      return false;
-    }
-
-    return company.includes(normalizedQuery);
+    return company && normalizedQuery && company.includes(normalizedQuery);
   });
 
-  console.log("CONTAINS MATCH COUNT:", containsMatches.length);
+  let pool: Connection[] = [];
 
   if (exactMatches.length > 0) {
-    console.log("RETURNING EXACT MATCH");
-    return pickBestFromPool(exactMatches);
+    pool = exactMatches;
+  } else if (prefixMatches.length > 0) {
+    pool = prefixMatches;
+  } else if (containsMatches.length > 0) {
+    pool = containsMatches;
+  } else if (normalizedQuery.length > 4) {
+    const companies = [
+      ...new Set(
+        connections
+          .map((c) => c.company?.trim())
+          .filter((c): c is string => Boolean(c))
+      ),
+    ];
+    const fs = new FuzzySet(companies);
+    const results = fs.get(companyQuery, null, threshold);
+
+    if (results && results.length > 0) {
+      const matchedCompany = results[0][1] as string;
+      pool = connections.filter((c) => c.company === matchedCompany);
+    }
   }
 
-  if (prefixMatches.length > 0) {
-    console.log("RETURNING PREFIX MATCH");
-    return pickBestFromPool(prefixMatches);
-  }
+  if (pool.length === 0) return [];
 
-  if (containsMatches.length > 0) {
-    console.log("RETURNING CONTAINS MATCH");
-    return pickBestFromPool(containsMatches);
-  }
-
-  if (normalizedQuery.length <= 4) {
-    console.log("NO MATCH FOUND");
-    return null;
-  }
-
-  const companies = [
-    ...new Set(
-      connections
-        .map((c) => c.company?.trim())
-        .filter((c): c is string => Boolean(c))
-    ),
-  ];
-
-  const fs = new FuzzySet(companies);
-
-  const results = fs.get(companyQuery, null, threshold);
-
-  if (!results || results.length === 0) {
-    console.log("NO MATCH FOUND");
-    return null;
-  }
-
-  console.log("FUZZY RESULTS:", results);
-  const matchedCompany = results[0][1] as string;
-
-  console.log("RETURNING FUZZY MATCH:", matchedCompany);
-
-  const pool = connections.filter(
-    (c) => c.company === matchedCompany
-  );
-
-  return pickBestFromPool(pool);
-}
-
-function pickBestFromPool(pool: Connection[]): RankedContact | null {
-  if (!pool.length) return null;
-
-  const ranked = pool
+  // Default ranking (just by seniority)
+  return pool
     .map((c) => ({
       id: c.id,
       first_name: c.first_name,
@@ -170,6 +104,51 @@ function pickBestFromPool(pool: Connection[]): RankedContact | null {
       score: scorePosition(c.position),
     }))
     .sort((a, b) => b.score - a.score);
+}
 
-  return ranked[0];
+export function rankContactsWithMetrics(
+  rankedContacts: RankedContact[],
+  metricsMap: Record<string, any>
+): RankedContact[] {
+  return rankedContacts.map(contact => {
+    const metrics = metricsMap[contact.id];
+    let relationshipScore = 0;
+    let recencyScore = 0;
+    let totalMessages = 0;
+    let lastContactDate = null;
+    let relationshipClassification = null;
+
+    if (metrics) {
+      totalMessages = metrics.message_count || 0;
+      const conversationCount = metrics.conversation_count || 0;
+      
+      // Compute core relationship sub-score (0-100)
+      relationshipScore = Math.min(100, (totalMessages * 2) + (conversationCount * 10));
+
+      if (metrics.last_contact_date) {
+        lastContactDate = metrics.last_contact_date;
+        const daysSince = (Date.now() - new Date(lastContactDate).getTime()) / (1000 * 60 * 60 * 24);
+        recencyScore = Math.max(0, 100 - daysSince);
+      }
+
+      relationshipClassification = metrics.relationship_classification;
+    }
+
+    const seniorityScore = contact.score || 0;
+    
+    // Total Score = (Relationship * 0.6) + (Seniority * 0.25) + (Recency * 0.15)
+    const combinedScore = (relationshipScore * 0.6) + (seniorityScore * 0.25) + (recencyScore * 0.15);
+
+    return {
+      ...contact,
+      relationship_score: Math.round(combinedScore), // Note: returning combined score in this field for UI
+      total_messages: totalMessages,
+      last_interaction_date: lastContactDate,
+      relationship_classification: relationshipClassification,
+      conversation_summary: metrics?.conversation_summary || null,
+      discussion_topics: metrics?.discussion_topics || null,
+      interaction_timeline: metrics?.interaction_timeline || null,
+      recent_highlights: metrics?.recent_highlights || null
+    };
+  }).sort((a, b) => (b.relationship_score || 0) - (a.relationship_score || 0));
 }

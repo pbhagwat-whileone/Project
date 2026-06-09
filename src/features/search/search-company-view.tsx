@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { ExternalLink, Mail, Search, Loader2, Settings2, UserPlus, Sparkles, BookOpen, Send, MapPin, Building, Activity, Copy, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ExternalLink, Mail, Search, Loader2, Settings2, UserPlus, Sparkles, BookOpen, Send, MapPin, Building, Activity, Copy, Check, Navigation } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
@@ -31,10 +32,9 @@ import {
 import { apiFetch } from "@/lib/api";
 import type { GeneratedEmail, MatchedChunk, RankedContact } from "@/types/database";
 import { PROVIDER_MODELS, PROVIDERS, type ProviderType } from "@/ai/models";
-import { useEffect } from "react";
 
 type SearchResult = {
-  contact: RankedContact | null;
+  contacts: RankedContact[];
   projects: (MatchedChunk & { summary?: string })[];
   message: string | null;
 };
@@ -43,6 +43,12 @@ export function SearchCompanyView() {
   const [company, setCompany] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SearchResult | null>(null);
+  const [selectedContact, setSelectedContact] = useState<RankedContact | null>(null);
+  const [hasAutoSearched, setHasAutoSearched] = useState(false);
+  
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [summarizing, setSummarizing] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [emailDialog, setEmailDialog] = useState<GeneratedEmail | null>(null);
   const [editedSubject, setEditedSubject] = useState("");
@@ -83,9 +89,54 @@ export function SearchCompanyView() {
     localStorage.setItem("preferred_model", newModel);
   };
 
+  useEffect(() => {
+    const companyParam = searchParams.get("company");
+    if (companyParam && !hasAutoSearched) {
+      setHasAutoSearched(true);
+      setCompany(companyParam);
+      // We can't use handleSearch directly since it expects a FormEvent.
+      // So we trigger the same logic.
+      const runSearch = async () => {
+        setLoading(true);
+        setResult(null);
+        try {
+          const data = await apiFetch<SearchResult>("/api/search/company", {
+            method: "POST",
+            body: JSON.stringify({ company: companyParam.trim() }),
+          });
+          setResult(data);
+          const contactParam = searchParams.get("contact");
+          let targetContact = data.contacts?.[0] || null;
+          if (contactParam && data.contacts) {
+            const found = data.contacts.find(c => c.id === contactParam);
+            if (found) targetContact = found;
+          }
+
+          if (targetContact) {
+            setSelectedContact(targetContact);
+            if (targetContact.relationship_classification) {
+              setRelationshipType(targetContact.relationship_classification);
+            }
+          } else {
+            setSelectedContact(null);
+          }
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Search failed");
+        } finally {
+          setLoading(false);
+        }
+      };
+      runSearch();
+    }
+  }, [searchParams, hasAutoSearched]);
+
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     if (!company.trim()) return;
+    
+    router.replace(`?company=${encodeURIComponent(company.trim())}`, { scroll: false });
+    setHasAutoSearched(true); // Prevent useEffect from re-triggering search
+
     setLoading(true);
     setResult(null);
     try {
@@ -94,6 +145,15 @@ export function SearchCompanyView() {
         body: JSON.stringify({ company: company.trim() }),
       });
       setResult(data);
+      if (data.contacts && data.contacts.length > 0) {
+        setSelectedContact(data.contacts[0]);
+        router.replace(`?company=${encodeURIComponent(company.trim())}&contact=${data.contacts[0].id}`, { scroll: false });
+        if (data.contacts[0].relationship_classification) {
+          setRelationshipType(data.contacts[0].relationship_classification);
+        }
+      } else {
+        setSelectedContact(null);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Search failed");
     } finally {
@@ -101,13 +161,24 @@ export function SearchCompanyView() {
     }
   }
 
+  const handleSelectContact = (contact: RankedContact) => {
+    setSelectedContact(contact);
+    if (contact.relationship_classification) {
+      setRelationshipType(contact.relationship_classification);
+    }
+    const currentCompany = searchParams.get("company") || company;
+    if (currentCompany) {
+      router.replace(`?company=${encodeURIComponent(currentCompany)}&contact=${contact.id}`, { scroll: false });
+    }
+  };
+
   async function handleGenerateEmail() {
-    if (!result?.contact) return;
+    if (!selectedContact) return;
     setGenerating(true);
     try {
       const contactName = [
-        result.contact.first_name,
-        result.contact.last_name,
+        selectedContact.first_name,
+        selectedContact.last_name,
       ]
         .filter(Boolean)
         .join(" ");
@@ -119,13 +190,19 @@ export function SearchCompanyView() {
           body: JSON.stringify({
             company_name: company,
             contact_name: contactName,
-            position: result.contact.position,
-            email: result.contact.email,
-            profile_url: result.contact.profile_url,
-            projects: result.projects,
+            position: selectedContact.position,
+            email: selectedContact.email,
+            profile_url: selectedContact.profile_url,
+            projects: result?.projects || [],
             relationship_type: relationshipType,
             provider,
             model,
+            conversation_summary: selectedContact.conversation_summary,
+            discussion_topics: selectedContact.discussion_topics,
+            interaction_timeline: selectedContact.interaction_timeline,
+            recent_highlights: selectedContact.recent_highlights,
+            total_messages: selectedContact.total_messages,
+            last_interaction_date: selectedContact.last_interaction_date,
           }),
         }
       );
@@ -137,6 +214,42 @@ export function SearchCompanyView() {
       toast.error(err instanceof Error ? err.message : "Generation failed");
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function handleSummarize() {
+    if (!selectedContact) return;
+    setSummarizing(true);
+    try {
+      const data = await apiFetch<{ success: boolean, metrics: any }>(`/api/connections/${selectedContact.id}/summarize`, {
+        method: "POST"
+      });
+      if (data.success && data.metrics) {
+        toast.success("Conversation summarized successfully!");
+        const updatedContact = {
+          ...selectedContact,
+          conversation_summary: data.metrics.conversation_summary,
+          discussion_topics: data.metrics.discussion_topics,
+          interaction_timeline: data.metrics.interaction_timeline,
+          recent_highlights: data.metrics.recent_highlights,
+          relationship_classification: data.metrics.relationship_classification,
+        };
+        setSelectedContact(updatedContact);
+        if (data.metrics.relationship_classification) {
+          setRelationshipType(data.metrics.relationship_classification);
+        }
+        // Also update in the result array
+        if (result) {
+          setResult({
+            ...result,
+            contacts: result.contacts.map(c => c.id === updatedContact.id ? updatedContact : c)
+          });
+        }
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Summarization failed");
+    } finally {
+      setSummarizing(false);
     }
   }
 
@@ -156,8 +269,8 @@ export function SearchCompanyView() {
             provider,
             model,
             context: {
-              company: result?.contact?.company || company,
-              contactName: [result?.contact?.first_name, result?.contact?.last_name].filter(Boolean).join(" "),
+              company: selectedContact?.company || company,
+              contactName: [selectedContact?.first_name, selectedContact?.last_name].filter(Boolean).join(" "),
               relationship: relationshipType,
             },
           }),
@@ -234,7 +347,7 @@ export function SearchCompanyView() {
 
       {result && (
         <>
-          {result.contact && result.message && (
+          {selectedContact && result.message && (
             <div className="mb-6 p-4 rounded-md bg-blue-50 text-blue-800 text-sm border border-blue-200">
               {result.message}
             </div>
@@ -242,72 +355,91 @@ export function SearchCompanyView() {
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Best Contact</CardTitle>
+              <CardTitle>Recommended Contacts</CardTitle>
             </CardHeader>
             <CardContent>
-              {!result.contact ? (
+              {!result.contacts || result.contacts.length === 0 ? (
                 <p className="text-muted-foreground">
                   {result.message ?? "No connection found."}
                 </p>
               ) : (
-                <dl className="space-y-2 text-sm">
-                  <div>
-                    <dt className="text-muted-foreground">Name</dt>
-                    <dd className="font-medium">
-                      {[result.contact.first_name, result.contact.last_name]
-                        .filter(Boolean)
-                        .join(" ")}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Position</dt>
-                    <dd>{result.contact.position ?? "—"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Company</dt>
-                    <dd>{result.contact.company ?? "—"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Email</dt>
-                    <dd className="flex items-center gap-1">
-                      {result.contact.email ?? "—"}
-                      {result.contact.email && (
-                        <Mail className="h-3 w-3 text-muted-foreground" />
-                      )}
-                    </dd>
-                  </div>
-                  {result.contact.profile_url && (
-                    <div>
-                      <dt className="text-muted-foreground">Profile</dt>
-                      <dd>
-                        <a
-                          href={result.contact.profile_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-primary hover:underline"
-                        >
-                          LinkedIn
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      </dd>
-                    </div>
-                  )}
-                  {result.contact.relationship_score !== undefined && result.contact.relationship_score > 0 && (
-                    <div className="pt-2 mt-2 border-t">
-                      <dt className="text-muted-foreground flex items-center gap-1">
-                        <Activity className="h-3 w-3" /> Relationship Strength
-                      </dt>
-                      <dd className="mt-1">
-                        <div className="font-medium">Score: {result.contact.relationship_score}</div>
-                        {result.contact.conversation_summary && (
-                          <div className="mt-2 text-xs text-muted-foreground bg-muted p-2 rounded leading-relaxed border border-border/50">
-                            {result.contact.conversation_summary}
+                <div className="space-y-4">
+                  {result.contacts.map((contact) => (
+                    <div key={contact.id} className={`p-4 rounded-lg border ${selectedContact?.id === contact.id ? 'border-primary ring-1 ring-primary/20 bg-primary/5' : ''}`}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-semibold flex items-center gap-2">
+                            {[contact.first_name, contact.last_name].filter(Boolean).join(" ")}
+                            {contact.profile_url && (
+                              <a href={contact.profile_url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            )}
                           </div>
-                        )}
-                      </dd>
+                          <div className="text-sm text-muted-foreground">{contact.position ?? "—"}</div>
+                          <div className="text-sm text-muted-foreground">{contact.company ?? "—"}</div>
+                        </div>
+                        <Button 
+                          variant={selectedContact?.id === contact.id ? "secondary" : "outline"}
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectContact(contact);
+                          }}
+                        >
+                          {selectedContact?.id === contact.id ? "Selected" : "Select"}
+                        </Button>
+                      </div>
+                      
+                      {(contact.relationship_score || 0) > 0 && (
+                        <div className="mt-3 pt-3 border-t grid grid-cols-3 gap-2 text-xs">
+                          <div>
+                            <div className="text-muted-foreground">Rel. Score</div>
+                            <div className="font-medium">{contact.relationship_score}</div>
+                          </div>
+                          <div>
+                            <div className="text-muted-foreground">Messages</div>
+                            <div className="font-medium">{contact.total_messages || 0}</div>
+                          </div>
+                          <div>
+                            <div className="text-muted-foreground">Last Contact</div>
+                            <div className="font-medium">{contact.last_interaction_date ? new Date(contact.last_interaction_date).toLocaleDateString() : '—'}</div>
+                          </div>
+                        </div>
+                      )}
+                      {contact.conversation_summary && contact.conversation_summary !== "Failed to generate summary." && (
+                        <div className="mt-2 text-xs text-muted-foreground bg-muted p-2 rounded border border-border/50">
+                          <span className="font-semibold mb-1 block">AI Summary</span>
+                          {contact.conversation_summary}
+                        </div>
+                      )}
+                      
+                      
+                      {selectedContact?.id === contact.id && (contact.total_messages || 0) > 0 && (!contact.conversation_summary || contact.conversation_summary === "Failed to generate summary.") && (
+                         <div className="mt-3">
+                           <Button variant="outline" size="sm" onClick={handleSummarize} disabled={summarizing} className="w-full">
+                             <Activity className="h-3 w-3 mr-2" /> 
+                             {summarizing ? "Analyzing History..." : "Summarize Conversation"}
+                           </Button>
+                         </div>
+                      )}
+                      
+                      {selectedContact?.id === contact.id && (contact.total_messages || 0) > 0 && (
+                        <div className="mt-3">
+                           <Button 
+                             variant="outline" 
+                             size="sm" 
+                             onClick={() => router.push(`/connections?connection_id=${contact.id}`)} 
+                             className="w-full"
+                           >
+                             <Navigation className="h-3 w-3 mr-2" /> 
+                             View Message History
+                           </Button>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </dl>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
@@ -351,7 +483,7 @@ export function SearchCompanyView() {
             </CardContent>
           </Card>
 
-          {result.contact && (
+          {selectedContact && (
             <div className="lg:col-span-2 space-y-4">
               <div className="flex flex-col gap-4 sm:flex-row">
                 <div className="w-full sm:w-1/3">
@@ -367,7 +499,7 @@ export function SearchCompanyView() {
                       <SelectItem value="Cold Outreach">Cold Outreach</SelectItem>
                       <SelectItem value="Warm Introduction">Warm Introduction</SelectItem>
                       <SelectItem value="Former Colleague">Former Colleague</SelectItem>
-                      <SelectItem value="Follow Up">Follow Up</SelectItem>
+                      <SelectItem value="Client">Client</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

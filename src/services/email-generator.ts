@@ -42,6 +42,9 @@ export type EmailGenerationInput = {
   provider?: string;
   model?: string;
   relationshipSummary?: string;
+  discussionTopics?: string;
+  interactionTimeline?: string;
+  recentHighlights?: string;
   messageCount?: number;
   lastInteractionDate?: string;
 };
@@ -68,9 +71,23 @@ export async function generateOutreachEmail(
   const relationship = input.relationshipType || "Unknown Relationship";
   const skillMarkdown = await getEmailSkill(relationship);
 
-  const relationshipContext = input.relationshipSummary
-    ? `\nPrior Interaction History:\nWe have exchanged ${input.messageCount} messages. The last interaction was on ${input.lastInteractionDate ? new Date(input.lastInteractionDate).toLocaleDateString() : 'unknown'}.\nSummary of discussions: ${input.relationshipSummary}\n\nUse this history to personalize the email naturally. Acknowledge our past conversations where relevant, but do not inject raw message logs. Keep it highly professional.`
-    : "";
+  let relationshipContext = "";
+  if (input.relationshipSummary || input.messageCount) {
+    relationshipContext = `\nPrior Interaction History:\n`;
+    if (input.messageCount) {
+      relationshipContext += `- We have exchanged ${input.messageCount} messages. ${input.interactionTimeline ? input.interactionTimeline : `Last interaction: ${input.lastInteractionDate ? new Date(input.lastInteractionDate).toLocaleDateString() : 'unknown'}.`}\n`;
+    }
+    if (input.relationshipSummary) {
+      relationshipContext += `- Relationship Summary: ${input.relationshipSummary}\n`;
+    }
+    if (input.discussionTopics) {
+      relationshipContext += `- Topics Discussed: ${input.discussionTopics}\n`;
+    }
+    if (input.recentHighlights) {
+      relationshipContext += `- Recent Highlights: ${input.recentHighlights}\n`;
+    }
+    relationshipContext += `\nUse this history to personalize the email naturally. Acknowledge our past conversations where relevant, but do not inject raw message logs. Keep it highly professional.`;
+  }
 
   const prompt = `You are drafting a B2B outreach email for Whileone, a technology consultancy.
   

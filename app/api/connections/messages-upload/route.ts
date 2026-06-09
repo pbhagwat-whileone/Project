@@ -22,12 +22,17 @@ type MessageRow = {
 
 function normalizeUrl(url: string | undefined): string | null {
   if (!url) return null;
+  
+  let urlStr = url.trim();
+  if (!urlStr.startsWith("http://") && !urlStr.startsWith("https://")) {
+    urlStr = "https://" + urlStr;
+  }
+  
   try {
-    const parsed = new URL(url);
-    // use pathname only to avoid www vs non-www mismatches
+    const parsed = new URL(urlStr);
     return parsed.pathname.replace(/\/$/, "").toLowerCase();
   } catch {
-    return url.replace(/\/$/, "").toLowerCase();
+    return urlStr.replace(/\/$/, "").toLowerCase();
   }
 }
 
@@ -86,6 +91,8 @@ export async function POST(request: Request) {
       const dateStr = new Date(row.DATE!).toISOString();
       const content = row.CONTENT || "";
       const conversation_id = row["CONVERSATION ID"]!;
+      const from_name = row["FROM"] || "";
+      const to_name = row["TO"] || "";
       const from_url = row["SENDER PROFILE URL"] || "";
       const to_url = row["RECIPIENT PROFILE URLS"] || "";
 
@@ -97,6 +104,8 @@ export async function POST(request: Request) {
         conversation_id,
         from_profile_url: from_url || null,
         to_profile_url: to_url || null,
+        from_name: from_name || null,
+        to_name: to_name || null,
         date: dateStr,
         content,
         message_hash
@@ -105,18 +114,25 @@ export async function POST(request: Request) {
 
     const existingRecordsQuery = supabase
       .from("linkedin_messages")
-      .select("message_hash")
+      .select("message_hash, from_name")
       .eq("user_id", user.id);
-    const existingRecords = await fetchAllRecords<{ message_hash: string }>(existingRecordsQuery);
-    const existingHashes = new Set(existingRecords?.map((r) => r.message_hash) || []);
+    const existingRecords = await fetchAllRecords<{ message_hash: string; from_name: string | null }>(existingRecordsQuery);
+    
+    // Map of message_hash -> from_name
+    const existingMap = new Map<string, string | null>();
+    existingRecords?.forEach((r) => existingMap.set(r.message_hash, r.from_name));
 
     const newMessagesToInsert = [];
     for (const msg of messages) {
-      if (existingHashes.has(msg.message_hash)) {
+      const existingFromName = existingMap.get(msg.message_hash);
+      
+      // Skip if hash exists AND we already have a from_name for it.
+      // If from_name is null, we want to upsert to backfill it.
+      if (existingMap.has(msg.message_hash) && existingFromName !== null) {
         skippedCount++;
       } else {
         newMessagesToInsert.push(msg);
-        existingHashes.add(msg.message_hash);
+        existingMap.set(msg.message_hash, msg.from_name);
       }
     }
 
@@ -137,18 +153,10 @@ export async function POST(request: Request) {
       console.log("UPSERT ERROR:", result.error);
     }
 
-    if (insertedCount === 0) {
-      return NextResponse.json({
-        parsed: parsedCount,
-        inserted: 0,
-        skipped: skippedCount,
-        metricsUpdated: 0,
-      });
-    }
-
-    const messagesToInsert = newMessagesToInsert;
-
-    // 2. Map messages to connections
+    // DO NOT return early if insertedCount === 0. We still need to process metrics.
+    
+    // 2. Map messages to connections using ALL messages, not just newly inserted ones
+    const messagesToProcess = messages;
     const connectionsQuery = supabase
       .from("connections")
       .select("id, profile_url")
@@ -176,9 +184,9 @@ export async function POST(request: Request) {
     }
 
     // Group messages by connection_id
-    const messagesByConnection = new Map<string, typeof messagesToInsert>();
+    const messagesByConnection = new Map<string, typeof messagesToProcess>();
 
-    for (const msg of messagesToInsert) {
+    for (const msg of messagesToProcess) {
       const senderUrl = normalizeUrl(msg.from_profile_url || "");
       const recipientUrls = (msg.to_profile_url || "")
         .split(",")
@@ -218,32 +226,9 @@ export async function POST(request: Request) {
       const firstContactDate = new Date(Math.min(...dates)).toISOString();
       const lastContactDate = new Date(Math.max(...dates)).toISOString();
 
+      // AI summarization is deferred to the UI via the /api/connections/[id]/summarize endpoint
+      // We only upsert the raw metrics (counts and dates) here.
       const relationshipScore = messageCount * 1 + conversationCount * 5;
-
-      // Sort messages chronologically for summary
-      const sortedMsgs = [...msgs].sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-      );
-
-      // Take last 20 messages to keep prompt size manageable
-      const recentMsgs = sortedMsgs.slice(-20);
-      const transcript = recentMsgs.map((m) => `[${m.date}] ${m.content}`).join("\n");
-
-      const prompt = `You are an AI assistant. Summarize the following recent LinkedIn conversation history. 
-Extract key topics discussed, the nature of the relationship, and any actionable takeaways. 
-Keep it under 3 sentences.
-
-Conversation Transcript:
-${transcript}`;
-
-      let conversationSummary = "";
-      try {
-        const res = await generateWithFallback(prompt, "CONVERSATION_SUMMARY");
-        conversationSummary = res.text?.trim() || "No summary available.";
-      } catch (err) {
-        console.error("Summary generation failed for", connectionId, err);
-        conversationSummary = "Failed to generate summary.";
-      }
 
       const { error: upsertError } = await supabase
         .from("connection_relationship_metrics")
@@ -256,7 +241,6 @@ ${transcript}`;
             first_contact_date: firstContactDate,
             last_contact_date: lastContactDate,
             relationship_score: relationshipScore,
-            conversation_summary: conversationSummary,
             updated_at: new Date().toISOString(),
           },
           { onConflict: "connection_id" }
@@ -274,7 +258,13 @@ ${transcript}`;
       inserted: insertedCount,
       skipped: skippedCount,
       metricsUpdated,
+      totalMatchedConnections: messagesByConnection.size,
     };
+    console.log("== METRICS GENERATION DIAGNOSTICS ==");
+    console.log("TOTAL MESSAGES PROCESSED:", messagesToProcess.length);
+    console.log("TOTAL CONNECTIONS IN DB:", connections.length);
+    console.log("MATCHED CONNECTIONS FOR METRICS:", messagesByConnection.size);
+    console.log("METRIC ROWS GENERATED/UPSERTED:", metricsUpdated);
     console.log("RESPONSE PAYLOAD:", payload);
 
     return NextResponse.json(payload);

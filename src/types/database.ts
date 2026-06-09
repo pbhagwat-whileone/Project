@@ -303,6 +303,8 @@ export interface Database {
           conversation_id: string;
           from_profile_url: string | null;
           to_profile_url: string | null;
+          from_name: string | null;
+          to_name: string | null;
           date: string | null;
           content: string | null;
           message_hash: string;
@@ -314,6 +316,8 @@ export interface Database {
           conversation_id: string;
           from_profile_url?: string | null;
           to_profile_url?: string | null;
+          from_name?: string | null;
+          to_name?: string | null;
           date?: string | null;
           content?: string | null;
           message_hash: string;
@@ -333,6 +337,10 @@ export interface Database {
           last_contact_date: string | null;
           relationship_score: number;
           conversation_summary: string | null;
+          discussion_topics: string | null;
+          interaction_timeline: string | null;
+          recent_highlights: string | null;
+          relationship_classification: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -346,6 +354,10 @@ export interface Database {
           last_contact_date?: string | null;
           relationship_score?: number;
           conversation_summary?: string | null;
+          discussion_topics?: string | null;
+          interaction_timeline?: string | null;
+          recent_highlights?: string | null;
+          relationship_classification?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -409,6 +421,12 @@ export type RankedContact = {
   score: number;
   relationship_score?: number;
   conversation_summary?: string | null;
+  discussion_topics?: string | null;
+  interaction_timeline?: string | null;
+  recent_highlights?: string | null;
+  relationship_classification?: string | null;
+  total_messages?: number;
+  last_interaction_date?: string | null;
 };
 
 export type CompanyIndustryCache =

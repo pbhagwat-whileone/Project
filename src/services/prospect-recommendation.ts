@@ -3,7 +3,7 @@ import { generateWithFallback } from "@/ai/generation";
 import type { Connection, Database, MatchedChunk, ConnectionRelationshipMetrics } from "@/types/database";
 import type { RankedContact } from "@/types/database";
 import { searchKnowledgeChunks } from "@/services/vector-search";
-import { scorePosition } from "@/utils/company-utils";
+import { scorePosition, rankContactsWithMetrics } from "@/utils/company-utils";
 import { fetchAllRecords } from "@/utils/supabase-utils";
 
 export type CompanyRecommendation = {
@@ -19,7 +19,7 @@ export type CompanyRecommendation = {
 };
 
 export type CompanyDetail = CompanyRecommendation & {
-  connections: Connection[];
+  connections: RankedContact[];
   matchingProjects: MatchedChunk[];
   outreachRecommendation: string;
 };
@@ -41,27 +41,26 @@ function groupConnectionsByCompany(
 function pickTopContact(connections: Connection[], metricsMap?: Map<string, ConnectionRelationshipMetrics>): RankedContact | null {
   if (!connections.length) return null;
 
-  const ranked = connections
-    .map((c) => {
-      const metric = metricsMap?.get(c.id);
-      const relScore = metric?.relationship_score || 0;
-      const baseScore = scorePosition(c.position);
-      return {
-        id: c.id,
-        first_name: c.first_name,
-        last_name: c.last_name,
-        company: c.company,
-        position: c.position,
-        email: c.email,
-        profile_url: c.profile_url,
-        score: baseScore + relScore,
-        relationship_score: relScore,
-        conversation_summary: metric?.conversation_summary || null,
-      };
-    })
-    .sort((a, b) => b.score - a.score);
+  const baseContacts: RankedContact[] = connections.map((c) => ({
+    id: c.id,
+    first_name: c.first_name,
+    last_name: c.last_name,
+    company: c.company,
+    position: c.position,
+    email: c.email,
+    profile_url: c.profile_url,
+    score: scorePosition(c.position),
+  }));
 
-  return ranked[0];
+  const metricsRecord: Record<string, any> = {};
+  if (metricsMap) {
+    for (const [key, val] of metricsMap.entries()) {
+      metricsRecord[key] = val;
+    }
+  }
+
+  const ranked = rankContactsWithMetrics(baseContacts, metricsRecord);
+  return ranked[0] || null;
 }
 
 function buildSuggestedReason(
@@ -169,20 +168,22 @@ export async function* getCompanyRecommendationsStream(
     1
   );
 
-  const { data: cacheRows } = await supabase
+  const industryQuery = supabase
     .from("company_industry_cache")
     .select("company_name, industry")
     .eq("user_id", userId);
+  const cacheRows = await fetchAllRecords<any>(industryQuery);
 
   const industryMap = new Map<string, string>();
   for (const row of cacheRows ?? []) {
     industryMap.set(row.company_name.toLowerCase(), row.industry || "");
   }
 
-  const { data: scoreCacheRows } = await supabase
+  const scoreCacheQuery = supabase
     .from("company_score_cache")
     .select("*")
     .eq("user_id", userId);
+  const scoreCacheRows = await fetchAllRecords<any>(scoreCacheQuery);
 
   const dbCache = new Map<string, any>();
   for (const row of scoreCacheRows ?? []) {
@@ -459,9 +460,28 @@ Write a concise 3-4 sentence outreach recommendation explaining why this company
     console.error("Outreach recommendation generation failed:", error);
   }
 
+  const metricsRecord: Record<string, any> = {};
+  if (metricsMap) {
+    metricsMap.forEach((val, key) => {
+      metricsRecord[key] = val;
+    });
+  }
+
+  const baseContacts: RankedContact[] = companyConns.map((c) => ({
+    id: c.id,
+    first_name: c.first_name,
+    last_name: c.last_name,
+    company: c.company,
+    position: c.position,
+    email: c.email,
+    profile_url: c.profile_url,
+    score: scorePosition(c.position),
+  }));
+  const rankedConnections = rankContactsWithMetrics(baseContacts, metricsRecord);
+
   return {
     ...match,
-    connections: companyConns,
+    connections: rankedConnections,
     matchingProjects,
     outreachRecommendation,
   };

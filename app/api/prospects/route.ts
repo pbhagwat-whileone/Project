@@ -9,6 +9,16 @@ export async function GET(request: Request) {
 
     const recommendations = await getCompanyRecommendations(supabase, user.id);
 
+    const { searchParams } = new URL(request.url);
+    const limit = searchParams.get("limit");
+    const range = searchParams.get("range");
+    const page = searchParams.get("page");
+
+    console.log("QUERY LIMIT:", limit);
+    console.log("QUERY RANGE:", range);
+    console.log("QUERY PAGE:", page);
+    console.log("COMPANIES RETURNED:", recommendations.length);
+
     const ranked = recommendations.map((rec, index) => ({
       rank: index + 1,
       ...rec,

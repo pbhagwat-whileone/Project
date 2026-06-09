@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState, useMemo } from "react";
-import { ExternalLink, Mail, RefreshCw, Search, Copy, Check } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ExternalLink, Mail, RefreshCw, Search, Copy, Check, Navigation, Send } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
@@ -58,6 +59,10 @@ export function ProspectsView() {
   const [calculatedCount, setCalculatedCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+  const [hasAutoOpened, setHasAutoOpened] = useState(false);
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [detail, setDetail] = useState<CompanyDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -105,6 +110,7 @@ export function ProspectsView() {
         recommendations: RankedRecommendation[];
       }>("/api/prospects");
 
+      console.log("COMPANIES RECEIVED:", data.recommendations.length);
       setAllRecommendations(data.recommendations);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load");
@@ -135,6 +141,14 @@ export function ProspectsView() {
       setDetailLoading(false);
     }
   }
+
+  useEffect(() => {
+    const companyParam = searchParams.get("company");
+    if (companyParam && !hasAutoOpened) {
+      setHasAutoOpened(true);
+      openDetail(companyParam);
+    }
+  }, [searchParams, hasAutoOpened]);
 
   async function generateOutreach(company: string) {
     setGenerating(true);
@@ -272,13 +286,15 @@ export function ProspectsView() {
       );
     }
 
-    // Sort by recommendationScore descending and map to RankedRecommendation
-    return filtered
+    const displayedRecommendations = filtered
       .sort((a, b) => b.recommendationScore - a.recommendationScore)
       .map((r, index) => ({
         ...r,
         rank: index + 1,
       }));
+      
+    console.log("COMPANIES RENDERED:", displayedRecommendations.length);
+    return displayedRecommendations;
   }, [allRecommendations, searchQuery]);
 
   return (
@@ -433,25 +449,40 @@ export function ProspectsView() {
                   <h4 className="mb-2 font-medium">
                     Connections ({detail.connections.length})
                   </h4>
-                  <ul className="max-h-40 space-y-2 overflow-y-auto text-sm">
+                  <ul className="max-h-[60vh] space-y-2 overflow-y-auto text-sm pr-2">
                     {detail.connections.map((c) => (
-                      <li key={c.id} className="rounded border p-2">
-                        <p className="font-medium">
-                          {[c.first_name, c.last_name].filter(Boolean).join(" ")}
-                        </p>
-                        <p className="text-muted-foreground">{c.position}</p>
-                        {c.profile_url && (
-                          <a
-                            href={c.profile_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                            onClick={(e) => e.stopPropagation()}
+                      <li key={c.id} className="rounded border p-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-medium text-base">
+                              {[c.first_name, c.last_name].filter(Boolean).join(" ")}
+                            </p>
+                            <p className="text-muted-foreground">{c.position}</p>
+                            {c.profile_url && (
+                              <a
+                                href={c.profile_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1 block"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                Profile
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            )}
+                          </div>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="shrink-0"
+                            onClick={() => {
+                              router.push(`/search-company?company=${encodeURIComponent(detail.company)}`);
+                            }}
                           >
-                            Profile
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        )}
+                            <Send className="mr-2 h-3 w-3" />
+                            Outreach
+                          </Button>
+                        </div>
                       </li>
                     ))}
                   </ul>
