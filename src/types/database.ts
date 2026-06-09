@@ -296,6 +296,62 @@ export interface Database {
         >;
         Relationships: [];
       };
+      linkedin_messages: {
+        Row: {
+          id: string;
+          user_id: string;
+          conversation_id: string;
+          from_profile_url: string | null;
+          to_profile_url: string | null;
+          date: string | null;
+          content: string | null;
+          message_hash: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          conversation_id: string;
+          from_profile_url?: string | null;
+          to_profile_url?: string | null;
+          date?: string | null;
+          content?: string | null;
+          message_hash: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["linkedin_messages"]["Insert"]>;
+        Relationships: [];
+      };
+      connection_relationship_metrics: {
+        Row: {
+          id: string;
+          connection_id: string;
+          user_id: string;
+          message_count: number;
+          conversation_count: number;
+          first_contact_date: string | null;
+          last_contact_date: string | null;
+          relationship_score: number;
+          conversation_summary: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          connection_id: string;
+          user_id: string;
+          message_count?: number;
+          conversation_count?: number;
+          first_contact_date?: string | null;
+          last_contact_date?: string | null;
+          relationship_score?: number;
+          conversation_summary?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["connection_relationship_metrics"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Functions: {
       match_knowledge_chunks: {
@@ -351,7 +407,13 @@ export type RankedContact = {
   email: string | null;
   profile_url: string | null;
   score: number;
+  relationship_score?: number;
+  conversation_summary?: string | null;
 };
 
 export type CompanyIndustryCache =
   Database["public"]["Tables"]["company_industry_cache"]["Row"];
+export type ConnectionRelationshipMetrics = 
+  Database["public"]["Tables"]["connection_relationship_metrics"]["Row"];
+export type LinkedinMessage = 
+  Database["public"]["Tables"]["linkedin_messages"]["Row"];

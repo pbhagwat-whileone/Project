@@ -98,6 +98,7 @@ export async function POST(request: Request) {
       relationshipType: parsed.data.relationship_type ?? undefined,
       provider: parsed.data.provider ?? undefined,
       model: parsed.data.model ?? undefined,
+      relationshipSummary: contact?.conversation_summary ?? undefined,
     });
 
     const { data: saved, error } = await supabase

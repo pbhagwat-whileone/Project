@@ -15,6 +15,7 @@ type LinkedInRow = {
   Position?: string;
   "Email Address"?: string;
   "Profile URL"?: string;
+  "URL"?: string;
   "Connected On"?: string;
 };
 
@@ -51,22 +52,21 @@ export async function POST(request: Request) {
 
     const query = supabase
       .from("connections")
-      .select("profile_url, first_name, last_name, company")
+      .select("id, profile_url, first_name, last_name, company")
       .eq("user_id", user.id)
       .order("id", { ascending: true });
 
     const existingConnections = await fetchAllRecords(query);
 
-    const profileUrls = new Set<string>();
-    const fallbackKeys = new Set<string>();
+    const urlMap = new Map<string, any>();
+    const fallbackMap = new Map<string, any>();
 
     existingConnections?.forEach((c: any) => {
       if (c.profile_url) {
-        profileUrls.add(c.profile_url.toLowerCase().trim());
-      } else {
-        const fallback = `${c.first_name?.toLowerCase()?.trim() || ""}|${c.last_name?.toLowerCase()?.trim() || ""}|${c.company?.toLowerCase()?.trim() || ""}`;
-        fallbackKeys.add(fallback);
+        urlMap.set(c.profile_url.toLowerCase().trim(), c);
       }
+      const fallback = `${c.first_name?.toLowerCase()?.trim() || ""}|${c.last_name?.toLowerCase()?.trim() || ""}|${c.company?.toLowerCase()?.trim() || ""}`;
+      fallbackMap.set(fallback, c);
     });
 
     const rows = parsed.data
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
         company: row.Company?.trim() || null,
         position: row.Position?.trim() || null,
         email: row["Email Address"]?.trim() || null,
-        profile_url: row["Profile URL"]?.trim() || null,
+        profile_url: row["Profile URL"]?.trim() || row["URL"]?.trim() || null,
         connected_on: parseConnectedOn(row["Connected On"]),
       }));
 
@@ -89,46 +89,60 @@ export async function POST(request: Request) {
       );
     }
 
-    const newRows = [];
+    const rowsToInsert = [];
+    const rowsToUpdate = [];
     let skipped = 0;
 
     for (const row of rows) {
       const urlKey = row.profile_url?.toLowerCase()?.trim();
       const fallbackKey = `${row.first_name?.toLowerCase()?.trim() || ""}|${row.last_name?.toLowerCase()?.trim() || ""}|${row.company?.toLowerCase()?.trim() || ""}`;
       
-      let isDuplicate = false;
+      let existingMatch = null;
 
-      if (urlKey) {
-        if (profileUrls.has(urlKey)) {
-          isDuplicate = true;
-        } else {
-          profileUrls.add(urlKey); // Add to memory map to catch internal CSV duplicates
-        }
-      } else {
-        if (fallbackKeys.has(fallbackKey)) {
-          isDuplicate = true;
-        } else {
-          fallbackKeys.add(fallbackKey);
-        }
+      if (urlKey && urlMap.has(urlKey)) {
+        existingMatch = urlMap.get(urlKey);
+      } else if (fallbackMap.has(fallbackKey)) {
+        existingMatch = fallbackMap.get(fallbackKey);
       }
 
-      if (isDuplicate) {
-        skipped++;
+      if (existingMatch) {
+        if (urlKey && !existingMatch.profile_url) {
+          rowsToUpdate.push({
+            id: existingMatch.id,
+            profile_url: row.profile_url
+          });
+          existingMatch.profile_url = row.profile_url;
+          urlMap.set(urlKey, existingMatch);
+        } else {
+          skipped++;
+        }
       } else {
-        newRows.push(row);
+        rowsToInsert.push(row);
+        const newObj = { ...row, id: 'temp-id' };
+        if (urlKey) urlMap.set(urlKey, newObj);
+        fallbackMap.set(fallbackKey, newObj);
       }
     }
 
-    if (newRows.length > 0) {
+    if (rowsToInsert.length > 0) {
       const BATCH_SIZE = 500;
-      for (let i = 0; i < newRows.length; i += BATCH_SIZE) {
-        const batch = newRows.slice(i, i + BATCH_SIZE);
+      for (let i = 0; i < rowsToInsert.length; i += BATCH_SIZE) {
+        const batch = rowsToInsert.slice(i, i + BATCH_SIZE);
         const { error } = await supabase.from("connections").insert(batch);
         if (error) throw error;
       }
     }
 
-    return NextResponse.json({ imported: newRows.length, updated: 0, skipped });
+    if (rowsToUpdate.length > 0) {
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < rowsToUpdate.length; i += BATCH_SIZE) {
+        const batch = rowsToUpdate.slice(i, i + BATCH_SIZE);
+        const { error } = await supabase.from("connections").upsert(batch, { onConflict: "id" });
+        if (error) throw error;
+      }
+    }
+
+    return NextResponse.json({ imported: rowsToInsert.length, updated: rowsToUpdate.length, skipped });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Upload failed";
     return NextResponse.json({ error: message }, { status: 500 });

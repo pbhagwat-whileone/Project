@@ -65,6 +65,17 @@ export async function POST(request: Request) {
       });
     }
 
+    const { data: metrics } = await supabase
+      .from("connection_relationship_metrics")
+      .select("*")
+      .eq("connection_id", contact.id)
+      .single();
+
+    if (metrics) {
+      contact.relationship_score = metrics.relationship_score;
+      contact.conversation_summary = metrics.conversation_summary;
+    }
+
     const rawQuery = parsed.data.company;
     const normalizedQuery = rawQuery.toLowerCase().trim();
     const resolvedCompany = contact?.company || rawQuery;

@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
+import { ConversationHistoryModal } from "./conversation-history-modal";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -25,7 +26,10 @@ export function ConnectionsView() {
   const [companyFilter, setCompanyFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadingMessages, setUploadingMessages] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const messagesFileRef = useRef<HTMLInputElement>(null);
+  const [selectedConnection, setSelectedConnection] = useState<Connection | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -77,6 +81,30 @@ export function ConnectionsView() {
     }
   }
 
+  async function handleMessagesUpload(file: File) {
+    setUploadingMessages(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch("/api/connections/messages-upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      
+      toast.success(`Parsed: ${data.parsed} | Inserted: ${data.inserted} | Skipped: ${data.skipped}`);
+      if (data.inserted > 0) {
+        toast.success(`Updated metrics for ${data.metricsUpdated} connections.`);
+      }
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploadingMessages(false);
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -95,13 +123,34 @@ export function ConnectionsView() {
                 e.target.value = "";
               }}
             />
-            <Button
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              {uploading ? "Uploading…" : "Upload CSV"}
-            </Button>
+            <input
+              ref={messagesFileRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleMessagesUpload(file);
+                e.target.value = "";
+              }}
+            />
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => messagesFileRef.current?.click()}
+                disabled={uploadingMessages}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                {uploadingMessages ? "Uploading…" : "Upload Messages CSV"}
+              </Button>
+              <Button
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                {uploading ? "Uploading…" : "Upload Connections CSV"}
+              </Button>
+            </div>
           </>
         }
       />
@@ -144,6 +193,7 @@ export function ConnectionsView() {
                 <TableHead>Company</TableHead>
                 <TableHead>Position</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -156,12 +206,22 @@ export function ConnectionsView() {
                   <TableCell>{c.company ?? "—"}</TableCell>
                   <TableCell>{c.position ?? "—"}</TableCell>
                   <TableCell>{c.email ?? "—"}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedConnection(c)}>
+                      View History
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
       )}
+
+      <ConversationHistoryModal
+        connection={selectedConnection}
+        onClose={() => setSelectedConnection(null)}
+      />
     </div>
   );
 }

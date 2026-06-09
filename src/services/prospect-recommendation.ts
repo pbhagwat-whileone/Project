@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateWithFallback } from "@/ai/generation";
-import type { Connection, Database, MatchedChunk } from "@/types/database";
+import type { Connection, Database, MatchedChunk, ConnectionRelationshipMetrics } from "@/types/database";
 import type { RankedContact } from "@/types/database";
 import { searchKnowledgeChunks } from "@/services/vector-search";
 import { scorePosition } from "@/utils/company-utils";
@@ -15,6 +15,7 @@ export type CompanyRecommendation = {
   connectionScore: number;
   seniorityScore: number;
   projectScore: number;
+  relationshipScore: number;
 };
 
 export type CompanyDetail = CompanyRecommendation & {
@@ -37,20 +38,27 @@ function groupConnectionsByCompany(
   return map;
 }
 
-function pickTopContact(connections: Connection[]): RankedContact | null {
+function pickTopContact(connections: Connection[], metricsMap?: Map<string, ConnectionRelationshipMetrics>): RankedContact | null {
   if (!connections.length) return null;
 
   const ranked = connections
-    .map((c) => ({
-      id: c.id,
-      first_name: c.first_name,
-      last_name: c.last_name,
-      company: c.company,
-      position: c.position,
-      email: c.email,
-      profile_url: c.profile_url,
-      score: scorePosition(c.position),
-    }))
+    .map((c) => {
+      const metric = metricsMap?.get(c.id);
+      const relScore = metric?.relationship_score || 0;
+      const baseScore = scorePosition(c.position);
+      return {
+        id: c.id,
+        first_name: c.first_name,
+        last_name: c.last_name,
+        company: c.company,
+        position: c.position,
+        email: c.email,
+        profile_url: c.profile_url,
+        score: baseScore + relScore,
+        relationship_score: relScore,
+        conversation_summary: metric?.conversation_summary || null,
+      };
+    })
     .sort((a, b) => b.score - a.score);
 
   return ranked[0];
@@ -83,27 +91,32 @@ function scoreRecommendation(
   projectScore: number,
   connectionCount: number,
   maxConnections: number,
-  seniorityScore: number
+  seniorityScore: number,
+  relationshipScore: number = 0
 ): {
   recommendationScore: number;
   connectionScore: number;
   seniorityScoreNormalized: number;
   projectScore: number;
+  relationshipScoreNormalized: number;
 } {
   const connectionScore =
     maxConnections > 0 ? (connectionCount / maxConnections) * 100 : 0;
   const seniorityScoreNormalized = Math.min(seniorityScore, 100);
+  const relationshipScoreNormalized = Math.min(relationshipScore * 2, 100);
 
   const recommendationScore =
-    projectScore * 0.50 +
-    connectionScore * 0.25 +
-    seniorityScoreNormalized * 0.25;
+    projectScore * 0.40 +
+    connectionScore * 0.20 +
+    seniorityScoreNormalized * 0.20 +
+    relationshipScoreNormalized * 0.20;
 
   return {
     recommendationScore: Math.round(recommendationScore),
     connectionScore: Math.round(connectionScore),
     seniorityScoreNormalized: Math.round(seniorityScoreNormalized),
     projectScore: Math.round(projectScore),
+    relationshipScoreNormalized: Math.round(relationshipScoreNormalized),
   };
 }
 
@@ -136,6 +149,14 @@ export async function* getCompanyRecommendationsStream(
     .order("id", { ascending: true });
 
   const connections = await fetchAllRecords<Connection>(connectionsQuery);
+
+  const metricsQuery = supabase
+    .from("connection_relationship_metrics")
+    .select("*")
+    .eq("user_id", userId);
+  const metricsRecords = await fetchAllRecords<ConnectionRelationshipMetrics>(metricsQuery);
+  const metricsMap = new Map<string, ConnectionRelationshipMetrics>();
+  metricsRecords?.forEach((m) => metricsMap.set(m.connection_id, m));
 
   const grouped = groupConnectionsByCompany(connections ?? []);
   if (!grouped.size) {
@@ -174,7 +195,7 @@ export async function* getCompanyRecommendationsStream(
   for (const [company, companyConnections] of grouped) {
     const cached = dbCache.get(company.toLowerCase());
     if (cached) {
-      const topContact = pickTopContact(companyConnections);
+      const topContact = pickTopContact(companyConnections, metricsMap);
       cachedBatch.push({
         company,
         recommendationScore: cached.recommendation_score,
@@ -184,6 +205,7 @@ export async function* getCompanyRecommendationsStream(
         connectionScore: cached.connection_score,
         seniorityScore: cached.seniority_score,
         projectScore: cached.project_relevance_score,
+        relationshipScore: topContact?.relationship_score || 0,
       });
     } else {
       uncachedList.push([company, companyConnections]);
@@ -234,7 +256,8 @@ export async function* getCompanyRecommendationsStream(
         projectScore,
         companyConnections.length,
         maxConnections,
-        seniorityRaw
+        seniorityRaw,
+        topContact?.relationship_score || 0
       );
 
       const rec: CompanyRecommendation = {
@@ -246,6 +269,7 @@ export async function* getCompanyRecommendationsStream(
         connectionScore: scores.connectionScore,
         seniorityScore: scores.seniorityScoreNormalized,
         projectScore: scores.projectScore,
+        relationshipScore: scores.relationshipScoreNormalized,
       };
 
       await supabase.from("company_score_cache").upsert({
@@ -309,6 +333,14 @@ export async function getCompanyDetail(
   fetchedConnections.forEach((c) => uniqueConns.set(c.id, c));
   const connections = Array.from(uniqueConns.values());
 
+  const metricsQuery = supabase
+    .from("connection_relationship_metrics")
+    .select("*")
+    .eq("user_id", userId);
+  const metricsRecords = await fetchAllRecords<ConnectionRelationshipMetrics>(metricsQuery);
+  const metricsMap = new Map<string, ConnectionRelationshipMetrics>();
+  metricsRecords?.forEach((m) => metricsMap.set(m.connection_id, m));
+
   const grouped = groupConnectionsByCompany(connections);
   const companyConnections = [...grouped.entries()].find(
     ([name]) => name.toLowerCase() === companyName.toLowerCase()
@@ -317,7 +349,7 @@ export async function getCompanyDetail(
   if (!companyConnections) return null;
 
   const [company, companyConns] = companyConnections;
-  const topContact = pickTopContact(companyConns);
+  const topContact = pickTopContact(companyConns, metricsMap);
 
   const maxConnections = Math.max(
     ...[...grouped.values()].map((g) => g.length),
@@ -376,7 +408,8 @@ export async function getCompanyDetail(
     projectScore,
     companyConns.length,
     maxConnections,
-    topContact?.score ?? 0
+    topContact?.score ?? 0,
+    topContact?.relationship_score || 0
   );
 
   const match: CompanyRecommendation = {
@@ -391,6 +424,7 @@ export async function getCompanyDetail(
     connectionScore: scores.connectionScore,
     seniorityScore: scores.seniorityScoreNormalized,
     projectScore: scores.projectScore,
+    relationshipScore: scores.relationshipScoreNormalized,
   };
 
   await supabase.from("company_score_cache").upsert({

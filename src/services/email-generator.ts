@@ -41,6 +41,9 @@ export type EmailGenerationInput = {
   relationshipType?: string;
   provider?: string;
   model?: string;
+  relationshipSummary?: string;
+  messageCount?: number;
+  lastInteractionDate?: string;
 };
 
 export type GeneratedEmailContent = {
@@ -65,6 +68,10 @@ export async function generateOutreachEmail(
   const relationship = input.relationshipType || "Unknown Relationship";
   const skillMarkdown = await getEmailSkill(relationship);
 
+  const relationshipContext = input.relationshipSummary
+    ? `\nPrior Interaction History:\nWe have exchanged ${input.messageCount} messages. The last interaction was on ${input.lastInteractionDate ? new Date(input.lastInteractionDate).toLocaleDateString() : 'unknown'}.\nSummary of discussions: ${input.relationshipSummary}\n\nUse this history to personalize the email naturally. Acknowledge our past conversations where relevant, but do not inject raw message logs. Keep it highly professional.`
+    : "";
+
   const prompt = `You are drafting a B2B outreach email for Whileone, a technology consultancy.
   
 Follow this email strategy precisely:
@@ -75,7 +82,7 @@ ${skillMarkdown}
 Target company: ${input.targetCompany}
 Contact: ${contactName}
 Contact title: ${input.contact.position ?? "Unknown"}
-Relationship Context: ${relationship}
+Relationship Context: ${relationship}${relationshipContext}
 
 Relevant Whileone project knowledge (ONLY reference facts from this context — do not invent case studies, metrics, or clients):
 ${projectContext || "No specific project context available — keep the email general about Whileone's AI and software capabilities."}

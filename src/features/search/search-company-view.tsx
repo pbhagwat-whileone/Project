@@ -292,6 +292,21 @@ export function SearchCompanyView() {
                       </dd>
                     </div>
                   )}
+                  {result.contact.relationship_score !== undefined && result.contact.relationship_score > 0 && (
+                    <div className="pt-2 mt-2 border-t">
+                      <dt className="text-muted-foreground flex items-center gap-1">
+                        <Activity className="h-3 w-3" /> Relationship Strength
+                      </dt>
+                      <dd className="mt-1">
+                        <div className="font-medium">Score: {result.contact.relationship_score}</div>
+                        {result.contact.conversation_summary && (
+                          <div className="mt-2 text-xs text-muted-foreground bg-muted p-2 rounded leading-relaxed border border-border/50">
+                            {result.contact.conversation_summary}
+                          </div>
+                        )}
+                      </dd>
+                    </div>
+                  )}
                 </dl>
               )}
             </CardContent>
