@@ -203,6 +203,7 @@ export function SearchCompanyView() {
             recent_highlights: selectedContact.recent_highlights,
             total_messages: selectedContact.total_messages,
             last_interaction_date: selectedContact.last_interaction_date,
+            connection_owner_name: selectedContact.connection_owner_name,
           }),
         }
       );
@@ -378,6 +379,7 @@ export function SearchCompanyView() {
                           </div>
                           <div className="text-sm text-muted-foreground">{contact.position ?? "—"}</div>
                           <div className="text-sm text-muted-foreground">{contact.company ?? "—"}</div>
+                          <div className="text-sm font-medium mt-1">Connected Through: {contact.connection_owner_name || "Unknown"}</div>
                         </div>
                         <Button 
                           variant={selectedContact?.id === contact.id ? "secondary" : "outline"}

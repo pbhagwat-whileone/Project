@@ -10,6 +10,8 @@ import {
   Search,
   Upload,
   Users,
+  Trash2,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
@@ -35,19 +37,30 @@ type Stats = {
   emails: number;
 };
 
+type ConnectionSource = {
+  owner: string;
+  connections: number;
+  companies: number;
+  lastImport: string;
+};
+
 export function DashboardView() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [sources, setSources] = useState<ConnectionSource[]>([]);
   const [activity, setActivity] = useState<SyncLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   async function load() {
     try {
       const data = await apiFetch<{
         stats: Stats;
+        connectionSources: ConnectionSource[];
         recentActivity: SyncLog[];
       }>("/api/dashboard/stats");
       setStats(data.stats);
+      setSources(data.connectionSources);
       setActivity(data.recentActivity);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load dashboard");
@@ -73,6 +86,24 @@ export function DashboardView() {
       toast.error(e instanceof Error ? e.message : "Sync failed");
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function handleDeleteNetwork(owner: string, count: number) {
+    if (!window.confirm(`Delete ${count} connections belonging to ${owner}?\n\nThis action cannot be undone.`)) {
+      return;
+    }
+    setDeleting(owner);
+    try {
+      await apiFetch(`/api/connections/owners/${encodeURIComponent(owner)}`, {
+        method: "DELETE",
+      });
+      toast.success(`Deleted network for ${owner}`);
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete network");
+    } finally {
+      setDeleting(null);
     }
   }
 
@@ -147,6 +178,55 @@ export function DashboardView() {
         </Card>
 
         <Card>
+          <CardHeader>
+            <CardTitle>Connection Sources</CardTitle>
+            <CardDescription>Uploaded networks by owner</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {sources.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No connection sources found.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {sources.map((s) => (
+                  <div key={s.owner} className="flex flex-col gap-3 rounded-lg border p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="font-semibold text-base">{s.owner}</div>
+                        <div className="flex flex-wrap gap-x-4 mt-1 text-sm text-muted-foreground">
+                          <span>Connections: {s.connections}</span>
+                          <span>Companies: {s.companies}</span>
+                          <span>Last Import: {s.lastImport ? formatDate(s.lastImport) : "Never"}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-2 border-t">
+                      <Button variant="secondary" size="sm" className="w-full justify-center" asChild>
+                        <Link href={`/connections?owner=${encodeURIComponent(s.owner)}`}>
+                          <ExternalLink className="h-3 w-3 mr-2" />
+                          View Connections
+                        </Link>
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        className="w-full justify-center"
+                        onClick={() => handleDeleteNetwork(s.owner, s.connections)}
+                        disabled={deleting === s.owner}
+                      >
+                        <Trash2 className="h-3 w-3 mr-2" />
+                        {deleting === s.owner ? "Deleting..." : "Delete Network"}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
             <CardDescription>Knowledge base sync history</CardDescription>

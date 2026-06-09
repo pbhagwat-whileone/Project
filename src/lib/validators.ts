@@ -36,6 +36,7 @@ export const emailGenerateSchema = z.object({
   interaction_timeline: z.string().nullish(),
   total_messages: z.number().nullish(),
   last_interaction_date: z.string().nullish(),
+  connection_owner_name: z.string().nullish(),
 });
 
 export const emailRefineSchema = z.object({
