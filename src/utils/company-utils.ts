@@ -102,6 +102,7 @@ export function findRecommendedContacts(
       email: c.email,
       profile_url: c.profile_url,
       score: scorePosition(c.position),
+      connection_owner_name: c.connection_owner_name,
     }))
     .sort((a, b) => b.score - a.score);
 }

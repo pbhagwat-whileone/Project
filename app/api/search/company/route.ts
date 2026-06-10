@@ -32,20 +32,39 @@ export async function POST(request: Request) {
 
     const connections = await fetchAllRecords<any>(queryBuilder);
 
+    const uniqueMap = new Map<string, any>();
+    connections.forEach((c: any) => {
+      const key = c.profile_url?.toLowerCase()?.trim() || `${c.first_name?.toLowerCase()?.trim() || ""}|${c.last_name?.toLowerCase()?.trim() || ""}|${c.company?.toLowerCase()?.trim() || ""}`;
+      
+      if (uniqueMap.has(key)) {
+        const existing = uniqueMap.get(key)!;
+        if (c.connection_owner_name && !existing.connection_owners.includes(c.connection_owner_name)) {
+          existing.connection_owners.push(c.connection_owner_name);
+        }
+      } else {
+        uniqueMap.set(key, { ...c, connection_owners: c.connection_owner_name ? [c.connection_owner_name] : [] });
+      }
+    });
+
+    const groupedConnections = Array.from(uniqueMap.values()).map(c => ({
+      ...c,
+      connection_owner_name: c.connection_owners.join(", ")
+    }));
+
     console.log("Actual Connection Count:", actualCount);
-    console.log("Returned Connection Count:", connections.length);
+    console.log("Grouped Connection Count:", groupedConnections.length);
 
     if (parsed.data.company === "SiPearl") {
-      const siPearlExistsInFetch = connections.some(
+      const siPearlExistsInFetch = groupedConnections.some(
         c => c.company?.toLowerCase().includes("sipearl")
       );
       console.log("SiPearl exists in fetched data:", siPearlExistsInFetch);
     }
 
     console.log("SEARCH QUERY:", parsed.data.company);
-    console.log("TOTAL CONNECTIONS:", connections?.length);
+    console.log("TOTAL CONNECTIONS:", groupedConnections?.length);
 
-    const siPearlRecords = (connections ?? []).filter(
+    const siPearlRecords = (groupedConnections ?? []).filter(
       c => c.company === "SiPearl"
     );
 
@@ -54,7 +73,7 @@ export async function POST(request: Request) {
 
     const recommendedContacts = findRecommendedContacts(
       parsed.data.company,
-      connections ?? []
+      groupedConnections ?? []
     );
 
     if (!recommendedContacts.length) {

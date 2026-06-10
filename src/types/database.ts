@@ -128,6 +128,7 @@ export interface Database {
           profile_url: string | null;
           connected_on: string | null;
           created_at: string;
+          connection_owner_name: string;
         };
         Insert: {
           id?: string;
@@ -140,6 +141,7 @@ export interface Database {
           profile_url?: string | null;
           connected_on?: string | null;
           created_at?: string;
+          connection_owner_name?: string;
         };
         Update: Partial<Database["public"]["Tables"]["connections"]["Insert"]>;
         Relationships: [];
@@ -427,6 +429,7 @@ export type RankedContact = {
   relationship_classification?: string | null;
   total_messages?: number;
   last_interaction_date?: string | null;
+  connection_owner_name?: string;
 };
 
 export type CompanyIndustryCache =

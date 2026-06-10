@@ -37,6 +37,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
+    const connectionOwnerName = formData.get("connection_owner_name")?.toString()?.trim();
+    if (!connectionOwnerName) {
+      return NextResponse.json({ error: "Connection Owner Name is required" }, { status: 400 });
+    }
+
+    console.log("OWNER:", connectionOwnerName);
+
     const text = await file.text();
     const parsed = Papa.parse<LinkedInRow>(text, {
       header: true,
@@ -52,7 +59,7 @@ export async function POST(request: Request) {
 
     const query = supabase
       .from("connections")
-      .select("id, profile_url, first_name, last_name, company")
+      .select("id, profile_url, first_name, last_name, company, connection_owner_name")
       .eq("user_id", user.id)
       .order("id", { ascending: true });
 
@@ -62,6 +69,9 @@ export async function POST(request: Request) {
     const fallbackMap = new Map<string, any>();
 
     existingConnections?.forEach((c: any) => {
+      // Only deduplicate within the same owner's network
+      if (c.connection_owner_name !== connectionOwnerName) return;
+      
       if (c.profile_url) {
         urlMap.set(c.profile_url.toLowerCase().trim(), c);
       }
@@ -80,7 +90,13 @@ export async function POST(request: Request) {
         email: row["Email Address"]?.trim() || null,
         profile_url: row["Profile URL"]?.trim() || row["URL"]?.trim() || null,
         connected_on: parseConnectedOn(row["Connected On"]),
+        connection_owner_name: connectionOwnerName,
       }));
+
+    console.log("PARSED ROWS:", rows.length);
+    if (rows.length > 0) {
+      console.log("FIRST ROW:", rows[0]);
+    }
 
     if (rows.length === 0) {
       return NextResponse.json(
@@ -109,7 +125,8 @@ export async function POST(request: Request) {
         if (urlKey && !existingMatch.profile_url) {
           rowsToUpdate.push({
             id: existingMatch.id,
-            profile_url: row.profile_url
+            profile_url: row.profile_url,
+            connection_owner_name: connectionOwnerName,
           });
           existingMatch.profile_url = row.profile_url;
           urlMap.set(urlKey, existingMatch);
@@ -125,10 +142,13 @@ export async function POST(request: Request) {
     }
 
     if (rowsToInsert.length > 0) {
+      console.log("ROWS TO INSERT:", rowsToInsert.length);
       const BATCH_SIZE = 500;
       for (let i = 0; i < rowsToInsert.length; i += BATCH_SIZE) {
         const batch = rowsToInsert.slice(i, i + BATCH_SIZE);
-        const { error } = await supabase.from("connections").insert(batch);
+        const { data, error } = await supabase.from("connections").insert(batch);
+        console.log("SUPABASE DATA (INSERT):", data);
+        console.log("SUPABASE ERROR (INSERT):", error);
         if (error) throw error;
       }
     }
@@ -142,8 +162,26 @@ export async function POST(request: Request) {
       }
     }
 
+    // Log the import activity
+    if (rowsToInsert.length > 0 || rowsToUpdate.length > 0) {
+       await supabase.from("sync_logs").insert({
+         user_id: user.id,
+         status: "success",
+         documents_processed: rowsToInsert.length + rowsToUpdate.length,
+         message: `${connectionOwnerName} imported ${rowsToInsert.length + rowsToUpdate.length} connections`,
+       });
+    }
+
     return NextResponse.json({ imported: rowsToInsert.length, updated: rowsToUpdate.length, skipped });
   } catch (err) {
+    console.error("CONNECTION IMPORT ERROR");
+    console.error(err);
+
+    if (err instanceof Error) {
+      console.error(err.message);
+      console.error(err.stack);
+    }
+
     const message = err instanceof Error ? err.message : "Upload failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }

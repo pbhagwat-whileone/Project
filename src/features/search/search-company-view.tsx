@@ -203,6 +203,7 @@ export function SearchCompanyView() {
             recent_highlights: selectedContact.recent_highlights,
             total_messages: selectedContact.total_messages,
             last_interaction_date: selectedContact.last_interaction_date,
+            connection_owner_name: selectedContact.connection_owner_name,
           }),
         }
       );
@@ -428,11 +429,11 @@ export function SearchCompanyView() {
                                   <Navigation className="h-4 w-4 mr-2" />
                                   View Conversation
                                 </Button>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  onClick={handleSummarize} 
-                                  disabled={summarizing} 
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleSummarize}
+                                  disabled={summarizing}
                                   className="w-full justify-start"
                                 >
                                   <Activity className="h-4 w-4 mr-2" />
@@ -440,11 +441,11 @@ export function SearchCompanyView() {
                                 </Button>
                               </>
                             )}
-                            <Button 
-                              variant="default" 
-                              size="sm" 
-                              onClick={handleGenerateEmail} 
-                              disabled={generating} 
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={handleGenerateEmail}
+                              disabled={generating}
                               className="w-full justify-start"
                             >
                               <Mail className="h-4 w-4 mr-2" />

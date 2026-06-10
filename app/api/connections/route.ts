@@ -20,10 +20,25 @@ export async function GET(request: Request) {
 
     let fetched: Connection[] = await fetchAllRecords<Connection>(query);
     
-    // Safety net: Deduplicate records by ID to prevent Postgres offset shifting or DB duplication from causing React key collisions
-    const uniqueMap = new Map<string, Connection>();
-    fetched.forEach((c) => uniqueMap.set(c.id, c));
-    let filtered = Array.from(uniqueMap.values());
+    // Group connections by profile_url (or fallback) to merge connection_owner_name
+    const uniqueMap = new Map<string, Connection & { connection_owners?: string[] }>();
+    fetched.forEach((c) => {
+      const key = c.profile_url?.toLowerCase()?.trim() || `${c.first_name?.toLowerCase()?.trim() || ""}|${c.last_name?.toLowerCase()?.trim() || ""}|${c.company?.toLowerCase()?.trim() || ""}`;
+      
+      if (uniqueMap.has(key)) {
+        const existing = uniqueMap.get(key)!;
+        if (c.connection_owner_name && !existing.connection_owners!.includes(c.connection_owner_name)) {
+          existing.connection_owners!.push(c.connection_owner_name);
+        }
+      } else {
+        uniqueMap.set(key, { ...c, connection_owners: c.connection_owner_name ? [c.connection_owner_name] : [] });
+      }
+    });
+
+    let filtered = Array.from(uniqueMap.values()).map(c => ({
+      ...c,
+      connection_owner_name: c.connection_owners?.join(", ")
+    })) as Connection[];
 
     if (search) {
       filtered = filtered.filter((c) => {
@@ -45,6 +60,11 @@ export async function GET(request: Request) {
       filtered = filtered.filter((c) =>
         c.company?.toLowerCase().includes(company)
       );
+    }
+
+    const owner = searchParams.get("owner");
+    if (owner && owner !== "All Owners") {
+      filtered = filtered.filter((c: any) => c.connection_owners?.includes(owner));
     }
 
     return NextResponse.json({ connections: filtered });

@@ -50,6 +50,7 @@ export async function POST(request: Request) {
         recent_highlights: parsed.data.recent_highlights,
         total_messages: parsed.data.total_messages ?? undefined,
         last_interaction_date: parsed.data.last_interaction_date,
+        connection_owner_name: parsed.data.connection_owner_name ?? undefined,
       };
     } else if (recContext.recommendation?.topContact) {
       contact = recContext.recommendation.topContact;
@@ -110,6 +111,7 @@ export async function POST(request: Request) {
       interactionTimeline: contact?.interaction_timeline ?? undefined,
       messageCount: contact?.total_messages ?? undefined,
       lastInteractionDate: contact?.last_interaction_date ?? undefined,
+      connectionOwnerName: contact?.connection_owner_name ?? undefined,
     });
 
     const { data: saved, error } = await supabase

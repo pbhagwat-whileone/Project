@@ -47,6 +47,7 @@ export type EmailGenerationInput = {
   recentHighlights?: string;
   messageCount?: number;
   lastInteractionDate?: string;
+  connectionOwnerName?: string;
 };
 
 export type GeneratedEmailContent = {
@@ -100,7 +101,7 @@ Target company: ${input.targetCompany}
 Contact: ${contactName}
 Contact title: ${input.contact.position ?? "Unknown"}
 Relationship Context: ${relationship}${relationshipContext}
-
+${input.connectionOwnerName ? `Connection Owner: This contact belongs to ${input.connectionOwnerName}'s LinkedIn network.\n` : ""}
 Relevant Whileone project knowledge (ONLY reference facts from this context — do not invent case studies, metrics, or clients):
 ${projectContext || "No specific project context available — keep the email general about Whileone's AI and software capabilities."}
 
