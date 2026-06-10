@@ -45,7 +45,7 @@ export function SearchCompanyView() {
   const [result, setResult] = useState<SearchResult | null>(null);
   const [selectedContact, setSelectedContact] = useState<RankedContact | null>(null);
   const [hasAutoSearched, setHasAutoSearched] = useState(false);
-  
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const [summarizing, setSummarizing] = useState(false);
@@ -53,11 +53,11 @@ export function SearchCompanyView() {
   const [emailDialog, setEmailDialog] = useState<GeneratedEmail | null>(null);
   const [editedSubject, setEditedSubject] = useState("");
   const [editedBody, setEditedBody] = useState("");
-  
+
   const [relationshipType, setRelationshipType] = useState("Cold Outreach");
   const [provider, setProvider] = useState<ProviderType>("gemini");
   const [model, setModel] = useState<string>("gemini-2.5-pro");
-  
+
   const [refinementInstruction, setRefinementInstruction] = useState("");
   const [refining, setRefining] = useState(false);
 
@@ -133,7 +133,7 @@ export function SearchCompanyView() {
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     if (!company.trim()) return;
-    
+
     router.replace(`?company=${encodeURIComponent(company.trim())}`, { scroll: false });
     setHasAutoSearched(true); // Prevent useEffect from re-triggering search
 
@@ -292,10 +292,10 @@ export function SearchCompanyView() {
     try {
       const plainText = `Subject: ${editedSubject}\n\n${editedBody.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')}`;
       const htmlText = `<p><strong>Subject:</strong> ${editedSubject}</p><br/>${formatEmailBodyToHtml(editedBody)}`;
-      
+
       const blobHtml = new Blob([htmlText], { type: "text/html" });
       const blobText = new Blob([plainText], { type: "text/plain" });
-      
+
       await navigator.clipboard.write([
         new ClipboardItem({
           "text/html": blobHtml,
@@ -352,196 +352,211 @@ export function SearchCompanyView() {
               {result.message}
             </div>
           )}
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recommended Contacts</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!result.contacts || result.contacts.length === 0 ? (
-                <p className="text-muted-foreground">
-                  {result.message ?? "No connection found."}
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {result.contacts.map((contact) => (
-                    <div key={contact.id} className={`p-4 rounded-lg border ${selectedContact?.id === contact.id ? 'border-primary ring-1 ring-primary/20 bg-primary/5' : ''}`}>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="font-semibold flex items-center gap-2">
-                            {[contact.first_name, contact.last_name].filter(Boolean).join(" ")}
-                            {contact.profile_url && (
-                              <a href={contact.profile_url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
-                                <ExternalLink className="h-3 w-3" />
-                              </a>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recommended Contacts</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {!result.contacts || result.contacts.length === 0 ? (
+                  <p className="text-muted-foreground">
+                    {result.message ?? "No connection found."}
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {result.contacts.map((contact) => (
+                      <div key={contact.id} className={`p-4 rounded-lg border ${selectedContact?.id === contact.id ? 'border-primary ring-1 ring-primary/20 bg-primary/5' : ''}`}>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="font-semibold flex items-center gap-2">
+                              {[contact.first_name, contact.last_name].filter(Boolean).join(" ")}
+                              {contact.profile_url && (
+                                <a href={contact.profile_url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              )}
+                            </div>
+                            <div className="text-sm text-muted-foreground">{contact.position ?? "—"}</div>
+                            <div className="text-sm text-muted-foreground">{contact.company ?? "—"}</div>
+                          </div>
+                          <Button
+                            variant={selectedContact?.id === contact.id ? "secondary" : "outline"}
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectContact(contact);
+                            }}
+                          >
+                            {selectedContact?.id === contact.id ? "Selected" : "Select"}
+                          </Button>
+                        </div>
+
+                        {(contact.relationship_score || 0) > 0 && (
+                          <div className="mt-3 pt-3 border-t grid grid-cols-3 gap-2 text-xs">
+                            <div>
+                              <div className="text-muted-foreground">Rel. Score</div>
+                              <div className="font-medium">{contact.relationship_score}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Messages</div>
+                              <div className="font-medium">{contact.total_messages || 0}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Last Contact</div>
+                              <div className="font-medium">{contact.last_interaction_date ? new Date(contact.last_interaction_date).toLocaleDateString() : '—'}</div>
+                            </div>
+                          </div>
+                        )}
+                        {contact.conversation_summary && contact.conversation_summary !== "Failed to generate summary." && (
+                          <div className="mt-2 text-xs text-muted-foreground bg-muted p-2 rounded border border-border/50">
+                            <span className="font-semibold mb-1 block">AI Summary</span>
+                            {contact.conversation_summary}
+                          </div>
+                        )}
+
+
+                        {selectedContact?.id === contact.id && (
+                          <div className="mt-3 flex flex-col gap-2">
+                            {(contact.total_messages || 0) > 0 && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => router.push(`/connections?connection_id=${contact.id}`)}
+                                  className="w-full justify-start"
+                                >
+                                  <Navigation className="h-4 w-4 mr-2" />
+                                  View Conversation
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={handleSummarize} 
+                                  disabled={summarizing} 
+                                  className="w-full justify-start"
+                                >
+                                  <Activity className="h-4 w-4 mr-2" />
+                                  {summarizing ? "Analyzing History..." : "Summarize Conversation"}
+                                </Button>
+                              </>
                             )}
+                            <Button 
+                              variant="default" 
+                              size="sm" 
+                              onClick={handleGenerateEmail} 
+                              disabled={generating} 
+                              className="w-full justify-start"
+                            >
+                              <Mail className="h-4 w-4 mr-2" />
+                              Generate Outreach
+                            </Button>
                           </div>
-                          <div className="text-sm text-muted-foreground">{contact.position ?? "—"}</div>
-                          <div className="text-sm text-muted-foreground">{contact.company ?? "—"}</div>
-                        </div>
-                        <Button 
-                          variant={selectedContact?.id === contact.id ? "secondary" : "outline"}
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSelectContact(contact);
-                          }}
-                        >
-                          {selectedContact?.id === contact.id ? "Selected" : "Select"}
-                        </Button>
+                        )}
                       </div>
-                      
-                      {(contact.relationship_score || 0) > 0 && (
-                        <div className="mt-3 pt-3 border-t grid grid-cols-3 gap-2 text-xs">
-                          <div>
-                            <div className="text-muted-foreground">Rel. Score</div>
-                            <div className="font-medium">{contact.relationship_score}</div>
-                          </div>
-                          <div>
-                            <div className="text-muted-foreground">Messages</div>
-                            <div className="font-medium">{contact.total_messages || 0}</div>
-                          </div>
-                          <div>
-                            <div className="text-muted-foreground">Last Contact</div>
-                            <div className="font-medium">{contact.last_interaction_date ? new Date(contact.last_interaction_date).toLocaleDateString() : '—'}</div>
-                          </div>
-                        </div>
-                      )}
-                      {contact.conversation_summary && contact.conversation_summary !== "Failed to generate summary." && (
-                        <div className="mt-2 text-xs text-muted-foreground bg-muted p-2 rounded border border-border/50">
-                          <span className="font-semibold mb-1 block">AI Summary</span>
-                          {contact.conversation_summary}
-                        </div>
-                      )}
-                      
-                      
-                      {selectedContact?.id === contact.id && (contact.total_messages || 0) > 0 && (!contact.conversation_summary || contact.conversation_summary === "Failed to generate summary.") && (
-                         <div className="mt-3">
-                           <Button variant="outline" size="sm" onClick={handleSummarize} disabled={summarizing} className="w-full">
-                             <Activity className="h-3 w-3 mr-2" /> 
-                             {summarizing ? "Analyzing History..." : "Summarize Conversation"}
-                           </Button>
-                         </div>
-                      )}
-                      
-                      {selectedContact?.id === contact.id && (contact.total_messages || 0) > 0 && (
-                        <div className="mt-3">
-                           <Button 
-                             variant="outline" 
-                             size="sm" 
-                             onClick={() => router.push(`/connections?connection_id=${contact.id}`)} 
-                             className="w-full"
-                           >
-                             <Navigation className="h-3 w-3 mr-2" /> 
-                             View Message History
-                           </Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Matching Projects</CardTitle>
-              <CardDescription>Top 3 semantic matches</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {result.projects.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No matching projects in knowledge base.
-                </p>
-              ) : (
-                result.projects.map((p) => (
-                  <div key={p.id} className="rounded-lg border p-4">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium">
-                        {p.project_name ?? "Project"}
-                      </p>
-                      <span className="text-xs text-muted-foreground">
-                        {(p.similarity * 100).toFixed(0)}% match
-                      </span>
-                    </div>
-
-                    {p.reference_link && (
-                      <a
-                        href={p.reference_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-2 inline-flex items-center gap-1 text-sm text-primary hover:underline"
-                      >
-                        Open Project Document
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    )}
+                    ))}
                   </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
+                )}
+              </CardContent>
+            </Card>
 
-          {selectedContact && (
-            <div className="lg:col-span-2 space-y-4">
-              <div className="flex flex-col gap-4 sm:flex-row">
-                <div className="w-full sm:w-1/3">
-                  <Label>Email Strategy</Label>
-                  <Select
-                    value={relationshipType}
-                    onValueChange={setRelationshipType}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Cold Outreach">Cold Outreach</SelectItem>
-                      <SelectItem value="Warm Introduction">Warm Introduction</SelectItem>
-                      <SelectItem value="Former Colleague">Former Colleague</SelectItem>
-                      <SelectItem value="Client">Client</SelectItem>
-                    </SelectContent>
-                  </Select>
+            <Card>
+              <CardHeader>
+                <CardTitle>Matching Projects</CardTitle>
+                <CardDescription>Top 3 semantic matches</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {result.projects.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No matching projects in knowledge base.
+                  </p>
+                ) : (
+                  result.projects.map((p) => (
+                    <div key={p.id} className="rounded-lg border p-4">
+                      <div className="flex items-center justify-between">
+                        <p className="font-medium">
+                          {p.project_name ?? "Project"}
+                        </p>
+                        <span className="text-xs text-muted-foreground">
+                          {(p.similarity * 100).toFixed(0)}% match
+                        </span>
+                      </div>
+
+                      {p.reference_link && (
+                        <a
+                          href={p.reference_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                        >
+                          Open Project Document
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {selectedContact && (
+              <div className="lg:col-span-2 space-y-4">
+                <div className="flex flex-col gap-4 sm:flex-row">
+                  <div className="w-full sm:w-1/3">
+                    <Label>Email Strategy</Label>
+                    <Select
+                      value={relationshipType}
+                      onValueChange={setRelationshipType}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Cold Outreach">Cold Outreach</SelectItem>
+                        <SelectItem value="Warm Introduction">Warm Introduction</SelectItem>
+                        <SelectItem value="Former Colleague">Former Colleague</SelectItem>
+                        <SelectItem value="Client">Client</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-full sm:w-1/3">
+                    <Label>AI Provider</Label>
+                    <Select value={provider} onValueChange={(val) => handleProviderChange(val as ProviderType)}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PROVIDERS.map((p) => (
+                          <SelectItem key={p.value} value={p.value}>
+                            {p.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-full sm:w-1/3">
+                    <Label>AI Model</Label>
+                    <Select value={model} onValueChange={handleModelChange}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PROVIDER_MODELS[provider]?.map((m) => (
+                          <SelectItem key={m} value={m}>
+                            {m}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="w-full sm:w-1/3">
-                  <Label>AI Provider</Label>
-                  <Select value={provider} onValueChange={(val) => handleProviderChange(val as ProviderType)}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PROVIDERS.map((p) => (
-                        <SelectItem key={p.value} value={p.value}>
-                          {p.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="w-full sm:w-1/3">
-                  <Label>AI Model</Label>
-                  <Select value={model} onValueChange={handleModelChange}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PROVIDER_MODELS[provider]?.map((m) => (
-                        <SelectItem key={m} value={m}>
-                          {m}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+
+                <Button onClick={handleGenerateEmail} disabled={generating}>
+                  <Mail className="mr-2 h-4 w-4" />
+                  {generating ? "Generating personalized outreach..." : "Generate Outreach Email"}
+                </Button>
               </div>
-
-              <Button onClick={handleGenerateEmail} disabled={generating}>
-                <Mail className="mr-2 h-4 w-4" />
-                {generating ? "Generating personalized outreach..." : "Generate Outreach Email"}
-              </Button>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
         </>
       )}
 
@@ -566,7 +581,7 @@ export function SearchCompanyView() {
                 onChange={setEditedBody}
               />
             </div>
-            
+
             <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
               <Label htmlFor="refine">Refine Draft</Label>
               <div className="flex gap-2">

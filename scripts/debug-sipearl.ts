@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { findBestContact } from "../src/utils/company-utils";
+import { findRecommendedContacts } from "../src/utils/company-utils";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -29,8 +29,8 @@ async function run() {
   );
   console.log("SIPEARL EXISTS:", siPearlExists);
 
-  const contact = findBestContact("SiPearl", connections ?? []);
-  console.log("FINAL RETURNED CONTACT:", contact);
+  const contacts = findRecommendedContacts("SiPearl", connections ?? []);
+  console.log("FINAL RETURNED CONTACT:", contacts[0]);
 }
 
 run().catch(console.error);

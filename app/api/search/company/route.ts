@@ -78,6 +78,38 @@ export async function POST(request: Request) {
       metricsMap[m.connection_id] = m;
     });
 
+    await Promise.all(recommendedContacts.map(async (contact) => {
+      if (!contact.profile_url) return;
+      let urlPattern = "";
+      try {
+        const urlObj = new URL(contact.profile_url);
+        urlPattern = `%${urlObj.pathname.replace(/\/$/, "").toLowerCase()}%`;
+      } catch {
+        urlPattern = `%${contact.profile_url.replace(/\/$/, "").toLowerCase()}%`;
+      }
+      
+      const { data: messages } = await supabase
+        .from("linkedin_messages")
+        .select("date")
+        .eq("user_id", user.id)
+        .or(`from_profile_url.ilike.${urlPattern},to_profile_url.ilike.${urlPattern}`);
+      
+      if (messages && messages.length > 0) {
+        if (!metricsMap[contact.id]) {
+          metricsMap[contact.id] = {};
+        }
+        metricsMap[contact.id].message_count = messages.length;
+        
+        let maxDate = messages[0].date;
+        for (const msg of messages) {
+           if (msg.date && (!maxDate || new Date(msg.date) > new Date(maxDate))) {
+             maxDate = msg.date;
+           }
+        }
+        metricsMap[contact.id].last_contact_date = maxDate;
+      }
+    }));
+
     const rankedContacts = rankContactsWithMetrics(recommendedContacts, metricsMap);
     
     // Default to the very top contact to drive semantic search
