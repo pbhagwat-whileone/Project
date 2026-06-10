@@ -4,6 +4,7 @@ import type { Connection, Database, MatchedChunk, ConnectionRelationshipMetrics 
 import type { RankedContact } from "@/types/database";
 import { searchKnowledgeChunks } from "@/services/vector-search";
 import { scorePosition, rankContactsWithMetrics } from "@/utils/company-utils";
+import { getCompanyContext } from "@/services/company-context-intelligence";
 import { fetchAllRecords } from "@/utils/supabase-utils";
 
 export type CompanyRecommendation = {
@@ -128,11 +129,18 @@ async function calculateCompanyScoreAndProjects(
   companyConnectionsLength: number,
   maxConnections: number
 ) {
-  const queryParts = [company];
+  const companyContext = await getCompanyContext(supabase, company, { skipTavily: true });
+
+  const queryParts: string[] = [];
+  if ((topContact as any)?.discussion_topics) queryParts.push((topContact as any).discussion_topics);
+  if ((topContact as any)?.conversation_summary) queryParts.push((topContact as any).conversation_summary);
+  if (companyContext?.summary) queryParts.push(companyContext.summary);
+
+  queryParts.push(company);
   if (topContact?.position) queryParts.push(topContact.position);
   if (industry && industry !== "Unknown") queryParts.push(industry);
 
-  const query = queryParts.join(" ");
+  const query = queryParts.join(" ").trim();
   let matchingProjects = await searchKnowledgeChunks(supabase, userId, query, 3);
 
   if (matchingProjects.length === 0) {

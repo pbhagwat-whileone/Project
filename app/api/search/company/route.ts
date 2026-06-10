@@ -4,6 +4,7 @@ import { createClient, requireUser } from "@/lib/supabase/server";
 import { fetchAllRecords } from "@/utils/supabase-utils";
 import { findRecommendedContacts, rankContactsWithMetrics } from "@/utils/company-utils";
 import { searchKnowledgeChunks } from "@/services/vector-search";
+import { getCompanyContext } from "@/services/company-context-intelligence";
 
 export async function POST(request: Request) {
   try {
@@ -131,7 +132,14 @@ export async function POST(request: Request) {
       ? cacheRow.industry 
       : "";
 
-    const queryParts = [resolvedCompany];
+    const companyContext = await getCompanyContext(supabase, resolvedCompany, { skipTavily: true });
+
+    const queryParts: string[] = [];
+    if (primaryContact?.discussion_topics) queryParts.push(primaryContact.discussion_topics);
+    if (primaryContact?.conversation_summary) queryParts.push(primaryContact.conversation_summary);
+    if (companyContext?.summary) queryParts.push(companyContext.summary);
+    
+    queryParts.push(resolvedCompany);
     if (contactTitle) queryParts.push(contactTitle);
     if (industry) queryParts.push(industry);
     

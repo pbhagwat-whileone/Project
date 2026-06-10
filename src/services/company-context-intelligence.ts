@@ -4,10 +4,11 @@ import type { CompanyContext } from "@/types/database";
 
 export async function getCompanyContext(
   supabase: SupabaseClient,
-  companyName: string
+  companyName: string,
+  options?: { skipTavily?: boolean }
 ): Promise<CompanyContext | null> {
   if (!companyName || companyName.trim() === "") return null;
-  const normalizedCompany = companyName.trim();
+  const normalizedCompany = companyName.trim().toLowerCase();
 
   // 1. Check cache
   try {
@@ -33,6 +34,11 @@ export async function getCompanyContext(
   }
 
   // 2. Fetch public company data using Tavily
+  if (options?.skipTavily) {
+    console.log(`[CompanyContext] Skipping Tavily for ${normalizedCompany} as requested.`);
+    return null;
+  }
+
   let rawContext = "";
   let sources: string[] = [];
 

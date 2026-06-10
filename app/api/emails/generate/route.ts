@@ -37,6 +37,7 @@ export async function POST(request: Request) {
 
     if (parsed.data.projects?.length) {
       projects = parsed.data.projects as MatchedChunk[];
+      console.log("[EMAIL_GENERATION] Existing Dashboard Projects:", projects.map(p => p.project_name || p.document_id));
       contact = {
         id: parsed.data.contact_id ?? "",
         first_name: parsed.data.contact_name?.split(" ")[0] ?? null,
@@ -64,6 +65,7 @@ export async function POST(request: Request) {
     } else if (recContext.recommendation?.topContact) {
       contact = recContext.recommendation.topContact;
       projects = recContext.matchingProjects;
+      console.log("[EMAIL_GENERATION] Existing Dashboard Projects (Rec):", projects.map(p => p.project_name || p.document_id));
       recommendationReason ??= recContext.recommendation.suggestedReason;
     } else {
       const { data: cacheRow } = await supabase
@@ -81,6 +83,7 @@ export async function POST(request: Request) {
 
       const query = queryParts.join(" ");
       projects = await searchKnowledgeChunks(supabase, user.id, query, 3);
+      console.log("[EMAIL_GENERATION] Existing Dashboard Projects (Fallback):", projects.map(p => p.project_name || p.document_id));
 
       if (projects.length === 0) {
         const fallbackQueryParts = [];
@@ -106,7 +109,48 @@ export async function POST(request: Request) {
       };
     }
 
-    const companyContext = await getCompanyContext(supabase, parsed.data.company_name);
+    const resolvedCompany = contact?.company || parsed.data.company_name;
+
+    const companyContext = await getCompanyContext(supabase, resolvedCompany);
+
+    // Build Enhanced Retrieval Intent for Email Generation
+    const { data: cacheRow } = await supabase
+      .from("company_industry_cache")
+      .select("industry")
+      .eq("user_id", user.id)
+      .ilike("company_name", resolvedCompany)
+      .maybeSingle();
+
+    const industry = cacheRow?.industry && cacheRow.industry !== "Unknown" ? cacheRow.industry : "";
+
+    const enhancedQueryParts = [];
+    if (companyContext) {
+       if (companyContext.technologySignals?.length) enhancedQueryParts.push(companyContext.technologySignals.join(" "));
+       if (companyContext.businessPriorities?.length) enhancedQueryParts.push(companyContext.businessPriorities.join(" "));
+       if (companyContext.keyInitiatives?.length) enhancedQueryParts.push(companyContext.keyInitiatives.join(" "));
+       if (companyContext.outreachOpportunities?.length) enhancedQueryParts.push(companyContext.outreachOpportunities.join(" "));
+    }
+    if (contact?.discussion_topics) enhancedQueryParts.push(contact.discussion_topics);
+    if (contact?.conversation_summary) enhancedQueryParts.push(contact.conversation_summary);
+    
+    if (contact?.position) enhancedQueryParts.push(contact.position);
+    if (industry) enhancedQueryParts.push(industry);
+    enhancedQueryParts.push(resolvedCompany);
+
+    const enhancedQuery = enhancedQueryParts.join(" ").trim();
+    if (enhancedQuery) {
+      const freshProjects = await searchKnowledgeChunks(supabase, user.id, enhancedQuery, 3);
+      console.log("[EMAIL_GENERATION] Fresh Retrieval Projects:", freshProjects.map(p => p.project_name || p.document_id));
+      
+      if (freshProjects.length > 0) {
+        projects = freshProjects;
+        console.log("[EMAIL_GENERATION] Project Source: enhanced_retrieval");
+      } else {
+        console.log("[EMAIL_GENERATION] Project Source: dashboard_fallback_due_to_empty_fresh");
+      }
+    } else {
+      console.log("[EMAIL_GENERATION] Project Source: dashboard_fallback_due_to_empty_query");
+    }
 
     let companyContextRelevance = null;
     if (companyContext) {
@@ -137,8 +181,11 @@ export async function POST(request: Request) {
       engagementQuality: contact?.engagement_quality,
     });
 
+    console.log("[EMAIL_GENERATION] Projects Before Prompt:", projects.map(p => p.project_name || p.document_id));
+    console.log("[EMAIL_GENERATION] Projects Used:", projects.map(p => p.project_name || p.document_id));
+
     const emailContent = await generateOutreachEmail({
-      targetCompany: parsed.data.company_name,
+      targetCompany: resolvedCompany,
       contact,
       projects,
       recommendationReason: recommendationReason ?? undefined,
@@ -166,7 +213,7 @@ export async function POST(request: Request) {
       .from("generated_emails")
       .insert({
         user_id: user.id,
-        company_name: parsed.data.company_name,
+        company_name: resolvedCompany,
         contact_name: parsed.data.contact_name ?? null,
         subject: emailContent.subject,
         body: emailContent.body,
@@ -178,7 +225,16 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
-    return NextResponse.json({ email: saved, companyContext, companyContextRelevance, relationshipIntelligence });
+    return NextResponse.json({ 
+      email: saved, 
+      companyContext, 
+      companyContextRelevance, 
+      relationshipIntelligence,
+      projects: projects.map((p) => ({
+        ...p,
+        summary: p.chunk_text?.slice(0, 200),
+      }))
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Generation failed";
     return NextResponse.json({ error: message }, { status: 500 });

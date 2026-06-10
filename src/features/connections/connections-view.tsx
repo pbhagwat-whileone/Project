@@ -62,12 +62,12 @@ export function ConnectionsView() {
       if (companyFilter) params.set("company", companyFilter);
       if (ownerFilter !== "All Owners") params.set("owner", ownerFilter);
       const qs = params.toString() ? `?${params}` : "";
-      
+
       const [data, ownersData] = await Promise.all([
         apiFetch<{ connections: Connection[] }>(`/api/connections${qs}`),
         apiFetch<{ owners: string[] }>("/api/connections/owners")
       ]);
-      
+
       setConnections(data.connections);
       setOwnersList(ownersData.owners);
     } catch (e) {
@@ -101,14 +101,14 @@ export function ConnectionsView() {
       toast.error("Please provide an owner name");
       return;
     }
-    
+
     setUploading(true);
     setShowUploadModal(false);
-    
+
     const formData = new FormData();
     formData.append("file", pendingFile);
     formData.append("connection_owner_name", uploadOwnerName.trim());
-    
+
     try {
       const res = await fetch("/api/connections/upload", {
         method: "POST",
@@ -116,11 +116,11 @@ export function ConnectionsView() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      
+
       let message = `Imported: ${data.imported}`;
       if (data.updated > 0) message += ` | Updated: ${data.updated}`;
       if (data.skipped > 0) message += ` | Skipped: ${data.skipped} duplicates`;
-      
+
       toast.success(message);
       await load();
     } catch (e) {
@@ -149,7 +149,7 @@ export function ConnectionsView() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      
+
       toast.success(`Parsed: ${data.parsed} | Inserted: ${data.inserted} | Skipped: ${data.skipped}`);
       if (data.inserted > 0) {
         toast.success(`Updated metrics for ${data.metricsUpdated} connections.`);
@@ -262,9 +262,9 @@ export function ConnectionsView() {
                 <TableHead>Name</TableHead>
                 <TableHead>Company</TableHead>
                 <TableHead>Position</TableHead>
-                <TableHead>Email</TableHead>
                 <TableHead>Owner</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-center">Actions</TableHead>
+                <TableHead>Email</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -276,12 +276,20 @@ export function ConnectionsView() {
                   </TableCell>
                   <TableCell>{c.company ?? "—"}</TableCell>
                   <TableCell>{c.position ?? "—"}</TableCell>
-                  <TableCell>{c.email ?? "—"}</TableCell>
                   <TableCell>{(c as any).connection_owner_name ?? "—"}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm" onClick={() => setSelectedConnection(c)}>
                       View History
                     </Button>
+                  </TableCell>
+                  <TableCell>
+                    {c.email ? (
+                      <a href={`mailto:${c.email}`} className="text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+                        {c.email}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

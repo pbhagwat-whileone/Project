@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { RefreshCw, Search } from "lucide-react";
+import { RefreshCw, Search, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
@@ -111,6 +111,7 @@ export function KnowledgeBaseView() {
                 <TableHead>Last Modified</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Chunk Count</TableHead>
+                <TableHead className="text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -135,6 +136,22 @@ export function KnowledgeBaseView() {
                   </TableCell>
                   <TableCell className="text-right">
                     {doc.chunk_count}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {doc.google_file_id ? (
+                      <Button variant="ghost" size="sm" asChild>
+                        <a
+                          href={`https://docs.google.com/document/d/${doc.google_file_id}/edit`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          View Source
+                        </a>
+                      </Button>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Source unavailable</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

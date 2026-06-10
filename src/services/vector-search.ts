@@ -25,6 +25,9 @@ export async function searchKnowledgeChunks(
   }
 
   const chunks = (data ?? []) as MatchedChunk[];
+  
+  console.log("[PROJECT_RETRIEVAL] Retrieved:", chunks.map(c => c.project_name || c.document_id));
+
   const preFilterCount = chunks.length;
   
   const uniqueProjects = new Map<string, MatchedChunk>();
@@ -43,6 +46,8 @@ export async function searchKnowledgeChunks(
   const topUnique = Array.from(uniqueProjects.values())
     .sort((a, b) => b.similarity - a.similarity)
     .slice(0, matchCount);
+
+  console.log("[PROJECT_RETRIEVAL] After Dedupe:", topUnique.map(c => c.project_name || c.document_id));
 
   // Return early if no relevant projects are found
   if (topUnique.length === 0) return topUnique;

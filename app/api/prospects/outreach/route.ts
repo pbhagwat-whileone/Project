@@ -4,6 +4,8 @@ import { createClient, requireUser } from "@/lib/supabase/server";
 import { generateOutreachEmail } from "@/services/email-generator";
 import { getRecommendationForEmail } from "@/services/prospect-recommendation";
 import { evaluateRelationshipIntelligence } from "@/services/relationship-intelligence";
+import { searchKnowledgeChunks } from "@/services/vector-search";
+import { getCompanyContext } from "@/services/company-context-intelligence";
 
 export async function POST(request: Request) {
   try {
@@ -46,10 +48,53 @@ export async function POST(request: Request) {
       engagementQuality: recommendation.topContact.engagement_quality,
     });
 
+    const companyContext = await getCompanyContext(supabase, recommendation.company);
+
+    const { data: cacheRow } = await supabase
+      .from("company_industry_cache")
+      .select("industry")
+      .eq("user_id", user.id)
+      .ilike("company_name", recommendation.company)
+      .maybeSingle();
+      
+    const industry = cacheRow?.industry && cacheRow.industry !== "Unknown" ? cacheRow.industry : "";
+
+    const enhancedQueryParts = [];
+    if (companyContext) {
+       if (companyContext.technologySignals?.length) enhancedQueryParts.push(companyContext.technologySignals.join(" "));
+       if (companyContext.businessPriorities?.length) enhancedQueryParts.push(companyContext.businessPriorities.join(" "));
+       if (companyContext.keyInitiatives?.length) enhancedQueryParts.push(companyContext.keyInitiatives.join(" "));
+       if (companyContext.outreachOpportunities?.length) enhancedQueryParts.push(companyContext.outreachOpportunities.join(" "));
+    }
+    if (recommendation.topContact.discussion_topics) enhancedQueryParts.push(recommendation.topContact.discussion_topics);
+    if (recommendation.topContact.conversation_summary) enhancedQueryParts.push(recommendation.topContact.conversation_summary);
+    
+    if (recommendation.topContact.position) enhancedQueryParts.push(recommendation.topContact.position);
+    if (industry) enhancedQueryParts.push(industry);
+    enhancedQueryParts.push(recommendation.company);
+
+    const enhancedQuery = enhancedQueryParts.join(" ").trim();
+    let emailProjects = matchingProjects;
+    if (enhancedQuery) {
+      const freshProjects = await searchKnowledgeChunks(supabase, user.id, enhancedQuery, 3);
+      console.log("[EMAIL_GENERATION] Fresh Retrieval Projects:", freshProjects.map(p => p.project_name || p.document_id));
+      
+      if (freshProjects.length > 0) {
+        emailProjects = freshProjects;
+        console.log("[EMAIL_GENERATION] Project Source: enhanced_retrieval");
+      } else {
+        console.log("[EMAIL_GENERATION] Project Source: dashboard_fallback_due_to_empty_fresh");
+      }
+    } else {
+      console.log("[EMAIL_GENERATION] Project Source: dashboard_fallback_due_to_empty_query");
+    }
+
+    console.log("[EMAIL_GENERATION] Projects Used:", emailProjects.map(p => p.project_name || p.document_id));
+
     const emailContent = await generateOutreachEmail({
       targetCompany: recommendation.company,
       contact: recommendation.topContact,
-      projects: matchingProjects,
+      projects: emailProjects,
       recommendationReason: recommendation.suggestedReason,
       relationshipIntelligence,
       provider: parsed.data.provider ?? undefined,
@@ -81,9 +126,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       contact: recommendation.topContact,
-      projects: matchingProjects.map((p) => ({
+      projects: emailProjects.map((p) => ({
         ...p,
-        summary: p.chunk_text.slice(0, 200),
+        summary: p.chunk_text?.slice(0, 200),
       })),
       email: savedEmail,
       recommendation,

@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ExternalLink, Mail, RefreshCw, Search, Copy, Check, Navigation, Send } from "lucide-react";
+import { ExternalLink, RefreshCw, Search, Send } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { EmailEditor, formatEmailBodyToHtml } from "@/components/ui/email-editor";
+
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -25,13 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import {
   Table,
   TableBody,
@@ -45,8 +39,7 @@ import type {
   CompanyDetail,
   CompanyRecommendation,
 } from "@/services/prospect-recommendation";
-import type { GeneratedEmail } from "@/types/database";
-import { PROVIDER_MODELS, PROVIDERS, type ProviderType } from "@/ai/models";
+
 
 type RankedRecommendation = CompanyRecommendation & { rank: number };
 
@@ -65,44 +58,7 @@ export function ProspectsView() {
   const searchParams = useSearchParams();
   const [detail, setDetail] = useState<CompanyDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [generatedEmail, setGeneratedEmail] = useState<GeneratedEmail | null>(null);
-  
-  const [editedSubject, setEditedSubject] = useState("");
-  const [editedBody, setEditedBody] = useState("");
-  const [relationshipType, setRelationshipType] = useState("Cold Outreach");
-  const [provider, setProvider] = useState<ProviderType>("gemini");
-  const [model, setModel] = useState<string>("gemini-2.5-pro");
-  const [refinementInstruction, setRefinementInstruction] = useState("");
-  const [refining, setRefining] = useState(false);
 
-  useEffect(() => {
-    const savedProvider = localStorage.getItem("preferred_provider") as ProviderType;
-    const savedModel = localStorage.getItem("preferred_model");
-    if (savedProvider && PROVIDER_MODELS[savedProvider]) {
-      setProvider(savedProvider);
-      if (savedModel && PROVIDER_MODELS[savedProvider].includes(savedModel)) {
-        setModel(savedModel);
-      } else {
-        const fallbackModel = PROVIDER_MODELS[savedProvider][0];
-        setModel(fallbackModel);
-        localStorage.setItem("preferred_model", fallbackModel);
-      }
-    }
-  }, []);
-
-  const handleProviderChange = (newProvider: ProviderType) => {
-    setProvider(newProvider);
-    const newModel = PROVIDER_MODELS[newProvider][0];
-    setModel(newModel);
-    localStorage.setItem("preferred_provider", newProvider);
-    localStorage.setItem("preferred_model", newModel);
-  };
-
-  const handleModelChange = (newModel: string) => {
-    setModel(newModel);
-    localStorage.setItem("preferred_model", newModel);
-  };
 
   const load = useCallback(async () => {
     try {
@@ -127,7 +83,6 @@ export function ProspectsView() {
   async function openDetail(company: string) {
     setSelectedCompany(company);
     setDetail(null);
-    setGeneratedEmail(null);
     setDetailLoading(true);
     try {
       const data = await apiFetch<{ detail: CompanyDetail }>(
@@ -150,66 +105,7 @@ export function ProspectsView() {
     }
   }, [searchParams, hasAutoOpened]);
 
-  async function generateOutreach(company: string) {
-    setGenerating(true);
-    try {
-      const data = await apiFetch<{ email: GeneratedEmail }>(
-        "/api/prospects/outreach",
-        {
-          method: "POST",
-          body: JSON.stringify({ 
-            company_name: company,
-            relationship_type: relationshipType,
-            provider,
-            model,
-          }),
-        }
-      );
-      setGeneratedEmail(data.email);
-      setEditedSubject(data.email.subject);
-      setEditedBody(data.email.body);
-      toast.success("Outreach email generated");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Generation failed");
-    } finally {
-      setGenerating(false);
-    }
-  }
 
-  async function handleRefine() {
-    if (!generatedEmail || !refinementInstruction.trim() || !detail) return;
-    setRefining(true);
-    try {
-      const data = await apiFetch<{ email: GeneratedEmail }>(
-        "/api/emails/refine",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            email_id: generatedEmail.id,
-            current_subject: editedSubject,
-            current_body: editedBody,
-            instructions: refinementInstruction,
-            provider,
-            model,
-            context: {
-              company: detail.company,
-              contactName: detail.topContact ? [detail.topContact.first_name, detail.topContact.last_name].filter(Boolean).join(" ") : "Unknown",
-              relationship: relationshipType,
-            },
-          }),
-        }
-      );
-      setEditedSubject(data.email.subject);
-      setEditedBody(data.email.body);
-      setGeneratedEmail(data.email);
-      setRefinementInstruction("");
-      toast.success("Draft refined successfully");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Refinement failed");
-    } finally {
-      setRefining(false);
-    }
-  }
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -403,10 +299,6 @@ export function ProspectsView() {
         onOpenChange={() => {
           setSelectedCompany(null);
           setDetail(null);
-          setGeneratedEmail(null);
-          setEditedSubject("");
-          setEditedBody("");
-          setRefinementInstruction("");
         }}
       >
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
@@ -532,117 +424,7 @@ export function ProspectsView() {
                   </p>
                 </div>
 
-                {generatedEmail ? (
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-sm font-medium mb-1">Subject</h4>
-                      <Input
-                        value={editedSubject}
-                        onChange={(e) => setEditedSubject(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-medium mb-1">Body</h4>
-                      <EmailEditor
-                        value={editedBody}
-                        onChange={setEditedBody}
-                      />
-                    </div>
-                    
-                    <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-                      <label className="text-sm font-medium">Refine Draft</label>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="e.g. Make it shorter, Sound more formal..."
-                          value={refinementInstruction}
-                          onChange={(e) => setRefinementInstruction(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleRefine();
-                          }}
-                        />
-                        <Button onClick={handleRefine} disabled={refining || !refinementInstruction.trim()}>
-                          {refining ? "Refining..." : "Refine"}
-                        </Button>
-                      </div>
-                    </div>
 
-                    <Button onClick={async () => {
-                      try {
-                        const plainText = `Subject: ${editedSubject}\n\n${editedBody.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')}`;
-                        const htmlText = `<p><strong>Subject:</strong> ${editedSubject}</p><br/>${formatEmailBodyToHtml(editedBody)}`;
-                        const blobHtml = new Blob([htmlText], { type: "text/html" });
-                        const blobText = new Blob([plainText], { type: "text/plain" });
-                        await navigator.clipboard.write([
-                          new ClipboardItem({
-                            "text/html": blobHtml,
-                            "text/plain": blobText,
-                          })
-                        ]);
-                        toast.success("Copied to clipboard");
-                      } catch (err) {
-                        navigator.clipboard.writeText(`Subject: ${editedSubject}\n\n${editedBody}`);
-                        toast.success("Copied to clipboard");
-                      }
-                    }}>Copy to Clipboard</Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex flex-col gap-4 sm:flex-row">
-                      <div className="w-full sm:w-1/2">
-                        <label className="text-sm font-medium">Email Strategy</label>
-                        <Select value={relationshipType} onValueChange={setRelationshipType}>
-                          <SelectTrigger className="mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Cold Outreach">Cold Outreach</SelectItem>
-                            <SelectItem value="Warm Introduction">Warm Introduction</SelectItem>
-                            <SelectItem value="Former Colleague">Former Colleague</SelectItem>
-                            <SelectItem value="Follow Up">Follow Up</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="w-full sm:w-1/2">
-                        <label className="text-sm font-medium">AI Provider</label>
-                        <Select value={provider} onValueChange={(val) => handleProviderChange(val as ProviderType)}>
-                          <SelectTrigger className="mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {PROVIDERS.map((p) => (
-                              <SelectItem key={p.value} value={p.value}>
-                                {p.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="w-full sm:w-1/2">
-                        <label className="text-sm font-medium">AI Model</label>
-                        <Select value={model} onValueChange={handleModelChange}>
-                          <SelectTrigger className="mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {PROVIDER_MODELS[provider]?.map((m) => (
-                              <SelectItem key={m} value={m}>
-                                {m}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <Button
-                      onClick={() => generateOutreach(detail.company)}
-                      disabled={generating || !detail.topContact}
-                    >
-                      <Mail className="mr-2 h-4 w-4" />
-                      {generating ? "Generating personalized outreach..." : "Generate Outreach Email"}
-                    </Button>
-                  </div>
-                )}
               </div>
             </div>
           ) : null}
