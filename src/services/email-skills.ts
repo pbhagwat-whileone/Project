@@ -2,16 +2,12 @@ import fs from 'fs/promises';
 import path from 'path';
 
 const RELATIONSHIP_MAP: Record<string, string> = {
-  "advisor": "cold-outreach",
-  "mentor": "cold-outreach",
-  "investor": "cold-outreach",
-  "alumni": "cold-outreach",
-  "unknown": "cold-outreach",
-  "mutual-connection": "warm-introduction",
-  "personal-contact": "warm-introduction",
-  "existing-client": "follow-up",
-  "previous-client": "follow-up",
-  "former-colleague": "former-colleague"
+  "cold-outreach": "cold-outreach",
+  "dormant-relationship": "dormant-relationship",
+  "warm-relationship": "warm-relationship",
+  "active-relationship": "active-relationship",
+  "past-customer": "past-customer",
+  "referral-relationship": "referral-relationship"
 };
 
 export async function getEmailSkill(strategy: string): Promise<string> {

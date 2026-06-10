@@ -1,7 +1,5 @@
 import { getGeminiClient } from "./gemini";
 import { TASK_MODEL_CONFIG, TaskType, PROVIDER_MODELS, ProviderType } from "./models";
-import { generateOpenAI } from "./providers/openai";
-import { generateGrok } from "./providers/grok";
 import { generateClaude } from "./providers/claude";
 import { generateCerebras } from "./providers/cerebras";
 
@@ -77,10 +75,6 @@ export async function generateWithFallback(
             : undefined,
         });
         text = response.text || "";
-      } else if (provider === "openai") {
-        text = await generateOpenAI(prompt, model, options?.isJson);
-      } else if (provider === "grok") {
-        text = await generateGrok(prompt, model, options?.isJson);
       } else if (provider === "claude") {
         text = await generateClaude(prompt, model, options?.isJson);
       } else if (provider === "cerebras") {

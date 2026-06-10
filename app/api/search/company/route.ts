@@ -51,25 +51,6 @@ export async function POST(request: Request) {
       connection_owner_name: c.connection_owners.join(", ")
     }));
 
-    console.log("Actual Connection Count:", actualCount);
-    console.log("Grouped Connection Count:", groupedConnections.length);
-
-    if (parsed.data.company === "SiPearl") {
-      const siPearlExistsInFetch = groupedConnections.some(
-        c => c.company?.toLowerCase().includes("sipearl")
-      );
-      console.log("SiPearl exists in fetched data:", siPearlExistsInFetch);
-    }
-
-    console.log("SEARCH QUERY:", parsed.data.company);
-    console.log("TOTAL CONNECTIONS:", groupedConnections?.length);
-
-    const siPearlRecords = (groupedConnections ?? []).filter(
-      c => c.company === "SiPearl"
-    );
-
-    console.log("SIPEARL RECORDS FOUND:", siPearlRecords.length);
-    console.log("SIPEARL RECORDS:", siPearlRecords);
 
     const recommendedContacts = findRecommendedContacts(
       parsed.data.company,

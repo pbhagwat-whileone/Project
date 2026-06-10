@@ -343,6 +343,12 @@ export interface Database {
           interaction_timeline: string | null;
           recent_highlights: string | null;
           relationship_classification: string | null;
+          key_interests: string[] | null;
+          business_context: string | null;
+          action_items: string[] | null;
+          engagement_quality: string | null;
+          recommended_outreach_angle: string | null;
+          personalization_points: string[] | null;
           created_at: string;
           updated_at: string;
         };
@@ -360,10 +366,42 @@ export interface Database {
           interaction_timeline?: string | null;
           recent_highlights?: string | null;
           relationship_classification?: string | null;
+          key_interests?: string[] | null;
+          business_context?: string | null;
+          action_items?: string[] | null;
+          engagement_quality?: string | null;
+          recommended_outreach_angle?: string | null;
+          personalization_points?: string[] | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["connection_relationship_metrics"]["Insert"]>;
+        Relationships: [];
+      };
+      company_context_cache: {
+        Row: {
+          id: string;
+          company_name: string;
+          summary: string | null;
+          raw_context: string | null;
+          generated_context: any | null;
+          sources: string[] | null;
+          created_at: string | null;
+          updated_at: string | null;
+          expires_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_name: string;
+          summary?: string | null;
+          raw_context?: string | null;
+          generated_context?: any | null;
+          sources?: string[] | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          expires_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["company_context_cache"]["Insert"]>;
         Relationships: [];
       };
     };
@@ -427,6 +465,12 @@ export type RankedContact = {
   interaction_timeline?: string | null;
   recent_highlights?: string | null;
   relationship_classification?: string | null;
+  key_interests?: string[] | null;
+  business_context?: string | null;
+  action_items?: string[] | null;
+  engagement_quality?: string | null;
+  recommended_outreach_angle?: string | null;
+  personalization_points?: string[] | null;
   total_messages?: number;
   last_interaction_date?: string | null;
   connection_owner_name?: string;
@@ -438,3 +482,40 @@ export type ConnectionRelationshipMetrics =
   Database["public"]["Tables"]["connection_relationship_metrics"]["Row"];
 export type LinkedinMessage = 
   Database["public"]["Tables"]["linkedin_messages"]["Row"];
+
+export interface CompanyContext {
+  companyName: string;
+  summary: string;
+  keyInitiatives: string[];
+  hiringSignals: string[];
+  technologySignals: string[];
+  businessPriorities: string[];
+  outreachOpportunities: string[];
+  confidence: "high" | "medium" | "low";
+  sources: string[];
+}
+
+export interface CompanyContextRelevance {
+  relevanceScore: number;
+  useCompanyContext: boolean;
+  reasoning: string;
+  recommendedUsage:
+    | "ignore"
+    | "light_reference"
+    | "conversation_starter"
+    | "primary_outreach_angle";
+}
+
+export interface RelationshipIntelligence {
+  relationshipType: string;
+  confidence: number;
+  reasoning: string;
+  outreachGoal:
+    | "reconnect"
+    | "follow_up"
+    | "introduction_request"
+    | "opportunity_exploration"
+    | "partnership_discussion"
+    | string;
+  capabilityProminence: "low" | "medium" | "high";
+}

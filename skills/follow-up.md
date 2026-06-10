@@ -1,27 +1,35 @@
 # Follow Up
 
-**Goal:**
-Reach out to an existing or previous client to continue the conversation, propose an expansion, or introduce new opportunities.
+## Purpose
+Use this skill when reaching out to an existing or previous client to continue the conversation, propose an expansion, or introduce new opportunities.
 
-**Tone:**
+## Relationship Context
+Existing business relationship. There is an established connection, but perhaps the current dialogue is paused or you are shifting to a new topic/opportunity.
+
+## Outreach Objective
+Continue the conversation organically while introducing new value, leading to a new initiative or expansion.
+
+## Tone
 Direct, familiar, and highly professional.
 
-**Important Guidelines:**
-- Lead with relevance, outcomes, and customer value.
-- Structure your thoughts internally as Why (relevance) → How (credibility/expertise) → What (next step), but write the final email so it flows naturally. Do NOT use headings or section labels like "Why" or "How".
-- The opening sentence must be short, create curiosity, and establish relevance immediately before delivering value. Avoid long, formal introductions.
-- Use project evidence as your primary source of credibility. Do not invent facts, outcomes, project details, or metrics.
-- Prioritize business impact and outcomes over technical implementation. Describe benefits, improvements, and efficiencies (e.g., "Reduced validation effort...", "Accelerated deployment...") rather than activities (e.g., "Implemented...", "Developed...").
-- When using bullets, the benefit or outcome must appear before the implementation detail. Mention implementation details only when supporting an outcome.
-- Avoid capability lists, service lists, generic capability statements, and generic consultancy/marketing-heavy language.
-- Let the CTA emerge naturally as a low-pressure, conversational, peer-to-peer continuation of the discussion (e.g., "Happy to compare notes...", "Would be interested in exchanging perspectives..."). Avoid sounding like a sales pitch.
-- Use recommendation context when available.
-- Connect prior work to the recipient's company, role, or industry.
-- Emphasize brevity and mobile-friendly formatting. Keep the email concise and executive-friendly.
+## Introduction Strategy
+Skip formal introductions. Avoid re-introducing Whileone. The opening should establish relevance within the first sentence by directly referencing prior business relationships, previous conversations, or active engagements.
 
-**Instructions:**
-- Skip formal introductions. Avoid re-introducing Whileone.
-- The opening should establish relevance within the first sentence by directly referencing prior business relationships, previous conversations, or active engagements.
-- Transition naturally into how a new initiative or insight might add value.
-- Use project evidence and recommendation context to suggest these new ideas naturally.
-- The closing should propose a natural continuation or collaborative next step.
+## Company Context Usage
+Transition naturally from the past context into how a new initiative or insight (drawn from recent company developments) might add value to their current trajectory.
+
+## WhileOne Positioning
+Use project evidence and recommendation context to suggest these new ideas naturally. Prioritize business impact and outcomes over technical implementation. Mention implementation details only when supporting an outcome. Avoid capability lists, service lists, generic capability statements, and generic marketing language.
+
+## Call To Action
+The closing should propose a natural continuation or collaborative next step (e.g., "Happy to compare notes...", "Would be interested in exchanging perspectives..."). Avoid sounding like a hard sales pitch.
+
+## Do
+- Connect prior work clearly to the new opportunity.
+- Emphasize brevity and mobile-friendly formatting. Keep the email concise and executive-friendly.
+- Frame the email around outcomes rather than activities.
+
+## Avoid
+- Do NOT assume they forgot who you are.
+- Avoid formal corporate introductions.
+- Avoid bulleted lists of services without direct contextual relevance.

@@ -9,6 +9,7 @@ export const fetchCache = 'force-no-store';
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { fetchAllRecords } from "@/utils/supabase-utils";
 import { generateWithFallback } from "@/ai/generation";
+import { normalizeUrl } from "@/utils/format-utils";
 
 type MessageRow = {
   FROM?: string;
@@ -20,21 +21,6 @@ type MessageRow = {
   "CONVERSATION ID"?: string;
 };
 
-function normalizeUrl(url: string | undefined): string | null {
-  if (!url) return null;
-  
-  let urlStr = url.trim();
-  if (!urlStr.startsWith("http://") && !urlStr.startsWith("https://")) {
-    urlStr = "https://" + urlStr;
-  }
-  
-  try {
-    const parsed = new URL(urlStr);
-    return parsed.pathname.replace(/\/$/, "").toLowerCase();
-  } catch {
-    return urlStr.replace(/\/$/, "").toLowerCase();
-  }
-}
 
 export async function POST(request: Request) {
   try {
@@ -53,9 +39,6 @@ export async function POST(request: Request) {
       skipEmptyLines: true,
     });
 
-    console.log("CSV HEADERS:", parsed.meta.fields);
-    console.log("TOTAL PARSED ROWS:", parsed.data.length);
-    console.log("FIRST 5 ROWS:", parsed.data.slice(0, 5));
 
     if (parsed.errors.length > 0) {
       return NextResponse.json(
@@ -64,16 +47,13 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log("ROWS BEFORE FILTER:", parsed.data.length);
     const rows = parsed.data.filter(
       (row) => row.DATE && row.CONTENT && row["CONVERSATION ID"]
     );
-    console.log("ROWS AFTER FILTER:", rows.length);
 
     const rejected = parsed.data.filter(
       (row) => !(row.DATE && row.CONTENT && row["CONVERSATION ID"])
     );
-    console.log("FIRST 10 REJECTED ROWS:", rejected.slice(0, 10));
 
     if (rows.length === 0) {
       return NextResponse.json(
@@ -136,13 +116,7 @@ export async function POST(request: Request) {
       }
     }
 
-    console.log("FIRST GENERATED MESSAGE_HASH:", messages[0]?.message_hash);
-    console.log("ROWS BEFORE DEDUPE:", messages.length);
-    console.log("ROWS AFTER DEDUPE:", newMessagesToInsert.length);
-
     insertedCount = newMessagesToInsert.length;
-
-    console.log("ROWS READY FOR INSERT:", newMessagesToInsert.length);
 
     const BATCH_SIZE = 500;
     for (let i = 0; i < newMessagesToInsert.length; i += BATCH_SIZE) {
@@ -150,7 +124,9 @@ export async function POST(request: Request) {
       const result = await supabase.from("linkedin_messages").upsert(batch, {
         onConflict: "user_id,message_hash"
       });
-      console.log("UPSERT ERROR:", result.error);
+      if (result.error) {
+        console.error("UPSERT ERROR:", result.error);
+      }
     }
 
     // DO NOT return early if insertedCount === 0. We still need to process metrics.
@@ -163,7 +139,7 @@ export async function POST(request: Request) {
       .eq("user_id", user.id)
       .not("profile_url", "is", null);
 
-    const connections = await fetchAllRecords(connectionsQuery);
+    const connections = await fetchAllRecords<{ id: string; profile_url: string | null }>(connectionsQuery);
     if (!connections || connections.length === 0) {
       const payload = {
         parsed: parsedCount,
@@ -171,7 +147,6 @@ export async function POST(request: Request) {
         skipped: skippedCount,
         metricsUpdated: 0,
       };
-      console.log("RESPONSE PAYLOAD (Early Return):", payload);
       return NextResponse.json(payload);
     }
 
@@ -260,12 +235,6 @@ export async function POST(request: Request) {
       metricsUpdated,
       totalMatchedConnections: messagesByConnection.size,
     };
-    console.log("== METRICS GENERATION DIAGNOSTICS ==");
-    console.log("TOTAL MESSAGES PROCESSED:", messagesToProcess.length);
-    console.log("TOTAL CONNECTIONS IN DB:", connections.length);
-    console.log("MATCHED CONNECTIONS FOR METRICS:", messagesByConnection.size);
-    console.log("METRIC ROWS GENERATED/UPSERTED:", metricsUpdated);
-    console.log("RESPONSE PAYLOAD:", payload);
 
     return NextResponse.json(payload);
   } catch (err) {

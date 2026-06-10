@@ -8,9 +8,12 @@ export type TaskType =
   | "COMPANY_FIT_ANALYSIS"
   | "RECOMMENDATION_SCORING"
   | "CONVERSATION_SUMMARY"
-  | "EMBEDDINGS";
+  | "EMBEDDINGS"
+  | "COMPANY_CONTEXT_INTELLIGENCE"
+  | "COMPANY_CONTEXT_RELEVANCE"
+  | "RELATIONSHIP_INTELLIGENCE";
 
-export type ProviderType = "gemini" | "claude" | "openai" | "grok" | "cerebras";
+export type ProviderType = "gemini" | "claude" | "cerebras";
 
 export type TaskConfig = {
   provider: ProviderType;
@@ -20,16 +23,12 @@ export type TaskConfig = {
 export const PROVIDERS = [
   { value: "gemini", label: "Gemini" },
   { value: "claude", label: "Claude" },
-  { value: "openai", label: "OpenAI" },
-  { value: "grok", label: "Grok" },
   { value: "cerebras", label: "Cerebras" },
 ] as const;
 
 export const PROVIDER_MODELS: Record<ProviderType, string[]> = {
   gemini: ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"],
   claude: ["claude-sonnet", "claude-haiku"],
-  openai: ["gpt-5", "gpt-5-mini", "gpt-5-nano"],
-  grok: ["grok-4", "grok-4-fast"],
   cerebras: ["gpt-oss-120b"],
 };
 
@@ -73,5 +72,17 @@ export const TASK_MODEL_CONFIG: Record<TaskType, TaskConfig> = {
   EMBEDDINGS: {
     provider: "gemini",
     models: ["gemini-embedding-001"],
+  },
+  COMPANY_CONTEXT_INTELLIGENCE: {
+    provider: "cerebras",
+    models: ["gpt-oss-120b"],
+  },
+  COMPANY_CONTEXT_RELEVANCE: {
+    provider: "cerebras",
+    models: ["gpt-oss-120b"],
+  },
+  RELATIONSHIP_INTELLIGENCE: {
+    provider: "cerebras",
+    models: ["gpt-oss-120b"],
   },
 };

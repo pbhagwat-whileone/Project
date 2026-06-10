@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ExternalLink, Mail, Search, Loader2, Settings2, UserPlus, Sparkles, BookOpen, Send, MapPin, Building, Activity, Copy, Check, Navigation } from "lucide-react";
+import { ExternalLink, Mail, Search, Loader2, Settings2, UserPlus, Sparkles, BookOpen, Send, MapPin, Building, Activity, Copy, Check, Navigation, Users } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { EmailEditor, formatEmailBodyToHtml } from "@/components/ui/email-editor";
 import {
   Card,
@@ -30,7 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { apiFetch } from "@/lib/api";
-import type { GeneratedEmail, MatchedChunk, RankedContact } from "@/types/database";
+import type { GeneratedEmail, MatchedChunk, RankedContact, CompanyContext, CompanyContextRelevance, RelationshipIntelligence } from "@/types/database";
 import { PROVIDER_MODELS, PROVIDERS, type ProviderType } from "@/ai/models";
 
 type SearchResult = {
@@ -51,6 +52,9 @@ export function SearchCompanyView() {
   const [summarizing, setSummarizing] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [emailDialog, setEmailDialog] = useState<GeneratedEmail | null>(null);
+  const [emailDialogCompanyContext, setEmailDialogCompanyContext] = useState<CompanyContext | null>(null);
+  const [emailDialogCompanyContextRelevance, setEmailDialogCompanyContextRelevance] = useState<CompanyContextRelevance | null>(null);
+  const [emailDialogRelationshipIntelligence, setEmailDialogRelationshipIntelligence] = useState<RelationshipIntelligence | null>(null);
   const [editedSubject, setEditedSubject] = useState("");
   const [editedBody, setEditedBody] = useState("");
 
@@ -148,9 +152,6 @@ export function SearchCompanyView() {
       if (data.contacts && data.contacts.length > 0) {
         setSelectedContact(data.contacts[0]);
         router.replace(`?company=${encodeURIComponent(company.trim())}&contact=${data.contacts[0].id}`, { scroll: false });
-        if (data.contacts[0].relationship_classification) {
-          setRelationshipType(data.contacts[0].relationship_classification);
-        }
       } else {
         setSelectedContact(null);
       }
@@ -163,9 +164,6 @@ export function SearchCompanyView() {
 
   const handleSelectContact = (contact: RankedContact) => {
     setSelectedContact(contact);
-    if (contact.relationship_classification) {
-      setRelationshipType(contact.relationship_classification);
-    }
     const currentCompany = searchParams.get("company") || company;
     if (currentCompany) {
       router.replace(`?company=${encodeURIComponent(currentCompany)}&contact=${contact.id}`, { scroll: false });
@@ -183,7 +181,7 @@ export function SearchCompanyView() {
         .filter(Boolean)
         .join(" ");
 
-      const data = await apiFetch<{ email: GeneratedEmail }>(
+      const data = await apiFetch<{ email: GeneratedEmail, companyContext?: CompanyContext, companyContextRelevance?: CompanyContextRelevance, relationshipIntelligence?: RelationshipIntelligence }>(
         "/api/emails/generate",
         {
           method: "POST",
@@ -194,7 +192,6 @@ export function SearchCompanyView() {
             email: selectedContact.email,
             profile_url: selectedContact.profile_url,
             projects: result?.projects || [],
-            relationship_type: relationshipType,
             provider,
             model,
             conversation_summary: selectedContact.conversation_summary,
@@ -204,12 +201,21 @@ export function SearchCompanyView() {
             total_messages: selectedContact.total_messages,
             last_interaction_date: selectedContact.last_interaction_date,
             connection_owner_name: selectedContact.connection_owner_name,
+            key_interests: selectedContact.key_interests,
+            business_context: selectedContact.business_context,
+            action_items: selectedContact.action_items,
+            engagement_quality: selectedContact.engagement_quality,
+            recommended_outreach_angle: selectedContact.recommended_outreach_angle,
+            personalization_points: selectedContact.personalization_points,
           }),
         }
       );
       setEditedSubject(data.email.subject);
       setEditedBody(data.email.body);
       setEmailDialog(data.email);
+      setEmailDialogCompanyContext(data.companyContext || null);
+      setEmailDialogCompanyContextRelevance(data.companyContextRelevance || null);
+      setEmailDialogRelationshipIntelligence(data.relationshipIntelligence || null);
       toast.success("Email generated");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Generation failed");
@@ -502,24 +508,7 @@ export function SearchCompanyView() {
             {selectedContact && (
               <div className="lg:col-span-2 space-y-4">
                 <div className="flex flex-col gap-4 sm:flex-row">
-                  <div className="w-full sm:w-1/3">
-                    <Label>Email Strategy</Label>
-                    <Select
-                      value={relationshipType}
-                      onValueChange={setRelationshipType}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Cold Outreach">Cold Outreach</SelectItem>
-                        <SelectItem value="Warm Introduction">Warm Introduction</SelectItem>
-                        <SelectItem value="Former Colleague">Former Colleague</SelectItem>
-                        <SelectItem value="Client">Client</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="w-full sm:w-1/3">
+                  <div className="w-full sm:w-1/2">
                     <Label>AI Provider</Label>
                     <Select value={provider} onValueChange={(val) => handleProviderChange(val as ProviderType)}>
                       <SelectTrigger className="mt-1">
@@ -582,6 +571,156 @@ export function SearchCompanyView() {
                 onChange={setEditedBody}
               />
             </div>
+
+            {emailDialogRelationshipIntelligence && (
+              <details className="group border border-border/50 rounded-lg bg-muted/20">
+                <summary className="flex items-center justify-between p-4 font-medium cursor-pointer list-none">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    <span>Relationship Intelligence</span>
+                    <Badge variant="secondary" className="text-[10px] uppercase">Automatic</Badge>
+                  </div>
+                  <span className="transition-transform group-open:rotate-180">▼</span>
+                </summary>
+                <div className="p-4 pt-0 border-t border-border/50 space-y-4 mt-4 text-sm">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <span className="font-medium text-muted-foreground">Classification</span>
+                      <Badge variant="outline">{emailDialogRelationshipIntelligence.relationshipType.replace(/-/g, " ")}</Badge>
+                    </div>
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <span className="font-medium text-muted-foreground">Confidence</span>
+                      <span>{emailDialogRelationshipIntelligence.confidence}%</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <span className="font-medium text-muted-foreground">Outreach Goal</span>
+                      <span className="uppercase text-xs font-semibold">{emailDialogRelationshipIntelligence.outreachGoal.replace(/_/g, " ")}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <span className="font-medium text-muted-foreground">Capability Prominence</span>
+                      <Badge variant={emailDialogRelationshipIntelligence.capabilityProminence === "high" ? "default" : "secondary"}>
+                        {emailDialogRelationshipIntelligence.capabilityProminence.toUpperCase()}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="bg-background rounded border p-3 mt-4">
+                    <span className="font-semibold block mb-1">AI Reasoning:</span>
+                    <p className="text-muted-foreground italic">&ldquo;{emailDialogRelationshipIntelligence.reasoning}&rdquo;</p>
+                  </div>
+                </div>
+              </details>
+            )}
+
+            {emailDialogCompanyContext && (
+              <details className="group border border-border/50 rounded-lg bg-muted/20">
+                <summary className="flex items-center justify-between p-4 font-medium cursor-pointer list-none">
+                  <div className="flex items-center gap-2">
+                    <span>Company Context</span>
+                    <Badge variant="secondary" className="text-[10px]">Tavily API</Badge>
+                  </div>
+                  <span className="transition-transform group-open:rotate-180">▼</span>
+                </summary>
+                <div className="p-4 pt-0 border-t border-border/50 space-y-4 mt-4 text-sm">
+                  <p className="text-muted-foreground text-xs mb-4">
+                    This intelligence was generated by AI using public information retrieved via the Tavily API.
+                  </p>
+                  
+                  {emailDialogCompanyContextRelevance && (
+                    <div className="bg-background rounded border p-3 mb-4">
+                      <h4 className="font-semibold mb-2 flex items-center justify-between">
+                        Relevance Evaluation
+                        <Badge variant="outline" className={
+                          emailDialogCompanyContextRelevance.recommendedUsage === "ignore" ? "border-destructive text-destructive" :
+                          emailDialogCompanyContextRelevance.recommendedUsage === "primary_outreach_angle" ? "border-green-500 text-green-500" :
+                          "border-yellow-500 text-yellow-500"
+                        }>
+                          {emailDialogCompanyContextRelevance.recommendedUsage.replace(/_/g, " ").toUpperCase()}
+                        </Badge>
+                      </h4>
+                      <p className="text-muted-foreground mb-2"><span className="font-medium">Score:</span> {emailDialogCompanyContextRelevance.relevanceScore}/100</p>
+                      <p className="text-muted-foreground italic">&ldquo;{emailDialogCompanyContextRelevance.reasoning}&rdquo;</p>
+                    </div>
+                  )}
+
+                  {emailDialogCompanyContext.summary && (
+                    <div>
+                      <h4 className="font-semibold mb-1">Summary</h4>
+                      <p className="text-muted-foreground">{emailDialogCompanyContext.summary}</p>
+                    </div>
+                  )}
+
+                  {emailDialogCompanyContext.keyInitiatives?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-1">Key Initiatives</h4>
+                      <ul className="list-disc pl-5 text-muted-foreground">
+                        {emailDialogCompanyContext.keyInitiatives.map((item, i) => (
+                          <li key={i}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {emailDialogCompanyContext.hiringSignals?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-1">Hiring Signals</h4>
+                      <ul className="list-disc pl-5 text-muted-foreground">
+                        {emailDialogCompanyContext.hiringSignals.map((item, i) => (
+                          <li key={i}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {emailDialogCompanyContext.technologySignals?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-1">Technology Signals</h4>
+                      <ul className="list-disc pl-5 text-muted-foreground">
+                        {emailDialogCompanyContext.technologySignals.map((item, i) => (
+                          <li key={i}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {emailDialogCompanyContext.businessPriorities?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-1">Business Priorities</h4>
+                      <ul className="list-disc pl-5 text-muted-foreground">
+                        {emailDialogCompanyContext.businessPriorities.map((item, i) => (
+                          <li key={i}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {emailDialogCompanyContext.outreachOpportunities?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-1">Outreach Opportunities</h4>
+                      <ul className="list-disc pl-5 text-muted-foreground">
+                        {emailDialogCompanyContext.outreachOpportunities.map((item, i) => (
+                          <li key={i}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {emailDialogCompanyContext.sources?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-1">Sources</h4>
+                      <ul className="pl-5 space-y-1 text-muted-foreground text-xs">
+                        {emailDialogCompanyContext.sources.map((src, i) => (
+                          <li key={i} className="list-disc">
+                            <a href={src} target="_blank" rel="noopener noreferrer" className="hover:underline text-blue-500 truncate block max-w-[500px]">
+                              {src}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </details>
+            )}
 
             <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
               <Label htmlFor="refine">Refine Draft</Label>

@@ -149,7 +149,13 @@ export function rankContactsWithMetrics(
       conversation_summary: metrics?.conversation_summary || null,
       discussion_topics: metrics?.discussion_topics || null,
       interaction_timeline: metrics?.interaction_timeline || null,
-      recent_highlights: metrics?.recent_highlights || null
+      recent_highlights: metrics?.recent_highlights || null,
+      key_interests: metrics?.key_interests || null,
+      business_context: metrics?.business_context || null,
+      action_items: metrics?.action_items || null,
+      engagement_quality: metrics?.engagement_quality || null,
+      recommended_outreach_angle: metrics?.recommended_outreach_angle || null,
+      personalization_points: metrics?.personalization_points || null
     };
   }).sort((a, b) => (b.relationship_score || 0) - (a.relationship_score || 0));
 }

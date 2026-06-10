@@ -4,6 +4,9 @@ import { createClient, requireUser } from "@/lib/supabase/server";
 import { generateOutreachEmail } from "@/services/email-generator";
 import { getRecommendationForEmail } from "@/services/prospect-recommendation";
 import { searchKnowledgeChunks } from "@/services/vector-search";
+import { getCompanyContext } from "@/services/company-context-intelligence";
+import { evaluateCompanyContextRelevance } from "@/services/company-context-relevance";
+import { evaluateRelationshipIntelligence } from "@/services/relationship-intelligence";
 import type { MatchedChunk, RankedContact } from "@/types/database";
 
 export async function POST(request: Request) {
@@ -51,6 +54,12 @@ export async function POST(request: Request) {
         total_messages: parsed.data.total_messages ?? undefined,
         last_interaction_date: parsed.data.last_interaction_date,
         connection_owner_name: parsed.data.connection_owner_name ?? undefined,
+        key_interests: parsed.data.key_interests,
+        business_context: parsed.data.business_context,
+        action_items: parsed.data.action_items,
+        engagement_quality: parsed.data.engagement_quality,
+        recommended_outreach_angle: parsed.data.recommended_outreach_angle,
+        personalization_points: parsed.data.personalization_points,
       };
     } else if (recContext.recommendation?.topContact) {
       contact = recContext.recommendation.topContact;
@@ -97,12 +106,43 @@ export async function POST(request: Request) {
       };
     }
 
+    const companyContext = await getCompanyContext(supabase, parsed.data.company_name);
+
+    let companyContextRelevance = null;
+    if (companyContext) {
+      companyContextRelevance = await evaluateCompanyContextRelevance({
+        conversationSummary: contact?.conversation_summary,
+        discussionTopics: contact?.discussion_topics,
+        companyContext,
+        relationshipMetadata: {
+          lastContactDate: contact?.last_interaction_date,
+          totalMessages: contact?.total_messages,
+          daysSinceLastInteraction: contact?.last_interaction_date ? Math.floor((new Date().getTime() - new Date(contact.last_interaction_date).getTime()) / (1000 * 3600 * 24)) : null,
+          relationshipStrength: contact?.relationship_score?.toString(),
+          relationshipClassification: contact?.relationship_classification,
+        }
+      });
+    }
+
+    const relationshipIntelligence = await evaluateRelationshipIntelligence({
+      conversationSummary: contact?.conversation_summary,
+      discussionTopics: contact?.discussion_topics,
+      interactionTimeline: contact?.interaction_timeline,
+      recentHighlights: contact?.recent_highlights,
+      messageCount: contact?.total_messages,
+      lastInteractionDate: contact?.last_interaction_date,
+      relationshipScore: contact?.relationship_score?.toString(),
+      relationshipClassification: contact?.relationship_classification,
+      connectionOwnerName: contact?.connection_owner_name,
+      engagementQuality: contact?.engagement_quality,
+    });
+
     const emailContent = await generateOutreachEmail({
       targetCompany: parsed.data.company_name,
       contact,
       projects,
       recommendationReason: recommendationReason ?? undefined,
-      relationshipType: parsed.data.relationship_type ?? undefined,
+      relationshipIntelligence,
       provider: parsed.data.provider ?? undefined,
       model: parsed.data.model ?? undefined,
       relationshipSummary: contact?.conversation_summary ?? undefined,
@@ -112,6 +152,14 @@ export async function POST(request: Request) {
       messageCount: contact?.total_messages ?? undefined,
       lastInteractionDate: contact?.last_interaction_date ?? undefined,
       connectionOwnerName: contact?.connection_owner_name ?? undefined,
+      keyInterests: contact?.key_interests ?? undefined,
+      businessContext: contact?.business_context ?? undefined,
+      actionItems: contact?.action_items ?? undefined,
+      engagementQuality: contact?.engagement_quality ?? undefined,
+      recommendedOutreachAngle: contact?.recommended_outreach_angle ?? undefined,
+      personalizationPoints: contact?.personalization_points ?? undefined,
+      companyContext,
+      companyContextRelevance,
     });
 
     const { data: saved, error } = await supabase
@@ -123,14 +171,14 @@ export async function POST(request: Request) {
         subject: emailContent.subject,
         body: emailContent.body,
         provider_used: parsed.data.provider ?? "gemini",
-        relationship_type: parsed.data.relationship_type ?? "Unknown Relationship",
+        relationship_type: relationshipIntelligence.relationshipType,
       })
       .select()
       .single();
 
     if (error) throw error;
 
-    return NextResponse.json({ email: saved });
+    return NextResponse.json({ email: saved, companyContext, companyContextRelevance, relationshipIntelligence });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Generation failed";
     return NextResponse.json({ error: message }, { status: 500 });

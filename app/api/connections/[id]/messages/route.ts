@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient, requireUser } from "@/lib/supabase/server";
+import { createUrlPattern } from "@/utils/format-utils";
 
 export async function GET(
   request: Request,
@@ -18,39 +19,13 @@ export async function GET(
       .eq("user_id", user.id)
       .single();
 
-    console.log("== DIAGNOSTICS START ==");
-    console.log("REQUESTED ID:", id);
-    console.log("CONNECTION OBJECT:", connection);
-
     if (!connection || !connection.profile_url) {
-      console.log("EARLY RETURN: Connection has no profile_url!");
       return NextResponse.json({ messages: [], metrics: null });
     }
 
-    let urlPattern = "";
-    try {
-      const urlObj = new URL(connection.profile_url);
-      const pathname = urlObj.pathname.replace(/\/$/, "").toLowerCase();
-      urlPattern = `%${pathname}%`;
-    } catch {
-      const url = connection.profile_url.replace(/\/$/, "").toLowerCase();
-      urlPattern = `%${url}%`;
-    }
+    const urlPattern = createUrlPattern(connection.profile_url);
 
-    console.log("Connection Profile URL:", connection.profile_url);
-    console.log("URL Pattern:", urlPattern);
 
-    const fromMatches = await supabase
-      .from("linkedin_messages")
-      .select("id", { count: "exact" })
-      .eq("user_id", user.id)
-      .ilike("from_profile_url", urlPattern);
-
-    const toMatches = await supabase
-      .from("linkedin_messages")
-      .select("id", { count: "exact" })
-      .eq("user_id", user.id)
-      .ilike("to_profile_url", urlPattern);
 
     const combined = await supabase
       .from("linkedin_messages")
@@ -59,21 +34,6 @@ export async function GET(
       .or(`from_profile_url.ilike.${urlPattern},to_profile_url.ilike.${urlPattern}`)
       .order("date", { ascending: false });
 
-    console.log("FROM MATCHES:", fromMatches.count);
-    console.log("TO MATCHES:", toMatches.count);
-    console.log("COMBINED MATCHES:", combined.data?.length);
-
-    const sample = await supabase
-      .from("linkedin_messages")
-      .select("*")
-      .eq("user_id", user.id)
-      .limit(5);
-
-    console.log("SAMPLE ROWS:");
-    sample.data?.forEach((row: any) => {
-      console.log(`from: ${row.from_profile_url}`);
-      console.log(`to: ${row.to_profile_url}`);
-    });
 
     const messages = combined.data;
 

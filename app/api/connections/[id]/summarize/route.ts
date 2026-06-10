@@ -51,7 +51,8 @@ export async function POST(
     const intelligence = await generateConversationIntelligence(
       messages,
       contactName,
-      connection.company
+      connection.company,
+      connection.connection_owner_name
     );
 
     // Store in connection_relationship_metrics
@@ -61,10 +62,16 @@ export async function POST(
         connection_id: id,
         user_id: user.id,
         conversation_summary: intelligence.relationship_summary,
-        discussion_topics: intelligence.discussion_topics,
+        discussion_topics: Array.isArray(intelligence.discussion_topics) ? intelligence.discussion_topics.join(", ") : intelligence.discussion_topics,
         interaction_timeline: intelligence.interaction_timeline,
         recent_highlights: intelligence.recent_highlights,
         relationship_classification: intelligence.relationship_classification,
+        key_interests: intelligence.key_interests,
+        business_context: intelligence.business_context,
+        action_items: intelligence.action_items,
+        engagement_quality: intelligence.engagement_quality,
+        recommended_outreach_angle: intelligence.recommended_outreach_angle,
+        personalization_points: intelligence.personalization_points,
         message_count: messages.length,
         // keep conversation_count rough or calculate if needed
         updated_at: new Date().toISOString()

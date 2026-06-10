@@ -3,6 +3,7 @@ import { recommendationOutreachSchema } from "@/lib/validators";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { generateOutreachEmail } from "@/services/email-generator";
 import { getRecommendationForEmail } from "@/services/prospect-recommendation";
+import { evaluateRelationshipIntelligence } from "@/services/relationship-intelligence";
 
 export async function POST(request: Request) {
   try {
@@ -32,12 +33,25 @@ export async function POST(request: Request) {
       );
     }
 
+    const relationshipIntelligence = await evaluateRelationshipIntelligence({
+      conversationSummary: recommendation.topContact.conversation_summary,
+      discussionTopics: recommendation.topContact.discussion_topics,
+      interactionTimeline: recommendation.topContact.interaction_timeline,
+      recentHighlights: recommendation.topContact.recent_highlights,
+      messageCount: recommendation.topContact.total_messages ?? undefined,
+      lastInteractionDate: recommendation.topContact.last_interaction_date,
+      relationshipScore: recommendation.topContact.relationship_score?.toString(),
+      relationshipClassification: recommendation.topContact.relationship_classification,
+      connectionOwnerName: recommendation.topContact.connection_owner_name,
+      engagementQuality: recommendation.topContact.engagement_quality,
+    });
+
     const emailContent = await generateOutreachEmail({
       targetCompany: recommendation.company,
       contact: recommendation.topContact,
       projects: matchingProjects,
       recommendationReason: recommendation.suggestedReason,
-      relationshipType: parsed.data.relationship_type ?? undefined,
+      relationshipIntelligence,
       provider: parsed.data.provider ?? undefined,
       model: parsed.data.model ?? undefined,
     });
@@ -58,7 +72,7 @@ export async function POST(request: Request) {
         subject: emailContent.subject,
         body: emailContent.body,
         provider_used: parsed.data.provider ?? "gemini",
-        relationship_type: parsed.data.relationship_type ?? "Unknown Relationship",
+        relationship_type: relationshipIntelligence.relationshipType,
       })
       .select()
       .single();

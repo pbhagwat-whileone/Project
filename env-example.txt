@@ -12,11 +12,7 @@ GEMINI_API_KEY=
 # Anthropic API
 ANTHROPIC_API_KEY=
 
-# OpenAI API
-OPENAI_API_KEY=
 
-# xAI API
-XAI_API_KEY=
 
 # Optional: Default LLM Provider
 DEFAULT_LLM_PROVIDER=gemini

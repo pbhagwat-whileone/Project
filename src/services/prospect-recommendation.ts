@@ -119,6 +119,54 @@ function scoreRecommendation(
   };
 }
 
+async function calculateCompanyScoreAndProjects(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  company: string,
+  topContact: RankedContact | null,
+  industry: string | undefined,
+  companyConnectionsLength: number,
+  maxConnections: number
+) {
+  const queryParts = [company];
+  if (topContact?.position) queryParts.push(topContact.position);
+  if (industry && industry !== "Unknown") queryParts.push(industry);
+
+  const query = queryParts.join(" ");
+  let matchingProjects = await searchKnowledgeChunks(supabase, userId, query, 3);
+
+  if (matchingProjects.length === 0) {
+    const fallbackQueryParts = [];
+    if (industry && industry !== "Unknown") fallbackQueryParts.push(industry);
+    if (topContact?.position) fallbackQueryParts.push(topContact.position);
+
+    const fallbackQuery = fallbackQueryParts.join(" ").trim();
+    if (fallbackQuery && fallbackQuery !== query) {
+      matchingProjects = await searchKnowledgeChunks(supabase, userId, fallbackQuery, 3);
+    }
+  }
+
+  let projectScore = 0;
+  let avgSimilarity = 0;
+  const topProjects: string[] = [];
+
+  if (matchingProjects.length > 0) {
+    avgSimilarity = matchingProjects.reduce((acc, p) => acc + p.similarity, 0) / matchingProjects.length;
+    projectScore = Math.min(100, Math.round(avgSimilarity * 100));
+    topProjects.push(...matchingProjects.map(p => p.project_name || p.document_id));
+  }
+
+  const scores = scoreRecommendation(
+    projectScore,
+    companyConnectionsLength,
+    maxConnections,
+    topContact?.score ?? 0,
+    topContact?.relationship_score || 0
+  );
+
+  return { matchingProjects, projectScore, avgSimilarity, topProjects, scores };
+}
+
 export type RecommendationStreamEvent =
   | { type: 'cached_batch'; data: CompanyRecommendation[] }
   | { type: 'calculated'; data: CompanyRecommendation }
@@ -225,40 +273,14 @@ export async function* getCompanyRecommendationsStream(
 
     try {
       const industry = industryMap.get(company.toLowerCase());
-      const queryParts = [company];
-      if (topContact?.position) queryParts.push(topContact.position);
-      if (industry && industry !== "Unknown") queryParts.push(industry);
-
-      const query = queryParts.join(" ");
-      let matchingProjects = await searchKnowledgeChunks(supabase, userId, query, 3);
-
-      if (matchingProjects.length === 0) {
-        const fallbackQueryParts = [];
-        if (industry && industry !== "Unknown") fallbackQueryParts.push(industry);
-        if (topContact?.position) fallbackQueryParts.push(topContact.position);
-
-        const fallbackQuery = fallbackQueryParts.join(" ").trim();
-        if (fallbackQuery && fallbackQuery !== query) {
-          matchingProjects = await searchKnowledgeChunks(supabase, userId, fallbackQuery, 3);
-        }
-      }
-
-      let projectScore = 0;
-      let avgSimilarity = 0;
-      const topProjects: string[] = [];
-
-      if (matchingProjects.length > 0) {
-        avgSimilarity = matchingProjects.reduce((acc, p) => acc + p.similarity, 0) / matchingProjects.length;
-        projectScore = Math.min(100, Math.round(avgSimilarity * 100));
-        topProjects.push(...matchingProjects.map(p => p.project_name || p.document_id));
-      }
-
-      const scores = scoreRecommendation(
-        projectScore,
+      const { matchingProjects, avgSimilarity, topProjects, scores } = await calculateCompanyScoreAndProjects(
+        supabase,
+        userId,
+        company,
+        topContact,
+        industry,
         companyConnections.length,
-        maxConnections,
-        seniorityRaw,
-        topContact?.relationship_score || 0
+        maxConnections
       );
 
       const rec: CompanyRecommendation = {
@@ -366,51 +388,14 @@ export async function getCompanyDetail(
 
   const industry = cacheRow?.industry && cacheRow.industry !== "Unknown" ? cacheRow.industry : "";
 
-  const queryParts = [company];
-  if (topContact?.position) queryParts.push(topContact.position);
-  if (industry) queryParts.push(industry);
-
-  const query = queryParts.join(" ");
-
-  let matchingProjects = await searchKnowledgeChunks(
+  const { matchingProjects, avgSimilarity, topProjects, scores } = await calculateCompanyScoreAndProjects(
     supabase,
     userId,
-    query,
-    5
-  );
-
-  if (matchingProjects.length === 0) {
-    const fallbackQueryParts = [];
-    if (industry) fallbackQueryParts.push(industry);
-    if (topContact?.position) fallbackQueryParts.push(topContact.position);
-
-    const fallbackQuery = fallbackQueryParts.join(" ").trim();
-    if (fallbackQuery && fallbackQuery !== query) {
-      matchingProjects = await searchKnowledgeChunks(
-        supabase,
-        userId,
-        fallbackQuery,
-        5
-      );
-    }
-  }
-
-  let projectScore = 0;
-  let avgSimilarity = 0;
-  const topProjects: string[] = [];
-
-  if (matchingProjects.length > 0) {
-    avgSimilarity = matchingProjects.reduce((acc, p) => acc + p.similarity, 0) / matchingProjects.length;
-    projectScore = Math.min(100, Math.round(avgSimilarity * 100));
-    topProjects.push(...matchingProjects.map(p => p.project_name || p.document_id));
-  }
-
-  const scores = scoreRecommendation(
-    projectScore,
+    company,
+    topContact,
+    industry,
     companyConns.length,
-    maxConnections,
-    topContact?.score ?? 0,
-    topContact?.relationship_score || 0
+    maxConnections
   );
 
   const match: CompanyRecommendation = {

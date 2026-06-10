@@ -1,4 +1,4 @@
-import type { MatchedChunk, RankedContact } from "@/types/database";
+import type { MatchedChunk, RankedContact, CompanyContext, CompanyContextRelevance, RelationshipIntelligence } from "@/types/database";
 import { getEmailProvider } from "@/ai/providers/factory";
 import { getEmailSkill } from "@/services/email-skills";
 
@@ -7,6 +7,17 @@ const OUTCOME_KEYWORDS = [
   "saved", "performance", "efficiency", "cost", "latency", 
   "throughput", "scalability", "reliability", "automation", "productivity"
 ];
+
+const WHILEONE_MESSAGING_RULES = `Whileone Messaging & Vocabulary:
+- Use Whileone core vocabulary naturally when relevant (do NOT force keywords or sound like marketing copy): Reliable AI, AI-powered solutions, ML-powered solutions, performance tuning, workload characterization, unbiased benchmarking, cloud optimization, simplified cloud cost management, intelligent frameworks, in-house developed frameworks, deep domain expertise, practical experience, engineering productivity, reliability, performance optimization, scalability, HPC, edge computing, ER&D.
+- Adapt language to the target company (TARGET_COMPANY_PLACEHOLDER):
+  * Semiconductor (AMD, NVIDIA, Qualcomm, Intel, TSMC, Broadcom): prefer performance tuning, benchmarking, validation, ARM, RISC-V, HPC, scalability, reliability.
+  * Cloud (AWS, Microsoft, Google, Oracle, Equinix): prefer cloud optimization, workload characterization, cloud cost management, scalability, reliability, performance.
+  * AI: prefer AI infrastructure, ML workloads, performance optimization, intelligent frameworks, scalability.
+  * Automotive/Manufacturing: prefer reliability, validation, optimization, engineering productivity, practical deployment.
+- Implicitly reflect the vision of being a trusted partner in Cloud, HPC, AI, and Edge, without explicitly quoting it.
+- Implicitly reflect the mission (delivering measurable business value, reliable engineering services, intelligent frameworks, deep domain expertise, practical implementation) without mechanical repetition.
+- Outcome-Driven Messaging Rule: Always lead with value before implementation details. For example, prefer "reduced validation effort" over "implemented automated testing", "improved workload efficiency" over "developed optimization tooling", "accelerated performance analysis" over "built benchmarking frameworks".`;
 
 function extractOutcomeContext(text: string): string {
   if (!text) return "";
@@ -38,7 +49,7 @@ export type EmailGenerationInput = {
   projects: MatchedChunk[];
   prospectNotes?: string;
   recommendationReason?: string;
-  relationshipType?: string;
+  relationshipIntelligence?: RelationshipIntelligence | null;
   provider?: string;
   model?: string;
   relationshipSummary?: string;
@@ -48,6 +59,14 @@ export type EmailGenerationInput = {
   messageCount?: number;
   lastInteractionDate?: string;
   connectionOwnerName?: string;
+  keyInterests?: string[] | null;
+  businessContext?: string | null;
+  actionItems?: string[] | null;
+  engagementQuality?: string | null;
+  recommendedOutreachAngle?: string | null;
+  personalizationPoints?: string[] | null;
+  companyContext?: CompanyContext | null;
+  companyContextRelevance?: CompanyContextRelevance | null;
 };
 
 export type GeneratedEmailContent = {
@@ -69,7 +88,7 @@ export async function generateOutreachEmail(
     )
     .join("\n\n");
 
-  const relationship = input.relationshipType || "Unknown Relationship";
+  const relationship = input.relationshipIntelligence?.relationshipType || "cold-outreach";
   const skillMarkdown = await getEmailSkill(relationship);
 
   let relationshipContext = "";
@@ -81,13 +100,31 @@ export async function generateOutreachEmail(
     if (input.relationshipSummary) {
       relationshipContext += `- Relationship Summary: ${input.relationshipSummary}\n`;
     }
+    if (input.businessContext) {
+      relationshipContext += `- Business Context: ${input.businessContext}\n`;
+    }
     if (input.discussionTopics) {
       relationshipContext += `- Topics Discussed: ${input.discussionTopics}\n`;
+    }
+    if (input.keyInterests && input.keyInterests.length > 0) {
+      relationshipContext += `- Key Interests: ${input.keyInterests.join(", ")}\n`;
+    }
+    if (input.actionItems && input.actionItems.length > 0) {
+      relationshipContext += `- Unfinished Action Items: ${input.actionItems.join(", ")}\n`;
+    }
+    if (input.personalizationPoints && input.personalizationPoints.length > 0) {
+      relationshipContext += `- Personalization Points: ${input.personalizationPoints.join(", ")}\n`;
     }
     if (input.recentHighlights) {
       relationshipContext += `- Recent Highlights: ${input.recentHighlights}\n`;
     }
-    relationshipContext += `\nUse this history to personalize the email naturally. Acknowledge our past conversations where relevant, but do not inject raw message logs. Keep it highly professional.`;
+    if (input.engagementQuality) {
+      relationshipContext += `- Historical Engagement Quality: ${input.engagementQuality}\n`;
+    }
+    if (input.recommendedOutreachAngle) {
+      relationshipContext += `- RECOMMENDED OUTREACH ANGLE: ${input.recommendedOutreachAngle}\n`;
+    }
+    relationshipContext += `\nCRITICAL: Use this rich interaction history to personalize the email naturally. For example, if there are relevant action items or business context, start the email by referencing them directly (e.g., "We previously discussed X..."). Acknowledge our past conversations where relevant, but do not inject raw message logs. Keep it highly professional.`;
   }
 
   const prompt = `You are drafting a B2B outreach email for Whileone, a technology consultancy.
@@ -102,35 +139,62 @@ Contact: ${contactName}
 Contact title: ${input.contact.position ?? "Unknown"}
 Relationship Context: ${relationship}${relationshipContext}
 ${input.connectionOwnerName ? `Connection Owner: This contact belongs to ${input.connectionOwnerName}'s LinkedIn network.\n` : ""}
-Relevant Whileone project knowledge (ONLY reference facts from this context — do not invent case studies, metrics, or clients):
-${projectContext || "No specific project context available — keep the email general about Whileone's AI and software capabilities."}
+Relevant Whileone Matching Projects (ONLY reference facts from this context. Projects are the STRONGEST source of evidence. Do not invent case studies, metrics, or clients. Do not generate generic capability lists when relevant project evidence exists here):
+${projectContext || "No specific matching projects available — keep the email general about Whileone's AI and software capabilities."}
+
+${input.relationshipIntelligence ? `RELATIONSHIP INTELLIGENCE
+Detected Relationship Type: ${input.relationshipIntelligence.relationshipType}
+Outreach Goal: ${input.relationshipIntelligence.outreachGoal}
+Capability Prominence: ${input.relationshipIntelligence.capabilityProminence.toUpperCase()}
+
+CRITICAL CAPABILITY RULES:
+- If Capability Prominence is LOW: Mention WhileOne briefly only if extremely natural. Focus almost entirely on the relationship / goal.
+- If Capability Prominence is MEDIUM: Weave WhileOne capabilities organically into the recent context.
+- If Capability Prominence is HIGH: Directly position WhileOne as a solution to their initiatives. Use specific proof points.
+` : ""}
+
+${input.companyContextRelevance ? `COMPANY CONTEXT RELEVANCE
+Score: ${input.companyContextRelevance.relevanceScore}
+Recommended Usage: ${input.companyContextRelevance.recommendedUsage}
+Reasoning: ${input.companyContextRelevance.reasoning}
+
+CRITICAL CONTEXT RULES:
+Follow the Recommended Usage exactly:
+- If usage = ignore: Do NOT mention company context at all.
+- If usage = light_reference: Use at most one brief reference.
+- If usage = conversation_starter: Use company context only as a reason to reconnect.
+- If usage = primary_outreach_angle: Company context may drive the main outreach angle.
+` : ""}
+
+${input.companyContext && input.companyContext.confidence !== "low" && (!input.companyContextRelevance || input.companyContextRelevance.recommendedUsage !== "ignore") ? `COMPANY CONTEXT
+Summary: ${input.companyContext.summary}
+${input.companyContext.keyInitiatives.length > 0 ? `Key Initiatives: ${input.companyContext.keyInitiatives.join(", ")}` : ""}
+${input.companyContext.businessPriorities.length > 0 ? `Business Priorities: ${input.companyContext.businessPriorities.join(", ")}` : ""}
+${input.companyContext.technologySignals.length > 0 ? `Technology Signals: ${input.companyContext.technologySignals.join(", ")}` : ""}
+${input.companyContext.hiringSignals.length > 0 ? `Hiring Signals: ${input.companyContext.hiringSignals.join(", ")}` : ""}
+${input.companyContext.outreachOpportunities.length > 0 ? `Outreach Opportunities: ${input.companyContext.outreachOpportunities.join(", ")}` : ""}
+` : ""}
 
 ${input.recommendationReason ? `Why this company is recommended:\n${input.recommendationReason}\n` : ""}
 ${input.prospectNotes ? `Additional notes:\n${input.prospectNotes}` : ""}
 
-Whileone Messaging & Vocabulary:
-- Use Whileone core vocabulary naturally when relevant (do NOT force keywords or sound like marketing copy): Reliable AI, AI-powered solutions, ML-powered solutions, performance tuning, workload characterization, unbiased benchmarking, cloud optimization, simplified cloud cost management, intelligent frameworks, in-house developed frameworks, deep domain expertise, practical experience, engineering productivity, reliability, performance optimization, scalability, HPC, edge computing, ER&D.
-- Adapt language to the target company (${input.targetCompany}):
-  * Semiconductor (AMD, NVIDIA, Qualcomm, Intel, TSMC, Broadcom): prefer performance tuning, benchmarking, validation, ARM, RISC-V, HPC, scalability, reliability.
-  * Cloud (AWS, Microsoft, Google, Oracle, Equinix): prefer cloud optimization, workload characterization, cloud cost management, scalability, reliability, performance.
-  * AI: prefer AI infrastructure, ML workloads, performance optimization, intelligent frameworks, scalability.
-  * Automotive/Manufacturing: prefer reliability, validation, optimization, engineering productivity, practical deployment.
-- Implicitly reflect the vision of being a trusted partner in Cloud, HPC, AI, and Edge, without explicitly quoting it.
-- Implicitly reflect the mission (delivering measurable business value, reliable engineering services, intelligent frameworks, deep domain expertise, practical implementation) without mechanical repetition.
-- Outcome-Driven Messaging Rule: Always lead with value before implementation details. For example, prefer "reduced validation effort" over "implemented automated testing", "improved workload efficiency" over "developed optimization tooling", "accelerated performance analysis" over "built benchmarking frameworks".
+${WHILEONE_MESSAGING_RULES.replace("TARGET_COMPANY_PLACEHOLDER", input.targetCompany)}
 
 Requirements:
+- Follow this exact CONTEXT HIERARCHY for generation:
+  1. Introduction: Relationship Intelligence → Conversation History. Use conversation history primarily for opening, relationship framing, and setting the tone.
+  2. Body: Company Context Intelligence → Matching Projects. Actively connect recent Company Context with Matching Projects. Do not list company developments and capabilities separately. Make the connection explicit (e.g. "Since you are building X, our work on Y is highly relevant").
+  3. Credibility: Matching Project Outcomes. Project evidence should always take precedence over generic capability statements.
+  4. CTA: Driven by Relationship Type and Outreach Goal.
 - Subject line must be 5-9 words, curiosity-driven, highly relevant, and NOT spammy.
 - Incorporate the company name (${input.targetCompany}) into the subject line naturally if possible. Prioritize in this order: 1) Relevance 2) Company Name 3) Curiosity 4) Brevity.
 - Do NOT use clickbait or generic phrases like "Introduction from Whileone", "Quick Chat", "Exploring Opportunities", "Following Up", or "Checking In".
-- Good examples: "Thought this might be relevant for AMD", "A pattern we're seeing across NVIDIA teams", "Observation from recent benchmarking work at Intel".
-- Implicitly position Whileone as a domain expert using evidence, NOT generic claims (never say "world-class" or "leading consultancy").
-- Reflect core Whileone themes naturally: unbiased, practical, simplified, outcome-oriented (delivering measurable business value through reliable AI and deep domain expertise).
-- Extract and highlight customer benefits and measurable improvements from the project context if available.
-- Keep references concise and do not invent metrics.
-- Entire email must be 120-150 words maximum (prefer 80-130 words) and mobile-friendly with short sentences.
-- Avoid paragraph-heavy layouts. Use an opening sentence, followed by a maximum of 3 short bullet points summarizing relevant expertise or outcomes, followed by a CTA.
+- Implicitly position Whileone as a domain expert using evidence from Matching Projects, NOT generic claims. Never say "We provide performance tuning services" or "We offer AI infrastructure expertise" if specific project evidence can be used instead.
+- The offering section must be easy to scan. When discussing WhileOne experience or relevant work, use concise bullet points.
+  - Good Example: "We've recently helped teams:\\n• Reduce validation effort...\\n• Improve compiler reliability..."
 - Use actual bullet symbols (•) for bulleted lists. Do NOT use asterisks (*) or hyphens (-).
+- Keep references concise and do not invent metrics.
+- Entire email must be 120-150 words maximum (prefer 80-130 words) and mobile-friendly with short sentences. Avoid large paragraphs describing capabilities.
 - Instead of showing the raw link, use the exact phrase "Contact Us" as a markdown hyperlink pointing to the CTA at the end of the email: [Contact Us](https://calendly.com/snatu-whileone/30min)
 - Sign off as "The Whileone Team".
 
@@ -184,16 +248,7 @@ ${currentBody}
 Refinement Instructions from User:
 "${instructions}"
 
-Whileone Messaging & Vocabulary:
-- Use Whileone core vocabulary naturally when relevant (do NOT force keywords or sound like marketing copy): Reliable AI, AI-powered solutions, ML-powered solutions, performance tuning, workload characterization, unbiased benchmarking, cloud optimization, simplified cloud cost management, intelligent frameworks, in-house developed frameworks, deep domain expertise, practical experience, engineering productivity, reliability, performance optimization, scalability, HPC, edge computing, ER&D.
-- Adapt language to the target company (${context ? context.company : "their company"}):
-  * Semiconductor (AMD, NVIDIA, Qualcomm, Intel, TSMC, Broadcom): prefer performance tuning, benchmarking, validation, ARM, RISC-V, HPC, scalability, reliability.
-  * Cloud (AWS, Microsoft, Google, Oracle, Equinix): prefer cloud optimization, workload characterization, cloud cost management, scalability, reliability, performance.
-  * AI: prefer AI infrastructure, ML workloads, performance optimization, intelligent frameworks, scalability.
-  * Automotive/Manufacturing: prefer reliability, validation, optimization, engineering productivity, practical deployment.
-- Implicitly reflect the vision of being a trusted partner in Cloud, HPC, AI, and Edge, without explicitly quoting it.
-- Implicitly reflect the mission (delivering measurable business value, reliable engineering services, intelligent frameworks, deep domain expertise, practical implementation) without mechanical repetition.
-- Outcome-Driven Messaging Rule: Always lead with value before implementation details. For example, prefer "reduced validation effort" over "implemented automated testing", "improved workload efficiency" over "developed optimization tooling", "accelerated performance analysis" over "built benchmarking frameworks".
+${WHILEONE_MESSAGING_RULES.replace("TARGET_COMPANY_PLACEHOLDER", context ? context.company : "their company")}
 
 Apply the instructions carefully to the existing draft. 
 - Do NOT generate a completely unrelated email. Modify the existing one.

@@ -33,13 +33,18 @@ import {
 } from "@/components/ui/table";
 import { apiFetch } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import type { GeneratedEmail } from "@/types/database";
+import type { GeneratedEmail, CompanyContext, CompanyContextRelevance, RelationshipIntelligence } from "@/types/database";
 import { PROVIDER_MODELS, PROVIDERS, type ProviderType } from "@/ai/models";
+import { Badge } from "@/components/ui/badge";
+import { Users } from "lucide-react";
 
 export function EmailsView() {
   const [emails, setEmails] = useState<GeneratedEmail[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<GeneratedEmail | null>(null);
+  const [selectedCompanyContext, setSelectedCompanyContext] = useState<CompanyContext | null>(null);
+  const [selectedCompanyContextRelevance, setSelectedCompanyContextRelevance] = useState<CompanyContextRelevance | null>(null);
+  const [selectedRelationshipIntelligence, setSelectedRelationshipIntelligence] = useState<RelationshipIntelligence | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<GeneratedEmail | null>(null);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -105,6 +110,9 @@ export function EmailsView() {
       setModel(PROVIDER_MODELS[savedProvider][0]);
     }
     setRefinementInstruction("");
+    setSelectedCompanyContext(null); // Clear context since we don't have it for old emails
+    setSelectedCompanyContextRelevance(null);
+    setSelectedRelationshipIntelligence(null);
   }
 
   async function copyEmail() {
@@ -130,7 +138,7 @@ export function EmailsView() {
     if (!selected) return;
     setRegenerating(true);
     try {
-      const data = await apiFetch<{ email: GeneratedEmail }>(
+      const data = await apiFetch<{ email: GeneratedEmail, companyContext?: CompanyContext, companyContextRelevance?: CompanyContextRelevance, relationshipIntelligence?: RelationshipIntelligence }>(
         "/api/emails/generate",
         {
           method: "POST",
@@ -142,6 +150,9 @@ export function EmailsView() {
       );
       setSubject(data.email.subject);
       setBody(data.email.body);
+      setSelectedCompanyContext(data.companyContext || null);
+      setSelectedCompanyContextRelevance(data.companyContextRelevance || null);
+      setSelectedRelationshipIntelligence(data.relationshipIntelligence || null);
       toast.success("Email regenerated");
       await load();
     } catch (e) {
@@ -326,6 +337,156 @@ export function EmailsView() {
                 onChange={setBody}
               />
             </div>
+
+            {selectedRelationshipIntelligence && (
+              <details className="group border border-border/50 rounded-lg bg-muted/20">
+                <summary className="flex items-center justify-between p-4 font-medium cursor-pointer list-none">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    <span>Relationship Intelligence</span>
+                    <Badge variant="secondary" className="text-[10px] uppercase">Automatic</Badge>
+                  </div>
+                  <span className="transition-transform group-open:rotate-180">▼</span>
+                </summary>
+                <div className="p-4 pt-0 border-t border-border/50 space-y-4 mt-4 text-sm">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <span className="font-medium text-muted-foreground">Classification</span>
+                      <Badge variant="outline">{selectedRelationshipIntelligence.relationshipType.replace(/-/g, " ")}</Badge>
+                    </div>
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <span className="font-medium text-muted-foreground">Confidence</span>
+                      <span>{selectedRelationshipIntelligence.confidence}%</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <span className="font-medium text-muted-foreground">Outreach Goal</span>
+                      <span className="uppercase text-xs font-semibold">{selectedRelationshipIntelligence.outreachGoal.replace(/_/g, " ")}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <span className="font-medium text-muted-foreground">Capability Prominence</span>
+                      <Badge variant={selectedRelationshipIntelligence.capabilityProminence === "high" ? "default" : "secondary"}>
+                        {selectedRelationshipIntelligence.capabilityProminence.toUpperCase()}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="bg-background rounded border p-3 mt-4">
+                    <span className="font-semibold block mb-1">AI Reasoning:</span>
+                    <p className="text-muted-foreground italic">&ldquo;{selectedRelationshipIntelligence.reasoning}&rdquo;</p>
+                  </div>
+                </div>
+              </details>
+            )}
+
+            {selectedCompanyContext && (
+              <details className="group border border-border/50 rounded-lg bg-muted/20">
+                <summary className="flex items-center justify-between p-4 font-medium cursor-pointer list-none">
+                  <div className="flex items-center gap-2">
+                    <span>Company Context</span>
+                    <Badge variant="secondary" className="text-[10px]">Tavily API</Badge>
+                  </div>
+                  <span className="transition-transform group-open:rotate-180">▼</span>
+                </summary>
+                <div className="p-4 pt-0 border-t border-border/50 space-y-4 mt-4 text-sm">
+                  <p className="text-muted-foreground text-xs mb-4">
+                    This intelligence was generated by AI using public information retrieved via the Tavily API.
+                  </p>
+                  
+                  {selectedCompanyContextRelevance && (
+                    <div className="bg-background rounded border p-3 mb-4">
+                      <h4 className="font-semibold mb-2 flex items-center justify-between">
+                        Relevance Evaluation
+                        <Badge variant="outline" className={
+                          selectedCompanyContextRelevance.recommendedUsage === "ignore" ? "border-destructive text-destructive" :
+                          selectedCompanyContextRelevance.recommendedUsage === "primary_outreach_angle" ? "border-green-500 text-green-500" :
+                          "border-yellow-500 text-yellow-500"
+                        }>
+                          {selectedCompanyContextRelevance.recommendedUsage.replace(/_/g, " ").toUpperCase()}
+                        </Badge>
+                      </h4>
+                      <p className="text-muted-foreground mb-2"><span className="font-medium">Score:</span> {selectedCompanyContextRelevance.relevanceScore}/100</p>
+                      <p className="text-muted-foreground italic">&ldquo;{selectedCompanyContextRelevance.reasoning}&rdquo;</p>
+                    </div>
+                  )}
+
+                  {selectedCompanyContext.summary && (
+                    <div>
+                      <h4 className="font-semibold mb-1">Summary</h4>
+                      <p className="text-muted-foreground">{selectedCompanyContext.summary}</p>
+                    </div>
+                  )}
+
+                  {selectedCompanyContext.keyInitiatives?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-1">Key Initiatives</h4>
+                      <ul className="list-disc pl-5 text-muted-foreground">
+                        {selectedCompanyContext.keyInitiatives.map((item, i) => (
+                          <li key={i}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {selectedCompanyContext.hiringSignals?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-1">Hiring Signals</h4>
+                      <ul className="list-disc pl-5 text-muted-foreground">
+                        {selectedCompanyContext.hiringSignals.map((item, i) => (
+                          <li key={i}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {selectedCompanyContext.technologySignals?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-1">Technology Signals</h4>
+                      <ul className="list-disc pl-5 text-muted-foreground">
+                        {selectedCompanyContext.technologySignals.map((item, i) => (
+                          <li key={i}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {selectedCompanyContext.businessPriorities?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-1">Business Priorities</h4>
+                      <ul className="list-disc pl-5 text-muted-foreground">
+                        {selectedCompanyContext.businessPriorities.map((item, i) => (
+                          <li key={i}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {selectedCompanyContext.outreachOpportunities?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-1">Outreach Opportunities</h4>
+                      <ul className="list-disc pl-5 text-muted-foreground">
+                        {selectedCompanyContext.outreachOpportunities.map((item, i) => (
+                          <li key={i}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {selectedCompanyContext.sources?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-1">Sources</h4>
+                      <ul className="pl-5 space-y-1 text-muted-foreground text-xs">
+                        {selectedCompanyContext.sources.map((src, i) => (
+                          <li key={i} className="list-disc">
+                            <a href={src} target="_blank" rel="noopener noreferrer" className="hover:underline text-blue-500 truncate block max-w-[500px]">
+                              {src}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </details>
+            )}
 
             <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
               <div className="flex flex-col gap-4 sm:flex-row">

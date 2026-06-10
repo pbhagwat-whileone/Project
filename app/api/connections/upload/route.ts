@@ -7,6 +7,7 @@ export const fetchCache = 'force-no-store';
 
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { fetchAllRecords } from "@/utils/supabase-utils";
+import { parseConnectedOn } from "@/utils/format-utils";
 
 type LinkedInRow = {
   "First Name"?: string;
@@ -19,12 +20,6 @@ type LinkedInRow = {
   "Connected On"?: string;
 };
 
-function parseConnectedOn(value: string | undefined): string | null {
-  if (!value) return null;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString().slice(0, 10);
-}
 
 export async function POST(request: Request) {
   try {
@@ -41,8 +36,6 @@ export async function POST(request: Request) {
     if (!connectionOwnerName) {
       return NextResponse.json({ error: "Connection Owner Name is required" }, { status: 400 });
     }
-
-    console.log("OWNER:", connectionOwnerName);
 
     const text = await file.text();
     const parsed = Papa.parse<LinkedInRow>(text, {
@@ -63,7 +56,7 @@ export async function POST(request: Request) {
       .eq("user_id", user.id)
       .order("id", { ascending: true });
 
-    const existingConnections = await fetchAllRecords(query);
+    const existingConnections = await fetchAllRecords<{ id: string; profile_url: string | null; first_name: string | null; last_name: string | null; company: string | null; connection_owner_name: string }>(query);
 
     const urlMap = new Map<string, any>();
     const fallbackMap = new Map<string, any>();
@@ -93,11 +86,6 @@ export async function POST(request: Request) {
         connection_owner_name: connectionOwnerName,
       }));
 
-    console.log("PARSED ROWS:", rows.length);
-    if (rows.length > 0) {
-      console.log("FIRST ROW:", rows[0]);
-    }
-
     if (rows.length === 0) {
       return NextResponse.json(
         { error: "No valid rows found in CSV" },
@@ -125,6 +113,7 @@ export async function POST(request: Request) {
         if (urlKey && !existingMatch.profile_url) {
           rowsToUpdate.push({
             id: existingMatch.id,
+            user_id: user.id,
             profile_url: row.profile_url,
             connection_owner_name: connectionOwnerName,
           });
@@ -142,14 +131,14 @@ export async function POST(request: Request) {
     }
 
     if (rowsToInsert.length > 0) {
-      console.log("ROWS TO INSERT:", rowsToInsert.length);
       const BATCH_SIZE = 500;
       for (let i = 0; i < rowsToInsert.length; i += BATCH_SIZE) {
         const batch = rowsToInsert.slice(i, i + BATCH_SIZE);
-        const { data, error } = await supabase.from("connections").insert(batch);
-        console.log("SUPABASE DATA (INSERT):", data);
-        console.log("SUPABASE ERROR (INSERT):", error);
-        if (error) throw error;
+        const { error } = await supabase.from("connections").insert(batch);
+        if (error) {
+          console.error("SUPABASE ERROR (INSERT):", error);
+          throw error;
+        }
       }
     }
 
