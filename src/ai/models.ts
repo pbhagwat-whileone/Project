@@ -11,7 +11,8 @@ export type TaskType =
   | "EMBEDDINGS"
   | "COMPANY_CONTEXT_INTELLIGENCE"
   | "COMPANY_CONTEXT_RELEVANCE"
-  | "RELATIONSHIP_INTELLIGENCE";
+  | "RELATIONSHIP_INTELLIGENCE"
+  | "PROFILE_ENRICHMENT_INTELLIGENCE";
 
 export type ProviderType = "gemini" | "claude" | "cerebras";
 
@@ -82,6 +83,10 @@ export const TASK_MODEL_CONFIG: Record<TaskType, TaskConfig> = {
     models: ["gpt-oss-120b"],
   },
   RELATIONSHIP_INTELLIGENCE: {
+    provider: "cerebras",
+    models: ["gpt-oss-120b"],
+  },
+  PROFILE_ENRICHMENT_INTELLIGENCE: {
     provider: "cerebras",
     models: ["gpt-oss-120b"],
   },

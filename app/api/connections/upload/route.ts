@@ -38,7 +38,12 @@ export async function POST(request: Request) {
     }
 
     const text = await file.text();
-    const parsed = Papa.parse<LinkedInRow>(text, {
+    
+    // Automatically remove the first 3 rows of LinkedIn metadata
+    const lines = text.split(/\r?\n/);
+    const cleanedText = lines.length > 3 ? lines.slice(3).join('\n') : text;
+
+    const parsed = Papa.parse<LinkedInRow>(cleanedText, {
       header: true,
       skipEmptyLines: true,
     });

@@ -163,15 +163,9 @@ export function DashboardView() {
               </Link>
             </Button>
             <Button variant="outline" className="justify-start gap-2" asChild>
-              <Link href="/search-company">
-                <Search className="h-4 w-4" />
-                Search Company
-              </Link>
-            </Button>
-            <Button variant="outline" className="justify-start gap-2" asChild>
-              <Link href="/prospects">
+              <Link href="/companies">
                 <Building2 className="h-4 w-4" />
-                View Recommendations
+                Companies
               </Link>
             </Button>
           </CardContent>

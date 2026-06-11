@@ -111,7 +111,7 @@ export function ConversationHistoryModal({ connection, onClose }: ConversationHi
                     className="shrink-0"
                     onClick={() => {
                       onClose();
-                      router.push(`/search-company?company=${encodeURIComponent(connection.company!)}`);
+                      router.push(`/companies?company=${encodeURIComponent(connection.company!)}`);
                     }}
                   >
                     <Send className="mr-2 h-4 w-4" />

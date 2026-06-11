@@ -129,6 +129,10 @@ export interface Database {
           connected_on: string | null;
           created_at: string;
           connection_owner_name: string;
+          email_source: string | null;
+          email_status: string | null;
+          email_confidence: number | null;
+          email_last_enriched_at: string | null;
         };
         Insert: {
           id?: string;
@@ -142,6 +146,10 @@ export interface Database {
           connected_on?: string | null;
           created_at?: string;
           connection_owner_name?: string;
+          email_source?: string | null;
+          email_status?: string | null;
+          email_confidence?: number | null;
+          email_last_enriched_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["connections"]["Insert"]>;
         Relationships: [];
@@ -404,6 +412,48 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["company_context_cache"]["Insert"]>;
         Relationships: [];
       };
+      connection_profiles: {
+        Row: {
+          connection_id: string;
+          location: string | null;
+          company: string | null;
+          position: string | null;
+          headline: string | null;
+          current_role_start_date: string | null;
+          certifications: any | null;
+          expertise_tags: any | null;
+          technology_tags: any | null;
+          activity_signals: any | null;
+          education: any | null;
+          raw_tavily_response: any | null;
+          enriched_at: string | null;
+        };
+        Insert: {
+          connection_id: string;
+          location?: string | null;
+          company?: string | null;
+          position?: string | null;
+          headline?: string | null;
+          current_role_start_date?: string | null;
+          certifications?: any | null;
+          expertise_tags?: any | null;
+          technology_tags?: any | null;
+          activity_signals?: any | null;
+          education?: any | null;
+          raw_tavily_response?: any | null;
+          enriched_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["connection_profiles"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "connection_profiles_connection_id_fkey";
+            columns: ["connection_id"];
+            isOneToOne: true;
+            referencedRelation: "connections";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Functions: {
       match_knowledge_chunks: {
@@ -430,7 +480,10 @@ export type KnowledgeDocument =
   Database["public"]["Tables"]["knowledge_documents"]["Row"];
 export type KnowledgeChunk =
   Database["public"]["Tables"]["knowledge_chunks"]["Row"];
-export type Connection = Database["public"]["Tables"]["connections"]["Row"];
+export type Connection = Database["public"]["Tables"]["connections"]["Row"] & {
+  connection_profiles?: ConnectionProfile | null;
+};
+export type ConnectionProfile = Database["public"]["Tables"]["connection_profiles"]["Row"];
 export type Prospect = Database["public"]["Tables"]["prospects"]["Row"];
 export type GeneratedEmail =
   Database["public"]["Tables"]["generated_emails"]["Row"];

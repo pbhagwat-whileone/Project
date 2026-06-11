@@ -270,7 +270,7 @@ export function EmailsView() {
       ) : emails.length === 0 ? (
         <EmptyState
           title="No emails yet"
-          description="Generate emails from Search Company or Recommended Companies."
+          description="Generate emails from the Companies page."
         />
       ) : (
         <div className="rounded-xl border">

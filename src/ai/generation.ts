@@ -9,6 +9,19 @@ type ModelStatus = {
 const modelHealth: Record<string, ModelStatus> = {};
 const COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes
 
+export function isTaskAvailable(task: TaskType, options?: { overrideProvider?: ProviderType }): boolean {
+  const config = TASK_MODEL_CONFIG[task];
+  if (!config) return false;
+
+  const chain = options?.overrideProvider
+    ? PROVIDER_MODELS[options.overrideProvider]
+    : config.models;
+
+  if (!chain || chain.length === 0) return false;
+
+  return !chain.every((m) => modelHealth[m]?.unavailableUntil > Date.now());
+}
+
 export async function generateWithFallback(
   prompt: string,
   task: TaskType,

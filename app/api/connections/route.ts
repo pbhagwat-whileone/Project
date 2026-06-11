@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
     let query = supabase
       .from("connections")
-      .select("*")
+      .select("*, connection_profiles(*)")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .order("id", { ascending: true });
@@ -35,10 +35,17 @@ export async function GET(request: Request) {
       }
     });
 
-    let filtered = Array.from(uniqueMap.values()).map(c => ({
-      ...c,
-      connection_owner_name: c.connection_owners?.join(", ")
-    })) as Connection[];
+    let filtered = Array.from(uniqueMap.values()).map((c: any) => {
+      const profile = c.connection_profiles || {};
+      return {
+        ...c,
+        connection_owner_name: c.connection_owners?.join(", "),
+        // Option A Rules
+        location: profile.location || null,
+        company: c.company || profile.company || null,
+        position: c.position || profile.position || null,
+      };
+    }) as (Connection & { location?: string | null })[];
 
     if (search) {
       filtered = filtered.filter((c) => {
@@ -59,6 +66,20 @@ export async function GET(request: Request) {
     if (company) {
       filtered = filtered.filter((c) =>
         c.company?.toLowerCase().includes(company)
+      );
+    }
+
+    const location = searchParams.get("location")?.toLowerCase() ?? "";
+    if (location) {
+      filtered = filtered.filter((c) =>
+        c.location?.toLowerCase().includes(location)
+      );
+    }
+
+    const position = searchParams.get("position")?.toLowerCase() ?? "";
+    if (position) {
+      filtered = filtered.filter((c) =>
+        c.position?.toLowerCase().includes(position)
       );
     }
 
