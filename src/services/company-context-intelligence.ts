@@ -111,7 +111,7 @@ Respond in JSON ONLY with exactly the following structure:
   "hiringSignals": ["Signal 1"],
   "technologySignals": ["Signal 1"],
   "businessPriorities": ["Priority 1"],
-  "outreachOpportunities": ["Area where WhileOne engineering/cloud/AI/performance expertise aligns"],
+  "outreachOpportunities": ["Area where Whileone engineering/cloud/AI/performance expertise aligns"],
   "confidence": "high" | "medium" | "low",
   "sources": []
 }

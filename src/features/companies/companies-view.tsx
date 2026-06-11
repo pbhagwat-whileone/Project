@@ -185,6 +185,11 @@ export function CompaniesView() {
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [selectedContact, setSelectedContact] = useState<RankedContact | null>(null);
   const [hasAutoSearched, setHasAutoSearched] = useState(false);
+  const [similarContacts, setSimilarContacts] = useState<any[]>([]);
+  const [similarLoading, setSimilarLoading] = useState(false);
+  const [hasGeneratedCompanyContacts, setHasGeneratedCompanyContacts] = useState(false);
+  const [contactProjectsLoading, setContactProjectsLoading] = useState(false);
+  const [projectsOpen, setProjectsOpen] = useState(false);
 
   // Email & Action State
   const [summarizing, setSummarizing] = useState(false);
@@ -275,6 +280,32 @@ export function CompaniesView() {
     }
   }, [activeCompanyParam, searchParams, hasAutoSearched, searchInput]);
 
+  const handleGenerateCompanyContacts = async () => {
+    if (!activeCompanyParam) return;
+    setSimilarLoading(true);
+    try {
+      const data = await apiFetch<{ contacts: any[] }>("/api/search/company-similar-contacts", {
+        method: "POST",
+        body: JSON.stringify({
+          company: activeCompanyParam,
+        }),
+      });
+      setSimilarContacts(data.contacts || []);
+      setHasGeneratedCompanyContacts(true);
+    } catch (e) {
+      console.error(e);
+      setSimilarContacts([]);
+    } finally {
+      setSimilarLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setProjectsOpen(false);
+    setSearchResult(prev => prev ? { ...prev, projects: [] } : null);
+    // Similar contacts are no longer cleared automatically, they remain tied to the company view.
+  }, [selectedContact]);
+
   async function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!searchInput.trim()) return;
@@ -300,13 +331,76 @@ export function CompaniesView() {
   };
 
   // -- Action Handlers --
+  async function handleGenerateProjects(contactId: string) {
+    setContactProjectsLoading(true);
+    try {
+      const data = await apiFetch<{ projects: any[] }>(`/api/connections/${contactId}/projects`, {
+        method: "POST"
+      });
+      
+      console.log("[ProjectMatching UI] Full Response:", data);
+      console.log("[ProjectMatching UI] Projects Received:", data.projects);
+
+      console.log("[ProjectMatching UI] Setting Projects:", data.projects);
+      if (searchResult) {
+        setSearchResult({
+          ...searchResult,
+          projects: data.projects
+        });
+      }
+      
+      if (data.projects && data.projects.length > 0) {
+        toast.success("Matching projects generated!");
+      } else {
+        toast.info("No matching projects found.");
+      }
+      
+      return data.projects;
+    } catch (err) {
+      toast.error("Failed to generate projects");
+      return null;
+    } finally {
+      setContactProjectsLoading(false);
+    }
+  }
+
   async function handleGenerateEmail() {
     if (!selectedContact) return;
     setGenerating(true);
     try {
+      let currentContact = selectedContact;
+      let currentProjects = searchResult?.projects || [];
+
+      if (!currentContact.conversation_summary) {
+        toast.info("Generating conversation summary...");
+        const sumData = await apiFetch<{ success: boolean, metrics: any }>(`/api/connections/${currentContact.id}/summarize`, { method: "POST" });
+        if (sumData.success && sumData.metrics) {
+          currentContact = {
+             ...currentContact,
+             conversation_summary: sumData.metrics.conversation_summary,
+             discussion_topics: sumData.metrics.discussion_topics,
+             interaction_timeline: sumData.metrics.interaction_timeline,
+             recent_highlights: sumData.metrics.recent_highlights,
+             relationship_classification: sumData.metrics.relationship_classification,
+          };
+          setSelectedContact(currentContact);
+          if (sumData.metrics.relationship_classification) {
+            setRelationshipType(sumData.metrics.relationship_classification);
+          }
+        }
+      }
+
+      if (currentProjects.length === 0) {
+        toast.info("Generating matching projects...");
+        const projData = await handleGenerateProjects(currentContact.id);
+        if (projData) {
+          currentProjects = projData;
+        }
+      }
+
       const contactName = [
-        selectedContact.first_name,
-        selectedContact.last_name,
+        currentContact.first_name,
+        currentContact.last_name,
       ]
         .filter(Boolean)
         .join(" ");
@@ -316,27 +410,27 @@ export function CompaniesView() {
         {
           method: "POST",
           body: JSON.stringify({
-            company_name: selectedContact.company || activeCompanyParam,
+            company_name: currentContact.company || activeCompanyParam,
             contact_name: contactName,
-            position: selectedContact.position,
-            email: selectedContact.email,
-            profile_url: selectedContact.profile_url,
-            projects: searchResult?.projects || [],
+            position: currentContact.position,
+            email: currentContact.email,
+            profile_url: currentContact.profile_url,
+            projects: currentProjects,
             provider,
             model,
-            conversation_summary: selectedContact.conversation_summary,
-            discussion_topics: selectedContact.discussion_topics,
-            interaction_timeline: selectedContact.interaction_timeline,
-            recent_highlights: selectedContact.recent_highlights,
-            total_messages: selectedContact.total_messages,
-            last_interaction_date: selectedContact.last_interaction_date,
-            connection_owner_name: selectedContact.connection_owner_name,
-            key_interests: selectedContact.key_interests,
-            business_context: selectedContact.business_context,
-            action_items: selectedContact.action_items,
-            engagement_quality: selectedContact.engagement_quality,
-            recommended_outreach_angle: selectedContact.recommended_outreach_angle,
-            personalization_points: selectedContact.personalization_points,
+            conversation_summary: currentContact.conversation_summary,
+            discussion_topics: currentContact.discussion_topics,
+            interaction_timeline: currentContact.interaction_timeline,
+            recent_highlights: currentContact.recent_highlights,
+            total_messages: currentContact.total_messages,
+            last_interaction_date: currentContact.last_interaction_date,
+            connection_owner_name: currentContact.connection_owner_name,
+            key_interests: currentContact.key_interests,
+            business_context: currentContact.business_context,
+            action_items: currentContact.action_items,
+            engagement_quality: currentContact.engagement_quality,
+            recommended_outreach_angle: currentContact.recommended_outreach_angle,
+            personalization_points: currentContact.personalization_points,
           }),
         }
       );
@@ -447,6 +541,8 @@ export function CompaniesView() {
       toast.success("Copied to clipboard");
     }
   }
+
+  console.log("[ProjectMatching UI] Current Projects State:", searchResult?.projects);
 
   return (
     <div>
@@ -615,6 +711,11 @@ export function CompaniesView() {
                               </Button>
                             </div>
 
+                            <div className="mt-3 flex flex-col gap-1 text-sm text-muted-foreground">
+                              <div><span className="font-medium text-foreground">Location:</span> {contact.location || "—"}</div>
+                              <div><span className="font-medium text-foreground">Email:</span> {contact.email || "—"}</div>
+                            </div>
+
                             {(contact.relationship_score || 0) > 0 && (
                               <div className="mt-3 pt-3 border-t grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                                 <div>
@@ -665,6 +766,47 @@ export function CompaniesView() {
                                       <Activity className="h-4 w-4 mr-2" />
                                       {summarizing ? "Analyzing History..." : "Summarize Conversation"}
                                     </Button>
+                                    <details 
+                                      className="group border border-border/50 rounded-lg bg-muted/10 w-full" 
+                                      open={projectsOpen} 
+                                      onToggle={async (e) => {
+                                        const isOpen = e.currentTarget.open;
+                                        setProjectsOpen(isOpen);
+                                        if (isOpen && (!searchResult.projects || searchResult.projects.length === 0)) {
+                                           await handleGenerateProjects(contact.id);
+                                        }
+                                      }}
+                                    >
+                                      <summary className="flex items-center justify-between p-2 font-medium cursor-pointer list-none text-sm hover:bg-muted/30 transition-colors">
+                                        <div className="flex items-center gap-2">
+                                          <Sparkles className="w-4 h-4 text-primary" />
+                                          <span>{contactProjectsLoading ? "Generating..." : searchResult.projects?.length ? `Matching Projects (${searchResult.projects.length})` : "Generate Matching Projects"}</span>
+                                        </div>
+                                        <span className="transition-transform group-open:rotate-180 text-muted-foreground">▼</span>
+                                      </summary>
+                                      <div className="p-3 pt-0 border-t border-border/50 space-y-3 mt-3">
+                                         {contactProjectsLoading ? (
+                                            <div className="flex items-center justify-center p-4 text-xs text-muted-foreground">Loading projects...</div>
+                                         ) : searchResult.projects?.length ? (
+                                            searchResult.projects.map(p => (
+                                              <div key={p.id} className="text-sm bg-background p-3 rounded border border-border/50">
+                                                <div className="font-medium flex justify-between items-start gap-4">
+                                                  <span>{p.project_name || "Project"}</span>
+                                                  {p.similarity && <span className="text-muted-foreground text-xs shrink-0 bg-muted px-2 py-1 rounded-full">{(p.similarity * 100).toFixed(0)}% match</span>}
+                                                </div>
+                                                <div className="text-muted-foreground mt-2 text-xs leading-relaxed line-clamp-3">{p.summary}</div>
+                                                {p.reference_link && (
+                                                  <a href={p.reference_link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                                                    View Source <ExternalLink className="h-3 w-3" />
+                                                  </a>
+                                                )}
+                                              </div>
+                                            ))
+                                         ) : (
+                                            <p className="text-xs text-muted-foreground">No projects found.</p>
+                                         )}
+                                      </div>
+                                    </details>
                                   </>
                                 )}
                                 <Button
@@ -688,39 +830,58 @@ export function CompaniesView() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Matching Projects</CardTitle>
-                    <CardDescription>Top 3 semantic matches</CardDescription>
+                    <CardTitle className="flex items-center justify-between">
+                      Account Discovery
+                      {!similarLoading && !hasGeneratedCompanyContacts && similarContacts.length === 0 && (
+                        <Button variant="outline" size="sm" onClick={handleGenerateCompanyContacts}>
+                          <Search className="h-4 w-4 mr-2" />
+                          Find Missing Stakeholders
+                        </Button>
+                      )}
+                    </CardTitle>
+                    <CardDescription>
+                      Identify adjacent decision-makers at {activeCompanyParam} that you are not connected to.
+                      <span className="block mt-1 text-orange-500/80 text-xs">
+                        Warning: This action consumes Apollo credits. Results are cached for 30 days.
+                      </span>
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {searchResult.projects.length === 0 ? (
+                    {similarLoading ? (
+                      <LoadingSpinner label="Analyzing account and discovering stakeholders..." />
+                    ) : similarContacts.length === 0 ? (
                       <p className="text-sm text-muted-foreground">
-                        No matching projects in knowledge base.
+                        {hasGeneratedCompanyContacts 
+                          ? "No additional unique stakeholders found." 
+                          : "Click to generate net-new stakeholders at this company."}
                       </p>
                     ) : (
-                      searchResult.projects.map((p) => (
-                        <div key={p.id} className="rounded-lg border p-4">
-                          <div className="flex items-center justify-between">
-                            <p className="font-medium">
-                              {p.project_name ?? "Project"}
-                            </p>
-                            <span className="text-xs text-muted-foreground">
-                              {(p.similarity * 100).toFixed(0)}% match
-                            </span>
+                      <div className="space-y-3">
+                        {similarContacts.map((p, idx) => (
+                          <div key={idx} className="rounded-lg border p-4 bg-background">
+                            <div className="flex items-center justify-between">
+                              <p className="font-semibold text-sm">
+                                {p.linkedin_url || (p as any).apollo_url ? (
+                                  <a
+                                    href={p.linkedin_url || (p as any).apollo_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:underline inline-flex items-center gap-1"
+                                  >
+                                    {p.name}
+                                    <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                ) : (
+                                  p.name
+                                )}
+                              </p>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">{p.position}</p>
+                            <p className="text-sm text-muted-foreground">{p.company}</p>
+                            {p.location && <p className="text-xs text-muted-foreground mt-2">Location: {p.location}</p>}
                           </div>
-
-                          {p.reference_link && (
-                            <a
-                              href={p.reference_link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="mt-2 inline-flex items-center gap-1 text-sm text-primary hover:underline"
-                            >
-                              Open Project Document
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          )}
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     )}
                   </CardContent>
                 </Card>
@@ -777,6 +938,9 @@ export function CompaniesView() {
                 <DialogTitle>Edit Email</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
+                <div className="bg-muted p-3 rounded-md text-sm border border-border/50">
+                  <span className="font-medium">Recipient Email:</span> {selectedContact?.email || "—"}
+                </div>
                 <div>
                   <Label htmlFor="subject">Subject</Label>
                   <Input

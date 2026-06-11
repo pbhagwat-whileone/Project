@@ -18,7 +18,7 @@ Skip formal introductions. Avoid re-introducing Whileone. The opening should est
 ## Company Context Usage
 Transition naturally from the past context into how a new initiative or insight (drawn from recent company developments) might add value to their current trajectory.
 
-## WhileOne Positioning
+## Whileone Positioning
 Use project evidence and recommendation context to suggest these new ideas naturally. Prioritize business impact and outcomes over technical implementation. Mention implementation details only when supporting an outcome. Avoid capability lists, service lists, generic capability statements, and generic marketing language.
 
 ## Call To Action
@@ -33,3 +33,6 @@ The closing should propose a natural continuation or collaborative next step (e.
 - Do NOT assume they forgot who you are.
 - Avoid formal corporate introductions.
 - Avoid bulleted lists of services without direct contextual relevance.
+
+
+Project evidence must be included whenever relevant projects are available.

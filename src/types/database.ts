@@ -412,6 +412,30 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["company_context_cache"]["Insert"]>;
         Relationships: [];
       };
+      company_similar_contacts_cache: {
+        Row: {
+          id: string;
+          user_id: string;
+          company_name: string;
+          results: any;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string;
+          company_name: string;
+          results?: any;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          company_name?: string;
+          results?: any;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       connection_profiles: {
         Row: {
           connection_id: string;
@@ -509,6 +533,7 @@ export type RankedContact = {
   last_name: string | null;
   company: string | null;
   position: string | null;
+  location?: string | null;
   email: string | null;
   profile_url: string | null;
   score: number;

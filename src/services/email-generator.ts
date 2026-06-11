@@ -65,6 +65,8 @@ export type EmailGenerationInput = {
   engagementQuality?: string | null;
   recommendedOutreachAngle?: string | null;
   personalizationPoints?: string[] | null;
+  persistentContext?: string | null;
+  timeBoundContext?: string | null;
   companyContext?: CompanyContext | null;
   companyContextRelevance?: CompanyContextRelevance | null;
 };
@@ -121,10 +123,29 @@ export async function generateOutreachEmail(
     if (input.engagementQuality) {
       relationshipContext += `- Historical Engagement Quality: ${input.engagementQuality}\n`;
     }
+    if (input.persistentContext) {
+      relationshipContext += `- Persistent Context: ${input.persistentContext}\n`;
+    }
+    
+    let daysSinceLastInteraction = 0;
+    if (input.lastInteractionDate) {
+      daysSinceLastInteraction = Math.floor((new Date().getTime() - new Date(input.lastInteractionDate).getTime()) / (1000 * 3600 * 24));
+    }
+
+    if (input.timeBoundContext) {
+      if (daysSinceLastInteraction > 365) {
+        // Ignore timeBoundContext entirely as per rules
+      } else if (daysSinceLastInteraction > 180) {
+        relationshipContext += `- Time-Bound Context (CRITICAL TEMPORAL RULE: These events are over 180 days old! Treat them strictly as historical context. Do NOT reference them as current or upcoming. Example: write "Hope your past trip went well", NOT "Looking forward to your trip"): ${input.timeBoundContext}\n`;
+      } else {
+        relationshipContext += `- Time-Bound Context: ${input.timeBoundContext}\n`;
+      }
+    }
+
     if (input.recommendedOutreachAngle) {
       relationshipContext += `- RECOMMENDED OUTREACH ANGLE: ${input.recommendedOutreachAngle}\n`;
     }
-    relationshipContext += `\nCRITICAL: Use this rich interaction history to personalize the email naturally. For example, if there are relevant action items or business context, start the email by referencing them directly (e.g., "We previously discussed X..."). Acknowledge our past conversations where relevant, but do not inject raw message logs. Keep it highly professional.`;
+    relationshipContext += `\nCRITICAL: Use this rich interaction history to personalize the email naturally. Never assume that future plans mentioned in old conversations are still valid today. Treat them as expired information. For example, if there are relevant action items or business context, start the email by referencing them directly (e.g., "We previously discussed X..."). Acknowledge our past conversations where relevant, but do not inject raw message logs. Keep it highly professional.`;
   }
 
   const prompt = `You are drafting a B2B outreach email for Whileone, a technology consultancy.
@@ -148,9 +169,9 @@ Outreach Goal: ${input.relationshipIntelligence.outreachGoal}
 Capability Prominence: ${input.relationshipIntelligence.capabilityProminence.toUpperCase()}
 
 CRITICAL CAPABILITY RULES:
-- If Capability Prominence is LOW: Mention WhileOne briefly only if extremely natural. Focus almost entirely on the relationship / goal.
-- If Capability Prominence is MEDIUM: Weave WhileOne capabilities organically into the recent context.
-- If Capability Prominence is HIGH: Directly position WhileOne as a solution to their initiatives. Use specific proof points.
+- If Capability Prominence is LOW: Mention Whileone briefly only if extremely natural. Focus almost entirely on the relationship / goal.
+- If Capability Prominence is MEDIUM: Weave Whileone capabilities organically into the recent context.
+- If Capability Prominence is HIGH: Directly position Whileone as a solution to their initiatives. Use specific proof points.
 ` : ""}
 
 ${input.companyContextRelevance ? `COMPANY CONTEXT RELEVANCE
@@ -179,8 +200,12 @@ ${input.recommendationReason ? `Why this company is recommended:\n${input.recomm
 ${input.prospectNotes ? `Additional notes:\n${input.prospectNotes}` : ""}
 
 ${WHILEONE_MESSAGING_RULES.replace("TARGET_COMPANY_PLACEHOLDER", input.targetCompany)}
-
 Requirements:
+- The purpose of this outreach is business development. Do not merely reconnect.
+- Demonstrate Whileone's credibility through relevant project evidence.
+- If matching projects are available, include a concise bullet section containing 2-4 project-backed outcomes.
+- Prefer measurable outcomes and numerical results whenever available.
+- Project evidence should be specific enough to establish credibility but concise enough to remain mobile-friendly.
 - Follow this exact CONTEXT HIERARCHY for generation:
   1. Introduction: Relationship Intelligence → Conversation History. Use conversation history primarily for opening, relationship framing, and setting the tone.
   2. Body: Company Context Intelligence → Matching Projects. Actively connect recent Company Context with Matching Projects. Do not list company developments and capabilities separately. Make the connection explicit (e.g. "Since you are building X, our work on Y is highly relevant").
@@ -190,8 +215,8 @@ Requirements:
 - Incorporate the company name (${input.targetCompany}) into the subject line naturally if possible. Prioritize in this order: 1) Relevance 2) Company Name 3) Curiosity 4) Brevity.
 - Do NOT use clickbait or generic phrases like "Introduction from Whileone", "Quick Chat", "Exploring Opportunities", "Following Up", or "Checking In".
 - Implicitly position Whileone as a domain expert using evidence from Matching Projects, NOT generic claims. Never say "We provide performance tuning services" or "We offer AI infrastructure expertise" if specific project evidence can be used instead.
-- The offering section must be easy to scan. When discussing WhileOne experience or relevant work, use concise bullet points.
-  - Good Example: "We've recently helped teams:\\n• Reduce validation effort...\\n• Improve compiler reliability..."
+- The offering section must be easy to scan. When discussing Whileone experience or relevant work, use concise bullet points.
+  - Good Example: "At Whileone we've recently helped engineering teams:\n• Reduce validation effort by 40%...\n• Improve compiler reliability..."
 - Use actual bullet symbols (•) for bulleted lists. Do NOT use asterisks (*) or hyphens (-).
 - Keep references concise and do not invent metrics.
 - Entire email must be 120-150 words maximum (prefer 80-130 words) and mobile-friendly with short sentences. Avoid large paragraphs describing capabilities.
@@ -251,6 +276,11 @@ Refinement Instructions from User:
 ${WHILEONE_MESSAGING_RULES.replace("TARGET_COMPANY_PLACEHOLDER", context ? context.company : "their company")}
 
 Apply the instructions carefully to the existing draft. 
+- The purpose of this outreach is business development. Do not merely reconnect.
+- Demonstrate Whileone's credibility through relevant project evidence.
+- If matching projects are available, include a concise bullet section containing 2-4 project-backed outcomes.
+- Prefer measurable outcomes and numerical results whenever available.
+- Project evidence should be specific enough to establish credibility but concise enough to remain mobile-friendly.
 - Do NOT generate a completely unrelated email. Modify the existing one.
 - Preserve factual project references or names unless instructed otherwise.
 - Subject line must be 5-9 words, curiosity-driven, highly relevant, and NOT spammy.

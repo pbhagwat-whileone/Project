@@ -12,7 +12,9 @@ export type TaskType =
   | "COMPANY_CONTEXT_INTELLIGENCE"
   | "COMPANY_CONTEXT_RELEVANCE"
   | "RELATIONSHIP_INTELLIGENCE"
-  | "PROFILE_ENRICHMENT_INTELLIGENCE";
+  | "PROFILE_ENRICHMENT_INTELLIGENCE"
+  | "STAKEHOLDER_STRATEGY"
+  | "COMPANY_STAKEHOLDER_STRATEGY";
 
 export type ProviderType = "gemini" | "claude" | "cerebras";
 
@@ -89,5 +91,13 @@ export const TASK_MODEL_CONFIG: Record<TaskType, TaskConfig> = {
   PROFILE_ENRICHMENT_INTELLIGENCE: {
     provider: "cerebras",
     models: ["gpt-oss-120b"],
+  },
+  STAKEHOLDER_STRATEGY: {
+    provider: "gemini",
+    models: ["gemini-2.5-flash", "gemini-2.0-flash"],
+  },
+  COMPANY_STAKEHOLDER_STRATEGY: {
+    provider: "gemini",
+    models: ["gemini-2.5-flash", "gemini-2.0-flash"],
   },
 };

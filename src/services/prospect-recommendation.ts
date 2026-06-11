@@ -132,11 +132,25 @@ async function calculateCompanyScoreAndProjects(
   const companyContext = await getCompanyContext(supabase, company, { skipTavily: true });
 
   const queryParts: string[] = [];
+  
+  // Prioritize Company, Technology, and Business-priority relevance
+  queryParts.push(company);
+  if (companyContext?.technologySignals?.length) {
+    queryParts.push(companyContext.technologySignals.join(" "));
+  }
+  if (companyContext?.businessPriorities?.length) {
+    queryParts.push(companyContext.businessPriorities.join(" "));
+  }
+  if (companyContext?.keyInitiatives?.length) {
+    queryParts.push(companyContext.keyInitiatives.join(" "));
+  }
+  if (companyContext?.summary) {
+    queryParts.push(companyContext.summary);
+  }
+
+  // Then add contact and industry context
   if ((topContact as any)?.discussion_topics) queryParts.push((topContact as any).discussion_topics);
   if ((topContact as any)?.conversation_summary) queryParts.push((topContact as any).conversation_summary);
-  if (companyContext?.summary) queryParts.push(companyContext.summary);
-
-  queryParts.push(company);
   if (topContact?.position) queryParts.push(topContact.position);
   if (industry && industry !== "Unknown") queryParts.push(industry);
 
@@ -435,7 +449,7 @@ export async function getCompanyDetail(
     last_calculated_at: new Date().toISOString(),
   });
 
-  const outreachPrompt = `You are an outreach strategist for WhileOne, a technology consultancy.
+  const outreachPrompt = `You are an outreach strategist for Whileone, a technology consultancy.
 
 Target company: ${match.company}
 Recommendation score: ${match.recommendationScore}/100

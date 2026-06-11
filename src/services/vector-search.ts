@@ -11,9 +11,12 @@ export async function searchKnowledgeChunks(
   query: string,
   matchCount = 3
 ): Promise<MatchedChunk[]> {
+  console.log("[ProjectMatching] Generating Embedding");
   const embedding = await generateEmbedding(query);
+  console.log("[ProjectMatching] Embedding Generated:", embedding?.length);
   const vector = embeddingToPgVector(embedding);
 
+  console.log("[ProjectMatching] Querying Vector Database");
   const { data, error } = await supabase.rpc("match_knowledge_chunks", {
     p_user_id: userId,
     query_embedding: vector,
@@ -25,6 +28,9 @@ export async function searchKnowledgeChunks(
   }
 
   const chunks = (data ?? []) as MatchedChunk[];
+  
+  console.log("[ProjectMatching] Raw Results Count:", chunks.length);
+  console.log("[ProjectMatching] Raw Results:", chunks);
   
   console.log("[PROJECT_RETRIEVAL] Retrieved:", chunks.map(c => c.project_name || c.document_id));
 
@@ -66,6 +72,8 @@ export async function searchKnowledgeChunks(
       chunk.reference_link = `https://docs.google.com/document/d/${fileId}/edit`;
     }
   }
+
+  console.log("[ProjectMatching] Final Results:", topUnique);
 
   return topUnique;
 }

@@ -121,7 +121,6 @@ export function DashboardView() {
     <div>
       <PageHeader
         title="Dashboard"
-        description="Overview of your outreach knowledge base and pipeline."
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -202,9 +201,9 @@ export function DashboardView() {
                           View Connections
                         </Link>
                       </Button>
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
+                      <Button
+                        variant="destructive"
+                        size="sm"
                         className="w-full justify-center"
                         onClick={() => handleDeleteNetwork(s.owner, s.connections)}
                         disabled={deleting === s.owner}

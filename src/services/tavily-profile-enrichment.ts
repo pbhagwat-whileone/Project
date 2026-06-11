@@ -196,6 +196,14 @@ Respond in JSON ONLY with exactly the following structure:
 
   if (upsertError) {
     console.error(`[ProfileEnrichment] Error caching profile for connection ${connectionId}:`, upsertError);
+  } else {
+    console.log("[ProfileEnrichment] Saved To:", "connection_profiles");
+    console.log("[ProfileEnrichment] Connection:", connectionId);
+    console.log("[ProfileEnrichment] Saved Payload:", {
+      expertiseTags: profileData.expertise_tags,
+      technologyTags: profileData.technology_tags,
+      activitySignals: profileData.activity_signals
+    });
   }
 
   if (llmFailedError) {

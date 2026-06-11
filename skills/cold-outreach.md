@@ -18,7 +18,7 @@ The opening sentence must be short, create curiosity, and establish relevance im
 ## Company Context Usage
 Use the prospect's company context, role, or industry to anchor the email. Transition smoothly from their context into how Whileone may be relevant.
 
-## WhileOne Positioning
+## Whileone Positioning
 Use high capability prominence. Use specific project evidence as your primary source of credibility (do not invent facts, outcomes, or metrics). Prioritize business impact and outcomes over technical implementation (e.g., "Reduced validation effort..." rather than "Implemented X"). When using bullets, the benefit or outcome must appear before the implementation detail. Avoid capability lists, service lists, generic capability statements, and generic marketing-heavy language.
 
 ## Call To Action
@@ -34,3 +34,6 @@ Let the CTA emerge naturally as a low-pressure, conversational, peer-to-peer con
 - Do NOT use headings or section labels like "Why" or "How".
 - Avoid long, formal introductions.
 - Avoid forcing technical details unless they explicitly support a business outcome.
+
+
+Project evidence must be included whenever relevant projects are available.

@@ -57,6 +57,10 @@ export function EmailsView() {
   const [refining, setRefining] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+
   useEffect(() => {
     const savedProvider = localStorage.getItem("preferred_provider") as ProviderType;
     const savedModel = localStorage.getItem("preferred_model");
@@ -250,6 +254,11 @@ export function EmailsView() {
         setSelected(null);
       }
       setDeleteTarget(null);
+      
+      const newSelectedEmails = new Set(selectedEmails);
+      newSelectedEmails.delete(deleteTarget.id);
+      setSelectedEmails(newSelectedEmails);
+      
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Delete failed");
@@ -257,6 +266,43 @@ export function EmailsView() {
       setDeleting(false);
     }
   }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedEmails(new Set(emails.map((e) => e.id)));
+    } else {
+      setSelectedEmails(new Set());
+    }
+  };
+
+  const handleSelectEmail = (id: string, checked: boolean) => {
+    const newSet = new Set(selectedEmails);
+    if (checked) {
+      newSet.add(id);
+    } else {
+      newSet.delete(id);
+    }
+    setSelectedEmails(newSet);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedEmails.size === 0) return;
+    setBulkDeleting(true);
+    try {
+      await apiFetch("/api/emails/bulk-delete", {
+        method: "POST",
+        body: JSON.stringify({ ids: Array.from(selectedEmails) }),
+      });
+      toast.success(`${selectedEmails.size} emails deleted`);
+      setSelectedEmails(new Set());
+      setBulkDeleteConfirm(false);
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Bulk delete failed");
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   return (
     <div>
@@ -273,11 +319,29 @@ export function EmailsView() {
           description="Generate emails from the Companies page."
         />
       ) : (
-        <div className="rounded-xl border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Subject</TableHead>
+        <div className="space-y-4">
+          {emails.length > 0 && selectedEmails.size > 0 && (
+            <div className="flex items-center justify-between bg-muted/50 p-3 rounded-lg border">
+              <span className="text-sm font-medium ml-2">{selectedEmails.size} selected</span>
+              <Button variant="destructive" size="sm" onClick={() => setBulkDeleteConfirm(true)}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Selected
+              </Button>
+            </div>
+          )}
+          <div className="rounded-xl border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12 text-center">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                      checked={emails.length > 0 && selectedEmails.size === emails.length}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                    />
+                  </TableHead>
+                  <TableHead>Subject</TableHead>
                 <TableHead>Company</TableHead>
                 <TableHead>Contact</TableHead>
                 <TableHead>Created</TableHead>
@@ -287,6 +351,14 @@ export function EmailsView() {
             <TableBody>
               {emails.map((email) => (
                 <TableRow key={email.id}>
+                  <TableCell className="text-center">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                      checked={selectedEmails.has(email.id)}
+                      onChange={(e) => handleSelectEmail(email.id, e.target.checked)}
+                    />
+                  </TableCell>
                   <TableCell className="max-w-xs truncate font-medium">
                     {email.subject}
                   </TableCell>
@@ -315,7 +387,8 @@ export function EmailsView() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </div>
       )}
 
@@ -580,6 +653,29 @@ export function EmailsView() {
               disabled={deleting}
             >
               {deleting ? "Deleting…" : "Delete"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={bulkDeleteConfirm} onOpenChange={setBulkDeleteConfirm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Bulk Delete Emails</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete {selectedEmails.size} emails? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setBulkDeleteConfirm(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+            >
+              {bulkDeleting ? "Deleting…" : "Delete All"}
             </Button>
           </div>
         </DialogContent>

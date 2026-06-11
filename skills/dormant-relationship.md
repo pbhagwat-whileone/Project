@@ -18,8 +18,8 @@ The opening sentence must explicitly but naturally acknowledge the time since th
 ## Company Context Usage
 Use the recent company context (Tavily) as the specific, organic reason for reaching out *now*. Pivot smoothly from the past conversation into their recent company developments.
 
-## WhileOne Positioning
-Weave WhileOne capabilities in lightly (low/medium prominence). Focus strictly on how they align with their current/new initiatives rather than giving a broad overview or forcing a heavy capability list. Position WhileOne as a resource that naturally aligns with their new direction.
+## Whileone Positioning
+Weave Whileone capabilities in lightly (low/medium prominence). Focus strictly on how they align with their current/new initiatives rather than giving a broad overview or forcing a heavy capability list. Position Whileone as a resource that naturally aligns with their new direction.
 
 ## Call To Action
 The CTA should be very low-pressure (e.g., "Would love to catch up when you have a moment," or "Happy to hear how things have evolved on your end").
@@ -31,4 +31,7 @@ The CTA should be very low-pressure (e.g., "Would love to catch up when you have
 ## Avoid
 - Do NOT jump straight into a hard sales pitch.
 - Avoid making assumptions about their current needs.
-- Avoid sending a massive list of what WhileOne has been doing during the gap.
+- Avoid sending a massive list of what Whileone has been doing during the gap.
+
+
+Project evidence must be included whenever relevant projects are available.

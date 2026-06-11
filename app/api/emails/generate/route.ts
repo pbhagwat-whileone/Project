@@ -61,6 +61,8 @@ export async function POST(request: Request) {
         engagement_quality: parsed.data.engagement_quality,
         recommended_outreach_angle: parsed.data.recommended_outreach_angle,
         personalization_points: parsed.data.personalization_points,
+        persistent_context: parsed.data.persistent_context,
+        time_bound_context: parsed.data.time_bound_context,
       };
     } else if (recContext.recommendation?.topContact) {
       contact = recContext.recommendation.topContact;
@@ -68,34 +70,6 @@ export async function POST(request: Request) {
       console.log("[EMAIL_GENERATION] Existing Dashboard Projects (Rec):", projects.map(p => p.project_name || p.document_id));
       recommendationReason ??= recContext.recommendation.suggestedReason;
     } else {
-      const { data: cacheRow } = await supabase
-        .from("company_industry_cache")
-        .select("industry")
-        .eq("user_id", user.id)
-        .ilike("company_name", parsed.data.company_name)
-        .maybeSingle();
-
-      const industry = cacheRow?.industry && cacheRow.industry !== "Unknown" ? cacheRow.industry : "";
-
-      const queryParts = [parsed.data.company_name];
-      if (parsed.data.position) queryParts.push(parsed.data.position);
-      if (industry) queryParts.push(industry);
-
-      const query = queryParts.join(" ");
-      projects = await searchKnowledgeChunks(supabase, user.id, query, 3);
-      console.log("[EMAIL_GENERATION] Existing Dashboard Projects (Fallback):", projects.map(p => p.project_name || p.document_id));
-
-      if (projects.length === 0) {
-        const fallbackQueryParts = [];
-        if (industry) fallbackQueryParts.push(industry);
-        if (parsed.data.position) fallbackQueryParts.push(parsed.data.position);
-        
-        const fallbackQuery = fallbackQueryParts.join(" ").trim();
-        if (fallbackQuery && fallbackQuery !== query) {
-          projects = await searchKnowledgeChunks(supabase, user.id, fallbackQuery, 3);
-        }
-      }
-
       contact = {
         id: "",
         first_name: parsed.data.contact_name?.split(" ")[0] ?? null,
@@ -107,50 +81,12 @@ export async function POST(request: Request) {
         profile_url: parsed.data.profile_url ?? null,
         score: 0,
       };
+      projects = [];
     }
 
     const resolvedCompany = contact?.company || parsed.data.company_name;
 
     const companyContext = await getCompanyContext(supabase, resolvedCompany);
-
-    // Build Enhanced Retrieval Intent for Email Generation
-    const { data: cacheRow } = await supabase
-      .from("company_industry_cache")
-      .select("industry")
-      .eq("user_id", user.id)
-      .ilike("company_name", resolvedCompany)
-      .maybeSingle();
-
-    const industry = cacheRow?.industry && cacheRow.industry !== "Unknown" ? cacheRow.industry : "";
-
-    const enhancedQueryParts = [];
-    if (companyContext) {
-       if (companyContext.technologySignals?.length) enhancedQueryParts.push(companyContext.technologySignals.join(" "));
-       if (companyContext.businessPriorities?.length) enhancedQueryParts.push(companyContext.businessPriorities.join(" "));
-       if (companyContext.keyInitiatives?.length) enhancedQueryParts.push(companyContext.keyInitiatives.join(" "));
-       if (companyContext.outreachOpportunities?.length) enhancedQueryParts.push(companyContext.outreachOpportunities.join(" "));
-    }
-    if (contact?.discussion_topics) enhancedQueryParts.push(contact.discussion_topics);
-    if (contact?.conversation_summary) enhancedQueryParts.push(contact.conversation_summary);
-    
-    if (contact?.position) enhancedQueryParts.push(contact.position);
-    if (industry) enhancedQueryParts.push(industry);
-    enhancedQueryParts.push(resolvedCompany);
-
-    const enhancedQuery = enhancedQueryParts.join(" ").trim();
-    if (enhancedQuery) {
-      const freshProjects = await searchKnowledgeChunks(supabase, user.id, enhancedQuery, 3);
-      console.log("[EMAIL_GENERATION] Fresh Retrieval Projects:", freshProjects.map(p => p.project_name || p.document_id));
-      
-      if (freshProjects.length > 0) {
-        projects = freshProjects;
-        console.log("[EMAIL_GENERATION] Project Source: enhanced_retrieval");
-      } else {
-        console.log("[EMAIL_GENERATION] Project Source: dashboard_fallback_due_to_empty_fresh");
-      }
-    } else {
-      console.log("[EMAIL_GENERATION] Project Source: dashboard_fallback_due_to_empty_query");
-    }
 
     let companyContextRelevance = null;
     if (companyContext) {
@@ -205,6 +141,8 @@ export async function POST(request: Request) {
       engagementQuality: contact?.engagement_quality ?? undefined,
       recommendedOutreachAngle: contact?.recommended_outreach_angle ?? undefined,
       personalizationPoints: contact?.personalization_points ?? undefined,
+      persistentContext: contact?.persistent_context ?? undefined,
+      timeBoundContext: contact?.time_bound_context ?? undefined,
       companyContext,
       companyContextRelevance,
     });

@@ -18,8 +18,8 @@ Skip formal introductions. Dive directly into the context of your ongoing dialog
 ## Company Context Usage
 Leverage recent company news (Tavily) as an accelerant to the conversation (e.g., "I saw the recent announcement about X, which ties perfectly into our discussion on Y last week").
 
-## WhileOne Positioning
-Use medium capability prominence. Tie WhileOne's specific offerings clearly and immediately to the topics you've recently discussed. Frame WhileOne as an active collaborator or logical next step for their ongoing challenges.
+## Whileone Positioning
+Use medium capability prominence. Tie Whileone's specific offerings clearly and immediately to the topics you've recently discussed. Frame Whileone as an active collaborator or logical next step for their ongoing challenges.
 
 ## Call To Action
 The CTA should be highly relevant to advancing the current conversation (e.g., "Would it make sense to explore how our framework could accelerate this?").
@@ -30,6 +30,9 @@ The CTA should be highly relevant to advancing the current conversation (e.g., "
 - Keep the capability references specific to what has already been discussed.
 
 ## Avoid
-- Do NOT re-introduce yourself or WhileOne.
+- Do NOT re-introduce yourself or Whileone.
 - Avoid pivoting away from previously established discussion topics.
 - Avoid aggressive closing tactics that could damage the rapport.
+
+
+Project evidence must be included whenever relevant projects are available.

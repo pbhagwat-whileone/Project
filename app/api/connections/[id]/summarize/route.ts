@@ -72,6 +72,8 @@ export async function POST(
         engagement_quality: intelligence.engagement_quality,
         recommended_outreach_angle: intelligence.recommended_outreach_angle,
         personalization_points: intelligence.personalization_points,
+        persistent_context: intelligence.persistent_context,
+        time_bound_context: intelligence.time_bound_context,
         message_count: messages.length,
         // keep conversation_count rough or calculate if needed
         updated_at: new Date().toISOString()

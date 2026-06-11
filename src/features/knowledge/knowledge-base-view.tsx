@@ -110,7 +110,8 @@ export function KnowledgeBaseView() {
                 <TableHead>Document Name</TableHead>
                 <TableHead>Last Modified</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Chunk Count</TableHead>
+                <TableHead className="text-center
+                ">Chunk Count</TableHead>
                 <TableHead className="text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -134,7 +135,7 @@ export function KnowledgeBaseView() {
                       {doc.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-center">
                     {doc.chunk_count}
                   </TableCell>
                   <TableCell className="text-right">

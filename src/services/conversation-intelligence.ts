@@ -13,6 +13,8 @@ export type ConversationIntelligence = {
   engagement_quality: "High" | "Medium" | "Low";
   recommended_outreach_angle: string;
   personalization_points: string[];
+  persistent_context: string;
+  time_bound_context: string;
 };
 
 export async function generateConversationIntelligence(
@@ -118,7 +120,9 @@ You MUST respond in pure JSON format matching this EXACT structure (do not inclu
   "action_items": ["Action 1", "Action 2"],
   "engagement_quality": "High, Medium, or Low",
   "recommended_outreach_angle": "A short recommendation describing the best way to re-engage this contact.",
-  "personalization_points": ["Detail 1", "Detail 2"]
+  "personalization_points": ["Detail 1", "Detail 2"],
+  "persistent_context": "Persistent Relationship Context (e.g. Worked at SiPearl, Interested in HPC, Discussed benchmarking).",
+  "time_bound_context": "Time-Bound Context (e.g. Upcoming travel, Vacation plans, Meeting next week, Returning from US trip, Conference attendance)."
 }
 
 Ensure the JSON is strictly valid. Do not include any other text.`;

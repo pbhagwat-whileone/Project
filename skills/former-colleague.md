@@ -18,7 +18,7 @@ The opening should establish relevance within the first sentence by acknowledgin
 ## Company Context Usage
 Use their recent company context simply to show you've been following their career or to ask an insightful question about their current focus.
 
-## WhileOne Positioning
+## Whileone Positioning
 Once reconnected, naturally transition into a brief update on your current work. Use project context only if it strictly strengthens current relevance. Do not over-explain Whileone. Focus heavily on the human connection over the company pitch.
 
 ## Call To Action
@@ -33,3 +33,6 @@ The closing should naturally lead into a casual conversation or catch-up (e.g., 
 - Do NOT send a standard cold outreach email.
 - Avoid forcing capabilities if they do not flow naturally from the catch-up.
 - Avoid heavy marketing language.
+
+
+Project evidence must be included whenever relevant projects are available.

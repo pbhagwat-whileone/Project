@@ -18,7 +18,7 @@ The opening should establish relevance within the first sentence by mentioning t
 ## Company Context Usage
 Use their recent company context to anchor the reason for reaching out now, pivoting from the shared context into their specific business trajectory.
 
-## WhileOne Positioning
+## Whileone Positioning
 After establishing familiarity, naturally transition into how your expertise aligns with their goals. Use project evidence to demonstrate credibility organically. Prioritize business impact and outcomes over technical implementation. Avoid generic consultancy or marketing-heavy language.
 
 ## Call To Action
@@ -33,3 +33,6 @@ The closing should naturally lead into an open discussion or exchange of experie
 - Do NOT use section labels like "Why" or "How".
 - Avoid bulleted capability lists.
 - Avoid forcing technical details if they do not map to the shared context.
+
+
+Project evidence must be included whenever relevant projects are available.

@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
     const queryBuilder = supabase
       .from("connections")
-      .select("*")
+      .select("*, connection_profiles(*)")
       .eq("user_id", user.id);
 
     const connections = await fetchAllRecords<any>(queryBuilder);
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         contacts: [],
         projects: [],
-        message: "No matching company could be identified, so project recommendations were not generated.",
+        message: "No matching company could be identified.",
       });
     }
 
@@ -113,71 +113,9 @@ export async function POST(request: Request) {
 
     const rankedContacts = rankContactsWithMetrics(recommendedContacts, metricsMap);
     
-    // Default to the very top contact to drive semantic search
-    const primaryContact = rankedContacts[0];
-
-    const rawQuery = parsed.data.company;
-    const normalizedQuery = rawQuery.toLowerCase().trim();
-    const resolvedCompany = primaryContact?.company || rawQuery;
-    const contactTitle = primaryContact?.position || "";
-
-    const { data: cacheRow } = await supabase
-      .from("company_industry_cache")
-      .select("industry")
-      .eq("user_id", user.id)
-      .ilike("company_name", resolvedCompany)
-      .maybeSingle();
-
-    const industry = cacheRow?.industry && cacheRow.industry !== "Unknown" 
-      ? cacheRow.industry 
-      : "";
-
-    const companyContext = await getCompanyContext(supabase, resolvedCompany, { skipTavily: true });
-
-    const queryParts: string[] = [];
-    if (primaryContact?.discussion_topics) queryParts.push(primaryContact.discussion_topics);
-    if (primaryContact?.conversation_summary) queryParts.push(primaryContact.conversation_summary);
-    if (companyContext?.summary) queryParts.push(companyContext.summary);
-    
-    queryParts.push(resolvedCompany);
-    if (contactTitle) queryParts.push(contactTitle);
-    if (industry) queryParts.push(industry);
-    
-    // Build semantic query using company, role, and industry
-    const finalQuery = queryParts.join(" ").trim();
-
-    let projects = await searchKnowledgeChunks(
-      supabase,
-      user.id,
-      finalQuery,
-      3
-    );
-
-    if (projects.length === 0) {
-      // Fallback search if exact company name matching yields zero results
-      const fallbackQueryParts = [];
-      if (industry) fallbackQueryParts.push(industry);
-      if (contactTitle) fallbackQueryParts.push(contactTitle);
-      
-      const fallbackQuery = fallbackQueryParts.join(" ").trim();
-      
-      if (fallbackQuery && fallbackQuery !== finalQuery) {
-        projects = await searchKnowledgeChunks(
-          supabase,
-          user.id,
-          fallbackQuery,
-          3
-        );
-      }
-    }
-
-
     return NextResponse.json({
       contacts: rankedContacts,
-      projects: projects.map((p) => ({
-        ...p,
-        summary: p.chunk_text.slice(0, 200),
-      })),
+      projects: [], // Projects are now fetched at the connection level
       message: rankedContacts.length ? null : "No LinkedIn connection found.",
     });
 

@@ -101,6 +101,7 @@ export function findRecommendedContacts(
       position: c.position,
       email: c.email,
       profile_url: c.profile_url,
+      location: c.connection_profiles ? c.connection_profiles.location : null,
       score: scorePosition(c.position),
       connection_owner_name: c.connection_owner_name,
     }))

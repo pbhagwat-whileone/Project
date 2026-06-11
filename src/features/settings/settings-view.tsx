@@ -120,12 +120,12 @@ export function SettingsView() {
           <CardHeader>
             <CardTitle>Drive Folders</CardTitle>
             <CardDescription>
-              Google Drive folder IDs containing WhileOne project docs (one per line).
+              Google Drive folder IDs containing project docs (add one per line).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="folder">GOOGLE_DRIVE_FOLDER_IDS</Label>
+              <Label htmlFor="folder">Google Drive Folder ID's</Label>
               <Textarea
                 id="folder"
                 className="mt-2 font-mono"

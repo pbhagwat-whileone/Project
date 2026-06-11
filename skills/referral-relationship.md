@@ -18,8 +18,8 @@ The absolute first sentence MUST mention the mutual connection or the referral s
 ## Company Context Usage
 Use company context to justify *why* the mutual connection thought you should speak. It provides the logical anchor for the referral.
 
-## WhileOne Positioning
-Quickly transition from the name-drop into the specific business value WhileOne can provide regarding their current initiatives. Use low to medium prominence initially to avoid burning the referral trust with a hard pitch, but clearly establish competence.
+## Whileone Positioning
+Quickly transition from the name-drop into the specific business value Whileone can provide regarding their current initiatives. Use low to medium prominence initially to avoid burning the referral trust with a hard pitch, but clearly establish competence.
 
 ## Call To Action
 The CTA should lean heavily on the mutual trust (e.g., "[Name] thought it would be highly mutually beneficial for us to connect").
@@ -33,3 +33,6 @@ The CTA should lean heavily on the mutual trust (e.g., "[Name] thought it would 
 - Do NOT ignore or bury the name of the referrer.
 - Avoid pivoting too aggressively into a cold sales pitch.
 - Do not sound demanding or entitled to a meeting.
+
+
+Project evidence must be included whenever relevant projects are available.

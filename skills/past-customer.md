@@ -18,8 +18,8 @@ The opening should acknowledge past success and express continued investment in 
 ## Company Context Usage
 Use recent company developments (Tavily) as the primary trigger for reaching out (e.g., "I noticed your team is now aggressively expanding into Y...").
 
-## WhileOne Positioning
-Weave WhileOne's capabilities in by explicitly showing how you can replicate past success in this new domain or initiative. Draw a direct line between the trust built during previous engagements and their current business trajectory. Emphasize WhileOne's ability to be a reliable, known partner.
+## Whileone Positioning
+Weave Whileone's capabilities in by explicitly showing how you can replicate past success in this new domain or initiative. Draw a direct line between the trust built during previous engagements and their current business trajectory. Emphasize Whileone's ability to be a reliable, known partner.
 
 ## Call To Action
 The CTA should focus on a strategic catch-up rather than a cold pitch (e.g., "Would love to reconnect and share some insights we've gathered that might help with this new rollout").
@@ -30,6 +30,9 @@ The CTA should focus on a strategic catch-up rather than a cold pitch (e.g., "Wo
 - Frame the outreach around their new strategic direction.
 
 ## Avoid
-- Do NOT explain what WhileOne does from scratch.
+- Do NOT explain what Whileone does from scratch.
 - Avoid generic cold-email CTAs.
 - Do not sound transactional; maintain the partnership tone.
+
+
+Project evidence must be included whenever relevant projects are available.
