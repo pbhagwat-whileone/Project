@@ -74,6 +74,7 @@ async function processDocument(
       status: "synced",
       last_modified: file.modifiedTime,
       document_name: file.name,
+      source_type: (file.mimeType === "application/vnd.google-apps.spreadsheet" || file.mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") ? "google_sheet" : "document",
     })
     .eq("id", documentId);
 
@@ -145,6 +146,7 @@ export async function syncKnowledgeBase(
               document_name: file.name,
               last_modified: file.modifiedTime,
               status: "pending",
+              source_type: (file.mimeType === "application/vnd.google-apps.spreadsheet" || file.mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") ? "google_sheet" : "document",
             })
             .select("id")
             .single();

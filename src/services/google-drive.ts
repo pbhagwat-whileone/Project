@@ -19,7 +19,7 @@ export async function listGoogleDocsInFolder(
 
   do {
     const response = await drive.files.list({
-      q: `'${folderId}' in parents and trashed = false and (mimeType = 'application/vnd.google-apps.document' or mimeType = 'text/plain' or mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')`,
+      q: `'${folderId}' in parents and trashed = false and (mimeType = 'application/vnd.google-apps.document' or mimeType = 'text/plain' or mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' or mimeType = 'application/vnd.google-apps.spreadsheet' or mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')`,
       fields: "nextPageToken, files(id, name, modifiedTime, mimeType)",
       pageSize: 100,
       pageToken,
@@ -66,7 +66,59 @@ export async function fetchDocumentText(
     return result.value;
   }
 
+  if (file.mimeType === "application/vnd.google-apps.spreadsheet" || file.mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") {
+    return extractGoogleSheetText(auth, file.id);
+  }
+
   return extractGoogleDocText(auth, file.id);
+}
+
+async function extractGoogleSheetText(
+  auth: OAuth2Client,
+  spreadsheetId: string
+): Promise<string> {
+  const sheets = google.sheets({ version: "v4", auth });
+  
+  const spreadsheet = await sheets.spreadsheets.get({
+    spreadsheetId,
+  });
+  
+  const parts: string[] = [];
+  
+  for (const sheet of spreadsheet.data.sheets ?? []) {
+    const title = sheet.properties?.title;
+    if (!title) continue;
+    
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: title,
+    });
+    
+    const rows = res.data.values;
+    if (!rows || rows.length === 0) continue;
+    
+    parts.push(`Sheet: ${title}\n`);
+    
+    const headers = rows[0];
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i] ?? [];
+      let rowText = "";
+      const colCount = Math.max(headers.length, row.length);
+      for (let j = 0; j < colCount; j++) {
+        const header = headers[j] ? String(headers[j]).trim() : `Column${j+1}`;
+        const value = row[j] ? String(row[j]).trim() : "";
+        if (value) {
+          rowText += `${header}: ${value}\n`;
+        }
+      }
+      if (rowText) {
+        parts.push(rowText.trim());
+        parts.push("");
+      }
+    }
+  }
+  
+  return parts.join("\n").trim();
 }
 
 function extractGoogleDocText(

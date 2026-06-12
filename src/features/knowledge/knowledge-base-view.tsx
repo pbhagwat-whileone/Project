@@ -142,7 +142,7 @@ export function KnowledgeBaseView() {
                     {doc.google_file_id ? (
                       <Button variant="ghost" size="sm" asChild>
                         <a
-                          href={`https://docs.google.com/document/d/${doc.google_file_id}/edit`}
+                          href={doc.source_type === "google_sheet" ? `https://docs.google.com/spreadsheets/d/${doc.google_file_id}/edit` : `https://docs.google.com/document/d/${doc.google_file_id}/edit`}
                           target="_blank"
                           rel="noopener noreferrer"
                         >

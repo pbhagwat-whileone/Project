@@ -80,6 +80,7 @@ export interface Database {
           document_name: string;
           last_modified: string | null;
           status: DocumentStatus;
+          source_type: string;
           created_at: string;
         };
         Insert: {
@@ -89,6 +90,7 @@ export interface Database {
           document_name: string;
           last_modified?: string | null;
           status?: DocumentStatus;
+          source_type?: string;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["knowledge_documents"]["Insert"]>;

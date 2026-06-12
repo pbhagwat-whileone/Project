@@ -61,15 +61,19 @@ export async function searchKnowledgeChunks(
   const docIds = [...new Set(topUnique.map(c => c.document_id))];
   const { data: docs } = await supabase
     .from("knowledge_documents")
-    .select("id, google_file_id")
+    .select("id, google_file_id, source_type")
     .in("id", docIds);
 
-  const docMap = new Map(docs?.map(d => [d.id, d.google_file_id]));
+  const docMap = new Map(docs?.map(d => [d.id, { fileId: d.google_file_id, sourceType: d.source_type }]));
 
   for (const chunk of topUnique) {
-    const fileId = docMap.get(chunk.document_id);
-    if (fileId) {
-      chunk.reference_link = `https://docs.google.com/document/d/${fileId}/edit`;
+    const docInfo = docMap.get(chunk.document_id);
+    if (docInfo && docInfo.fileId) {
+      if (docInfo.sourceType === "google_sheet") {
+        chunk.reference_link = `https://docs.google.com/spreadsheets/d/${docInfo.fileId}/edit`;
+      } else {
+        chunk.reference_link = `https://docs.google.com/document/d/${docInfo.fileId}/edit`;
+      }
     }
   }
 
