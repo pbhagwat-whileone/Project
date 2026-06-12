@@ -30,14 +30,14 @@ export async function POST(request: Request) {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
       if (cacheDate > thirtyDaysAgo) {
-        console.log(`[CompanySimilar] Cache Hit for ${company}`);
+        // console.log(`[CompanySimilar] Cache Hit for ${company}`);
         return NextResponse.json({ contacts: cacheHit.results });
       } else {
-        console.log(`[CompanySimilar] Cache Expired for ${company}`);
+        // console.log(`[CompanySimilar] Cache Expired for ${company}`);
       }
     }
 
-    console.log(`[CompanySimilar] Cache Miss for ${company}, fetching...`);
+    // console.log(`[CompanySimilar] Cache Miss for ${company}, fetching...`);
 
     // 2. Fetch existing connections
     const { data: existingConnections } = await supabase

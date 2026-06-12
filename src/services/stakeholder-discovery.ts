@@ -6,65 +6,6 @@ export type StakeholderStrategy = {
   titles: string[];
 };
 
-export async function generateStakeholderSearchStrategy(
-  position: string | null,
-  company: string,
-  expertiseTags: string[],
-  technologyTags: string[],
-  activitySignals: string[]
-): Promise<StakeholderStrategy> {
-  const prompt = `You are an expert sales strategist and B2B organizational mapper.
-
-I have a current contact I am talking to. I want to identify OTHER adjacent decision-makers, technical influencers, and potential champions at their company.
-I DO NOT want to find someone with the exact same title. I want to build out the buying committee.
-
-Current Contact Context:
-Company: ${company}
-Position: ${position || "Unknown"}
-Expertise Tags: ${expertiseTags.join(", ")}
-Technology Tags: ${technologyTags.join(", ")}
-Activity Signals: ${activitySignals.join(", ")}
-
-INSTRUCTIONS:
-1. Analyze the current contact's likely department and seniority.
-2. Formulate a search strategy to find ADJACENT stakeholders. If the contact is a VP of Marketing, search for VP of Engineering, Chief Architect, Head of Product, etc.
-3. Prioritize Technical Decision Makers, Product Owners, Architects, and Engineering Leaders if applicable to the expertise tags.
-
-You must output a raw JSON object matching this exact shape:
-{
-  "departments": ["Engineering", "Product"], // Related departments to search
-  "seniorities": ["director", "vp", "c_suite", "head"], // Allowed values: owner, founder, c_suite, partner, vp, head, director, manager, senior, entry
-  "titles": ["Chief Architect", "Head of Product", "VP Engineering"] // Specific exact titles to prioritize
-}
-
-Ensure the JSON is strictly valid. Do not include markdown block ticks.`;
-
-  try {
-    const res = await generateWithFallback(prompt, "STAKEHOLDER_STRATEGY");
-    const rawText = res.text?.trim();
-
-    if (!rawText) {
-      throw new Error("Empty response from AI");
-    }
-
-    let jsonStr = rawText;
-    if (jsonStr.includes("\`\`\`json")) {
-      jsonStr = jsonStr.split("\`\`\`json")[1].split("\`\`\`")[0].trim();
-    } else if (jsonStr.includes("\`\`\`")) {
-      jsonStr = jsonStr.split("\`\`\`")[1].split("\`\`\`")[0].trim();
-    }
-
-    return JSON.parse(jsonStr) as StakeholderStrategy;
-  } catch (err) {
-    console.error("[StakeholderDiscovery] AI Parsing failed, using defaults:", err);
-    return {
-      departments: ["engineering", "product", "information technology"],
-      seniorities: ["director", "vp", "c_suite", "head", "manager"],
-      titles: []
-    };
-  }
-}
-
 export async function generateCompanyStakeholderSearchStrategy(
   company: string,
   existingRoles: string[],

@@ -24,14 +24,14 @@ export async function POST(
       .select("*")
       .eq("connection_id", connectionId)
       .eq("user_id", user.id)
-      .maybeSingle();
+      .maybeSingle() as { data: any };
 
     if (cache) {
       const generatedAt = new Date(cache.generated_at);
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
       if (generatedAt > thirtyDaysAgo) {
-        console.log("[ProjectMatching Cache] Loaded:", cache.matched_projects);
+        // console.log("[ProjectMatching Cache] Loaded:", cache.matched_projects);
         return NextResponse.json({
           projects: cache.matched_projects,
           source: "cache",
@@ -49,10 +49,10 @@ export async function POST(
     let profileData = profile;
 
     if (!profileData) {
-      console.log("[ProjectMatching] Connection ID:", connectionId);
-      console.log("[ProjectMatching] Profile Lookup Result:", profileData);
-      console.log("[ProjectMatching] Profile Table Source:", "connection_profiles");
-      console.log("[ProjectMatching] Auto-triggering Profile Enrichment...");
+      // console.log("[ProjectMatching] Connection ID:", connectionId);
+      // console.log("[ProjectMatching] Profile Lookup Result:", profileData);
+      // console.log("[ProjectMatching] Profile Table Source:", "connection_profiles");
+      // console.log("[ProjectMatching] Auto-triggering Profile Enrichment...");
 
       const { data: conn } = await supabase
         .from("connections")
@@ -78,16 +78,16 @@ export async function POST(
 
     const safeProfile = profileData || { expertise_tags: [], technology_tags: [], activity_signals: [] };
 
-    console.log("[ProjectMatching] Expertise:", safeProfile.expertise_tags);
-    console.log("[ProjectMatching] Technology:", safeProfile.technology_tags);
-    console.log("[ProjectMatching] Activity:", safeProfile.activity_signals);
+    // console.log("[ProjectMatching] Expertise:", safeProfile.expertise_tags);
+    // console.log("[ProjectMatching] Technology:", safeProfile.technology_tags);
+    // console.log("[ProjectMatching] Activity:", safeProfile.activity_signals);
 
     const queryParts: string[] = [];
-    
-    console.log("[ProjectMatching] Connection:", connectionId);
-    console.log("[ProjectMatching] Expertise Tags:", safeProfile.expertise_tags);
-    console.log("[ProjectMatching] Technology Tags:", safeProfile.technology_tags);
-    console.log("[ProjectMatching] Activity Signals:", safeProfile.activity_signals);
+
+    // console.log("[ProjectMatching] Connection:", connectionId);
+    // console.log("[ProjectMatching] Expertise Tags:", safeProfile.expertise_tags);
+    // console.log("[ProjectMatching] Technology Tags:", safeProfile.technology_tags);
+    // console.log("[ProjectMatching] Activity Signals:", safeProfile.activity_signals);
 
     if (Array.isArray(safeProfile.expertise_tags)) {
       queryParts.push(safeProfile.expertise_tags.join(" "));
@@ -100,7 +100,7 @@ export async function POST(
     }
 
     const finalQuery = queryParts.join(" ").trim();
-    console.log("[ProjectMatching] Retrieval Query:", finalQuery);
+    // console.log("[ProjectMatching] Retrieval Query:", finalQuery);
 
     let projects: MatchedChunk[] = [];
 
@@ -113,7 +113,7 @@ export async function POST(
         .select("company, position")
         .eq("id", connectionId)
         .maybeSingle();
-      
+
       if (conn) {
         const fallbackQuery = [conn.company, conn.position].filter(Boolean).join(" ");
         if (fallbackQuery) {
@@ -128,17 +128,17 @@ export async function POST(
     }));
 
     // Upsert to cache
-    console.log("[ProjectMatching] Writing Cache:", projectsWithSummary.length);
+    // console.log("[ProjectMatching] Writing Cache:", projectsWithSummary.length);
     await supabase.from("connection_project_cache").upsert({
       connection_id: connectionId,
       user_id: user.id,
       retrieval_query: finalQuery,
       matched_projects: projectsWithSummary,
       generated_at: new Date().toISOString(),
-    });
+    } as any);
 
-    console.log("[ProjectMatching API] Returning Projects:", projectsWithSummary);
-    console.log("[ProjectMatching API] Count:", projectsWithSummary.length);
+    // console.log("[ProjectMatching API] Returning Projects:", projectsWithSummary);
+    // console.log("[ProjectMatching API] Count:", projectsWithSummary.length);
     return NextResponse.json({
       projects: projectsWithSummary,
       source: "generated",

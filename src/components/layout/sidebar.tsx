@@ -11,6 +11,7 @@ import {
   Search,
   Settings,
   Users,
+  Compass,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ const navItems = [
   { href: "/knowledge-base", label: "Knowledge Base", icon: BookOpen },
   { href: "/connections", label: "Connections", icon: Users },
   { href: "/companies", label: "Companies", icon: Building2 },
+  { href: "/discover", label: "Discover", icon: Compass },
   { href: "/emails", label: "Emails", icon: Mail },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

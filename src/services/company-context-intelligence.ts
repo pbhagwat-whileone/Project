@@ -20,13 +20,13 @@ export async function getCompanyContext(
 
     if (!cacheError && cachedData && cachedData.generated_context) {
       if (new Date(cachedData.expires_at) > new Date()) {
-        console.log(`[CompanyContext] Cache HIT for ${normalizedCompany}`);
+        // console.log(`[CompanyContext] Cache HIT for ${normalizedCompany}`);
         return cachedData.generated_context as CompanyContext;
       } else {
-        console.log(`[CompanyContext] Cache EXPIRED for ${normalizedCompany}`);
+        // console.log(`[CompanyContext] Cache EXPIRED for ${normalizedCompany}`);
       }
     } else {
-      console.log(`[CompanyContext] Cache MISS for ${normalizedCompany}`);
+      // console.log(`[CompanyContext] Cache MISS for ${normalizedCompany}`);
     }
   } catch (err) {
     console.error(`[CompanyContext] Cache fetch error for ${normalizedCompany}:`, err);
@@ -35,7 +35,7 @@ export async function getCompanyContext(
 
   // 2. Fetch public company data using Tavily
   if (options?.skipTavily) {
-    console.log(`[CompanyContext] Skipping Tavily for ${normalizedCompany} as requested.`);
+    // console.log(`[CompanyContext] Skipping Tavily for ${normalizedCompany} as requested.`);
     return null;
   }
 
@@ -47,7 +47,7 @@ export async function getCompanyContext(
     if (!tavilyKey) {
       console.warn("[CompanyContext] Missing TAVILY_API_KEY. Skipping public search.");
     } else {
-      console.log(`[CompanyContext] Fetching Tavily search for ${normalizedCompany}`);
+      // console.log(`[CompanyContext] Fetching Tavily search for ${normalizedCompany}`);
       const startTime = Date.now();
       
       const response = await fetch("https://api.tavily.com/search", {
@@ -77,7 +77,7 @@ export async function getCompanyContext(
         rawContext = data.results.map((r: any) => `Source: ${r.title}\nURL: ${r.url}\nContent: ${r.content}`).join("\n\n");
       }
       
-      console.log(`[CompanyContext] Tavily search completed in ${Date.now() - startTime}ms. Sources found: ${sources.length}`);
+      // console.log(`[CompanyContext] Tavily search completed in ${Date.now() - startTime}ms. Sources found: ${sources.length}`);
     }
   } catch (err) {
     console.error(`[CompanyContext] Error fetching public data for ${normalizedCompany}:`, err);
@@ -143,7 +143,7 @@ Keep responses concise.`;
       sources: sources,
     };
 
-    console.log(`[CompanyContext] Intelligence generation completed in ${Date.now() - startTime}ms.`);
+    // console.log(`[CompanyContext] Intelligence generation completed in ${Date.now() - startTime}ms.`);
 
   } catch (err) {
     console.error(`[CompanyContext] Error generating intelligence for ${normalizedCompany}:`, err);
@@ -170,7 +170,7 @@ Keep responses concise.`;
     if (upsertError) {
       console.error(`[CompanyContext] Error caching context for ${normalizedCompany}:`, upsertError);
     } else {
-      console.log(`[CompanyContext] Successfully cached context for ${normalizedCompany}`);
+      // console.log(`[CompanyContext] Successfully cached context for ${normalizedCompany}`);
     }
   } catch (err) {
     console.error(`[CompanyContext] Error during cache upsert for ${normalizedCompany}:`, err);

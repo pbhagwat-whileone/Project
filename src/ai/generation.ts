@@ -97,7 +97,7 @@ export async function generateWithFallback(
       }
 
       const duration = Date.now() - startTime;
-      console.log(`[AI] Task=${task} Provider=${provider} Model=${model} Duration=${duration}ms Success=true`);
+      // console.log(`[AI] Task=${task} Provider=${provider} Model=${model} Duration=${duration}ms Success=true`);
       return { text };
     } catch (error: any) {
       const duration = Date.now() - startTime;

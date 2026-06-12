@@ -34,8 +34,8 @@ async function processDocument(
   const text = await fetchDocumentText(auth, file);
 
   if (file.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-    console.log(`Found DOCX: ${file.name}`);
-    console.log(`Extracted ${text.length} characters`);
+    // console.log(`Found DOCX: ${file.name}`);
+    // console.log(`Extracted ${text.length} characters`);
   }
 
   const chunks = chunkText(text);

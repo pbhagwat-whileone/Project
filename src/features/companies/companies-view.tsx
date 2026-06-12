@@ -338,10 +338,10 @@ export function CompaniesView() {
         method: "POST"
       });
       
-      console.log("[ProjectMatching UI] Full Response:", data);
-      console.log("[ProjectMatching UI] Projects Received:", data.projects);
+      // console.log("[ProjectMatching UI] Full Response:", data);
+      // console.log("[ProjectMatching UI] Projects Received:", data.projects);
 
-      console.log("[ProjectMatching UI] Setting Projects:", data.projects);
+      // console.log("[ProjectMatching UI] Setting Projects:", data.projects);
       if (searchResult) {
         setSearchResult({
           ...searchResult,
@@ -542,7 +542,7 @@ export function CompaniesView() {
     }
   }
 
-  console.log("[ProjectMatching UI] Current Projects State:", searchResult?.projects);
+  // console.log("[ProjectMatching UI] Current Projects State:", searchResult?.projects);
 
   return (
     <div>

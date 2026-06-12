@@ -357,6 +357,8 @@ export interface Database {
           engagement_quality: string | null;
           recommended_outreach_angle: string | null;
           personalization_points: string[] | null;
+          persistent_context: string | null;
+          time_bound_context: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -380,6 +382,8 @@ export interface Database {
           engagement_quality?: string | null;
           recommended_outreach_angle?: string | null;
           personalization_points?: string[] | null;
+          persistent_context?: string | null;
+          time_bound_context?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -549,6 +553,8 @@ export type RankedContact = {
   engagement_quality?: string | null;
   recommended_outreach_angle?: string | null;
   personalization_points?: string[] | null;
+  persistent_context?: string | null;
+  time_bound_context?: string | null;
   total_messages?: number;
   last_interaction_date?: string | null;
   connection_owner_name?: string;

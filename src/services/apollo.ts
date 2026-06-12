@@ -18,7 +18,7 @@ export async function getApolloEmailByLinkedInUrl(
       return null;
     }
 
-    console.log(`[ApolloEnrichment] Looking up: ${linkedinUrl}`);
+    // console.log(`[ApolloEnrichment] Looking up: ${linkedinUrl}`);
     
     // Construct the payload with optional organization/domain fields for better matching
     const payload: any = {
@@ -35,8 +35,8 @@ export async function getApolloEmailByLinkedInUrl(
 
     const endpoint = "https://api.apollo.io/v1/people/match";
     
-    console.log("[ApolloEnrichment] Request Payload:", payload);
-    console.log("[ApolloEnrichment] Endpoint:", endpoint);
+    // console.log("[ApolloEnrichment] Request Payload:", payload);
+    // console.log("[ApolloEnrichment] Endpoint:", endpoint);
 
     const response = await fetch(endpoint, {
       method: "POST",
@@ -50,8 +50,8 @@ export async function getApolloEmailByLinkedInUrl(
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.log("[ApolloEnrichment] Status:", response.status);
-      console.log("[ApolloEnrichment] Error Body:", errorBody);
+      // console.log("[ApolloEnrichment] Status:", response.status);
+      // console.log("[ApolloEnrichment] Error Body:", errorBody);
       return null;
     }
 
@@ -63,14 +63,14 @@ export async function getApolloEmailByLinkedInUrl(
       const status = data.person.email_status || "unknown";
       const confidence = data.person.email_confidence ? parseFloat(data.person.email_confidence) : null;
       
-      console.log(`[ApolloEnrichment] Email Found: ${email}`);
+      // console.log(`[ApolloEnrichment] Email Found: ${email}`);
       return {
         email,
         email_status: status,
         email_confidence: confidence !== null ? confidence : undefined
       };
     } else {
-      console.log("[ApolloEnrichment] No Email Found");
+      // console.log("[ApolloEnrichment] No Email Found");
       return null;
     }
   } catch (err) {
@@ -146,10 +146,10 @@ export async function searchApolloPeople(
        payload.q_keywords = tags.join(" ");
     }
     
-    console.log("[ApolloSearch] Payload:", payload);
+    // console.log("[ApolloSearch] Payload:", payload);
 
     const endpoint = "https://api.apollo.io/v1/mixed_people/api_search";
-    console.log("[ApolloSearch] Endpoint:", endpoint);
+    // console.log("[ApolloSearch] Endpoint:", endpoint);
 
     const response = await fetch(endpoint, {
       method: "POST",
@@ -163,16 +163,16 @@ export async function searchApolloPeople(
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.log("[ApolloSearch] Status:", response.status);
-      console.log("[ApolloSearch] Response Body:", errorBody);
+      // console.log("[ApolloSearch] Status:", response.status);
+      // console.log("[ApolloSearch] Response Body:", errorBody);
       return [];
     }
 
     const data = await response.json();
     const people = data.people || [];
     
-    console.log("[ApolloSimilar] Returned Count:", people.length);
-    console.log("[ApolloSimilar] Raw Results:", people);
+    // console.log("[ApolloSimilar] Returned Count:", people.length);
+    // console.log("[ApolloSimilar] Raw Results:", people);
     
     return people;
   } catch (error) {
