@@ -1,38 +1,44 @@
 # Referral Relationship
 
 ## Purpose
-Use this skill to instantly bypass the cold-start barrier and establish high credibility by leveraging a mutual connection or internal champion.
+Mutual connection exists.
 
-## Relationship Context
-The connection owner or history explicitly mentions that someone referred them or made an introduction.
+## Tone & Familiarity
+Respectful, leveraging the mutual connection implicitly to build trust quickly.
 
-## Outreach Objective
-Honor the mutual connection while smoothly transitioning into high-value business alignment.
+## Email Structure
+Follow this exact structure for the email body:
 
-## Tone
-Warm, highly respectful, immediately relevant.
+### 1. Observation
+- Mention mutual connection once, then immediately move into the observation.
+- Do not make the referral the entire email.
+- Example: "Sameer suggested I reach out. I noticed [Company]'s continued investment in cloud infrastructure..."
 
-## Introduction Strategy
-The absolute first sentence MUST mention the mutual connection or the referral source prominently and naturally (e.g., "[Name] suggested I reach out to you directly regarding..."). Do not bury the referral; it is the most important part of the relationship intelligence.
+### 2. Challenge
+- Introduce a specific challenge tied to the signal.
+- Example: "...and I know how challenging it can be to maintain operational visibility at that scale."
 
-## Company Context Usage
-Use company context to justify *why* the mutual connection thought you should speak. It provides the logical anchor for the referral.
+### 3. Proof
+- Provide ONE strong proof point as the centerpiece of the email to validate the outreach angle.
+- Describe the project in terms of business, engineering, or operational outcomes.
+- Example: "One of our customers recently partnered with WhileOne to offload operational support activities, enabling their engineering teams to focus on core product development."
 
-## Whileone Positioning
-Quickly transition from the name-drop into the specific business value Whileone can provide regarding their current initiatives. Use low to medium prominence initially to avoid burning the referral trust with a hard pitch, but clearly establish competence.
+### 4. CTA
+- The CTA should be a value-driven introduction.
+- Examples: "Would love to share how we approached this recently, if that would be helpful."
 
-## Call To Action
-The CTA should lean heavily on the mutual trust (e.g., "[Name] thought it would be highly mutually beneficial for us to connect").
-
-## Do
-- Ensure the tone reflects the strength of the mutual connection.
-- Establish credibility immediately after the referral.
-- Make the email feel like a natural extension of the mutual connection's network.
-
-## Avoid
-- Do NOT ignore or bury the name of the referrer.
-- Avoid pivoting too aggressively into a cold sales pitch.
-- Do not sound demanding or entitled to a meeting.
-
-
-Project evidence must be included whenever relevant projects are available.
+## Universal Rules
+- Projects are proof.
+- Projects are not the story.
+- Company context establishes relevance.
+- Projects establish credibility.
+- The email should be explainable in one sentence.
+- The first paragraph must identify a specific signal that triggered the outreach.
+- Avoid generic openings: "Many organizations...", "Organizations often struggle...", "A common challenge...", "The critical task of...", "Industry leaders frequently face..."
+- For VP, Director, SVP, CTO, CIO, and C-level recipients, describe project evidence primarily through: business outcomes, operational outcomes, engineering outcomes.
+- Avoid deep implementation details unless directly relevant.
+- Always optimize for:
+  1. Relevance
+  2. Credibility
+  3. Brevity
+  4. CTA

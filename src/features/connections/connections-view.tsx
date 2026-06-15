@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { Search, Upload, RefreshCw } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Search, Upload, RefreshCw, Building } from "lucide-react";
+import { normalizeCompany } from "@/utils/company-utils";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
@@ -51,7 +52,10 @@ export function ConnectionsView() {
   const messagesFileRef = useRef<HTMLInputElement>(null);
   const [selectedConnection, setSelectedConnection] = useState<Connection | null>(null);
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [hasAutoOpened, setHasAutoOpened] = useState(false);
+  const [highlightedConnectionId, setHighlightedConnectionId] = useState<string | null>(null);
+  const rowRefs = useRef<{ [key: string]: HTMLTableRowElement | null }>({});
 
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadOwnerName, setUploadOwnerName] = useState("");
@@ -95,12 +99,21 @@ export function ConnectionsView() {
   }, [load]);
 
   useEffect(() => {
-    const connectionId = searchParams.get("connection_id");
+    const connectionId = searchParams.get("id") || searchParams.get("connection_id");
     if (connectionId && connections.length > 0 && !hasAutoOpened) {
       const conn = connections.find(c => c.id === connectionId);
       if (conn) {
         setSelectedConnection(conn);
         setHasAutoOpened(true);
+        setHighlightedConnectionId(conn.id);
+        
+        setTimeout(() => {
+          rowRefs.current[conn.id]?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 100);
+        
+        setTimeout(() => {
+          setHighlightedConnectionId(null);
+        }, 3000);
       }
     }
   }, [searchParams, connections, hasAutoOpened]);
@@ -373,7 +386,13 @@ export function ConnectionsView() {
             </TableHeader>
             <TableBody>
               {connections.map((c) => (
-                <TableRow key={c.id}>
+                <TableRow 
+                  key={c.id}
+                  ref={(el) => {
+                    if (el) rowRefs.current[c.id] = el;
+                  }}
+                  className={highlightedConnectionId === c.id ? "bg-primary/20 transition-colors duration-1000" : "transition-colors duration-1000"}
+                >
                   <TableCell className="font-medium">
                     {c.profile_url ? (
                       <a href={c.profile_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
@@ -391,6 +410,16 @@ export function ConnectionsView() {
                     <Button variant="ghost" size="sm" onClick={() => setSelectedConnection(c)}>
                       View History
                     </Button>
+                    {c.company && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => router.push(`/companies?company=${encodeURIComponent(normalizeCompany(c.company!))}`)}
+                        title="View Company"
+                      >
+                        <Building className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button 
                       variant="ghost" 
                       size="sm" 

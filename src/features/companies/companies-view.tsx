@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ExternalLink, RefreshCw, Search, Send, Mail, Loader2, Settings2, UserPlus, Sparkles, BookOpen, MapPin, Building, Activity, Copy, Check, Navigation, Users, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -190,6 +190,8 @@ export function CompaniesView() {
   const [hasGeneratedCompanyContacts, setHasGeneratedCompanyContacts] = useState(false);
   const [contactProjectsLoading, setContactProjectsLoading] = useState(false);
   const [projectsOpen, setProjectsOpen] = useState(false);
+  const [highlightedContactId, setHighlightedContactId] = useState<string | null>(null);
+  const contactRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   // Email & Action State
   const [summarizing, setSummarizing] = useState(false);
@@ -260,6 +262,16 @@ export function CompaniesView() {
             if (targetContact.relationship_classification) {
               setRelationshipType(targetContact.relationship_classification);
             }
+            
+            // Set highlight and scroll
+            setHighlightedContactId(targetContact.id);
+            setTimeout(() => {
+              contactRefs.current[targetContact.id]?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }, 100);
+            setTimeout(() => {
+              setHighlightedContactId(null);
+            }, 3000);
+            
           } else {
             setSelectedContact(null);
           }
@@ -342,18 +354,14 @@ export function CompaniesView() {
       // console.log("[ProjectMatching UI] Projects Received:", data.projects);
 
       // console.log("[ProjectMatching UI] Setting Projects:", data.projects);
-      if (searchResult) {
-        setSearchResult({
-          ...searchResult,
-          projects: data.projects
-        });
-      }
+      console.log("Projects in state (before update):", searchResult?.projects);
+      console.log("Projects from API:", data.projects);
+      setSearchResult(prev => prev ? {
+        ...prev,
+        projects: data.projects
+      } : null);
       
-      if (data.projects && data.projects.length > 0) {
-        toast.success("Matching projects generated!");
-      } else {
-        toast.info("No matching projects found.");
-      }
+      toast.success("Matching projects generated!");
       
       return data.projects;
     } catch (err) {
@@ -685,7 +693,13 @@ export function CompaniesView() {
                     ) : (
                       <div className="space-y-4">
                         {searchResult.contacts.map((contact) => (
-                          <div key={contact.id} className={`p-4 rounded-lg border ${selectedContact?.id === contact.id ? 'border-primary ring-1 ring-primary/20 bg-primary/5' : ''}`}>
+                          <div 
+                            key={contact.id} 
+                            ref={(el) => {
+                              if (el) contactRefs.current[contact.id] = el;
+                            }}
+                            className={`p-4 rounded-lg border ${selectedContact?.id === contact.id ? 'border-primary ring-1 ring-primary/20 bg-primary/5' : ''} ${highlightedContactId === contact.id ? 'bg-primary/20 transition-colors duration-1000' : 'transition-colors duration-1000'}`}
+                          >
                             <div className="flex justify-between items-start">
                               <div>
                                 <div className="font-semibold flex items-center gap-2">
@@ -699,16 +713,30 @@ export function CompaniesView() {
                                 <div className="text-sm text-muted-foreground">{contact.position ?? "—"}</div>
                                 <div className="text-sm text-muted-foreground">{contact.company ?? "—"}</div>
                               </div>
-                              <Button
-                                variant={selectedContact?.id === contact.id ? "secondary" : "outline"}
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSelectContact(contact);
-                                }}
-                              >
-                                {selectedContact?.id === contact.id ? "Selected" : "Select"}
-                              </Button>
+                              <div className="flex flex-col gap-2">
+                                <Button
+                                  variant={selectedContact?.id === contact.id ? "secondary" : "outline"}
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSelectContact(contact);
+                                  }}
+                                >
+                                  {selectedContact?.id === contact.id ? "Selected" : "Select"}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    router.push(`/connections?id=${contact.id}`);
+                                  }}
+                                  title="View Connection in Connections Page"
+                                >
+                                  <Users className="h-4 w-4 mr-2" />
+                                  View Connection
+                                </Button>
+                              </div>
                             </div>
 
                             <div className="mt-3 flex flex-col gap-1 text-sm text-muted-foreground">
@@ -766,49 +794,53 @@ export function CompaniesView() {
                                       <Activity className="h-4 w-4 mr-2" />
                                       {summarizing ? "Analyzing History..." : "Summarize Conversation"}
                                     </Button>
-                                    <details 
-                                      className="group border border-border/50 rounded-lg bg-muted/10 w-full" 
-                                      open={projectsOpen} 
-                                      onToggle={async (e) => {
-                                        const isOpen = e.currentTarget.open;
-                                        setProjectsOpen(isOpen);
-                                        if (isOpen && (!searchResult.projects || searchResult.projects.length === 0)) {
-                                           await handleGenerateProjects(contact.id);
-                                        }
-                                      }}
-                                    >
-                                      <summary className="flex items-center justify-between p-2 font-medium cursor-pointer list-none text-sm hover:bg-muted/30 transition-colors">
-                                        <div className="flex items-center gap-2">
-                                          <Sparkles className="w-4 h-4 text-primary" />
-                                          <span>{contactProjectsLoading ? "Generating..." : searchResult.projects?.length ? `Matching Projects (${searchResult.projects.length})` : "Generate Matching Projects"}</span>
-                                        </div>
-                                        <span className="transition-transform group-open:rotate-180 text-muted-foreground">▼</span>
-                                      </summary>
-                                      <div className="p-3 pt-0 border-t border-border/50 space-y-3 mt-3">
-                                         {contactProjectsLoading ? (
-                                            <div className="flex items-center justify-center p-4 text-xs text-muted-foreground">Loading projects...</div>
-                                         ) : searchResult.projects?.length ? (
-                                            searchResult.projects.map(p => (
-                                              <div key={p.id} className="text-sm bg-background p-3 rounded border border-border/50">
-                                                <div className="font-medium flex justify-between items-start gap-4">
-                                                  <span>{p.project_name || "Project"}</span>
-                                                  {p.similarity && <span className="text-muted-foreground text-xs shrink-0 bg-muted px-2 py-1 rounded-full">{(p.similarity * 100).toFixed(0)}% match</span>}
-                                                </div>
-                                                <div className="text-muted-foreground mt-2 text-xs leading-relaxed line-clamp-3">{p.summary}</div>
-                                                {p.reference_link && (
-                                                  <a href={p.reference_link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                                                    View Source <ExternalLink className="h-3 w-3" />
-                                                  </a>
-                                                )}
-                                              </div>
-                                            ))
-                                         ) : (
-                                            <p className="text-xs text-muted-foreground">No projects found.</p>
-                                         )}
-                                      </div>
-                                    </details>
                                   </>
                                 )}
+                                <details 
+                                  className="group border border-border/50 rounded-lg bg-muted/10 w-full" 
+                                  open={projectsOpen} 
+                                  onToggle={async (e) => {
+                                    const isOpen = e.currentTarget.open;
+                                    setProjectsOpen(isOpen);
+                                    if (isOpen && (!searchResult.projects || searchResult.projects.length === 0)) {
+                                       await handleGenerateProjects(contact.id);
+                                    }
+                                  }}
+                                >
+                                  <summary className="flex items-center justify-between p-2 font-medium cursor-pointer list-none text-sm hover:bg-muted/30 transition-colors">
+                                    <div className="flex items-center gap-2">
+                                      <Sparkles className="w-4 h-4 text-primary" />
+                                      <span>{contactProjectsLoading ? "Generating..." : searchResult.projects?.length ? `Matching Projects (${searchResult.projects.length})` : "Generate Matching Projects"}</span>
+                                    </div>
+                                    <span className="transition-transform group-open:rotate-180 text-muted-foreground">▼</span>
+                                  </summary>
+                                  <div className="p-3 pt-0 border-t border-border/50 space-y-3 mt-3">
+                                     {contactProjectsLoading ? (
+                                        <div className="flex items-center justify-center p-4 text-xs text-muted-foreground">Loading projects...</div>
+                                     ) : searchResult.projects?.length ? (
+                                        searchResult.projects.map(p => (
+                                          <div key={p.id} className="text-sm bg-background p-3 rounded border border-border/50">
+                                            <div className="font-medium flex justify-between items-start gap-4">
+                                              <span>{p.project_name || "Project"}</span>
+                                              {p.similarity !== undefined && (
+                                                <span className={`text-xs shrink-0 px-2 py-1 rounded-full border font-medium ${p.similarity >= 0.75 ? "bg-green-50 text-green-700 border-green-200" : p.similarity >= 0.5 ? "bg-yellow-50 text-yellow-700 border-yellow-200" : "bg-gray-50 text-gray-700 border-gray-200"}`}>
+                                                  {p.similarity >= 0.75 ? "High Match" : p.similarity >= 0.5 ? "Medium Match" : "Low Match"} <span className="opacity-75 font-normal">({(p.similarity * 100).toFixed(0)}%)</span>
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="text-muted-foreground mt-2 text-xs leading-relaxed line-clamp-3">{p.summary}</div>
+                                            {p.reference_link && (
+                                              <a href={p.reference_link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                                                View Source <ExternalLink className="h-3 w-3" />
+                                              </a>
+                                            )}
+                                          </div>
+                                        ))
+                                     ) : (
+                                        <p className="text-xs text-muted-foreground">No projects found.</p>
+                                     )}
+                                  </div>
+                                </details>
                                 <Button
                                   variant="default"
                                   size="sm"

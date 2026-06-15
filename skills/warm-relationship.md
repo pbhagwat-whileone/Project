@@ -1,38 +1,45 @@
 # Warm Relationship
 
 ## Purpose
-Use this skill to continue recent or ongoing conversations naturally, leveraging established rapport to map capabilities directly to their active initiatives.
+Existing relationship. Use this skill when reaching out to someone with whom there is an established, positive, but currently informal or non-active working relationship.
 
-## Relationship Context
-Recent positive interactions, casual catchups, or ongoing dialogue, but no active deal or specific opportunity is in flight yet.
+## Tone & Familiarity
+Assume familiarity. Skip excessive introductions. Friendly and highly collaborative. Focus on peer-to-peer value exchange rather than a formal pitch.
 
-## Outreach Objective
-Advance the ongoing conversation smoothly, moving from general rapport into specific capability mapping based on their recent developments.
+## Email Structure
+Follow this exact structure for the email body:
 
-## Tone
-Familiar, collaborative, direct but highly professional.
+### 1. Observation
+- Use relationship context briefly in opening, then quickly transition into company signal or activity signal. Focus on current relevance.
+- Example: "Deepak, hope you've been doing well. I noticed Cisco's continued investment in cloud infrastructure..."
+- Do NOT use: "It's been a while since we last spoke..." or "I wanted to reconnect..."
+- Never encourage a long relationship recap.
 
-## Introduction Strategy
-Skip formal introductions. Dive directly into the context of your ongoing dialogue. Assume the recipient remembers you and your previous conversations.
+### 2. Challenge
+- Introduce a specific challenge tied to the observation.
+- Example: "...I know from my own experience how hard it can be to secure those endpoints without degrading latency."
 
-## Company Context Usage
-Leverage recent company news (Tavily) as an accelerant to the conversation (e.g., "I saw the recent announcement about X, which ties perfectly into our discussion on Y last week").
+### 3. Proof
+- Provide ONE strong proof point as the centerpiece of the email.
+- This should ideally relate to the challenge, demonstrating how Whileone has solved this.
+- If available, use 2-3 concise bullets to show supporting outcomes.
 
-## Whileone Positioning
-Use medium capability prominence. Tie Whileone's specific offerings clearly and immediately to the topics you've recently discussed. Frame Whileone as an active collaborator or logical next step for their ongoing challenges.
+### 4. CTA
+- The CTA should invite a peer-level discussion.
+- Examples: "Would be great to exchange notes on this if you have 15 minutes.", "Happy to share some of our internal benchmarks if that would be useful."
 
-## Call To Action
-The CTA should be highly relevant to advancing the current conversation (e.g., "Would it make sense to explore how our framework could accelerate this?").
-
-## Do
-- Heavily utilize the conversation summary and interaction timeline.
-- Frame the email around momentum and shared understanding.
-- Keep the capability references specific to what has already been discussed.
-
-## Avoid
-- Do NOT re-introduce yourself or Whileone.
-- Avoid pivoting away from previously established discussion topics.
-- Avoid aggressive closing tactics that could damage the rapport.
-
-
-Project evidence must be included whenever relevant projects are available.
+## Universal Rules
+- Projects are proof.
+- Projects are not the story.
+- Company context establishes relevance.
+- Projects establish credibility.
+- The email should be explainable in one sentence.
+- The first paragraph must identify a specific signal that triggered the outreach.
+- Avoid generic openings: "Many organizations...", "Organizations often struggle...", "A common challenge...", "The critical task of...", "Industry leaders frequently face..."
+- For VP, Director, SVP, CTO, CIO, and C-level recipients, describe project evidence primarily through: business outcomes, operational outcomes, engineering outcomes.
+- Avoid deep implementation details unless directly relevant.
+- Always optimize for:
+  1. Relevance
+  2. Credibility
+  3. Brevity
+  4. CTA

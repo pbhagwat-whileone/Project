@@ -1,38 +1,42 @@
 # Past Customer
 
 ## Purpose
-Use this skill when reaching out to a previous client to explore new opportunities, repeat business, or account expansion based on their recent company developments.
+Customer relationship exists. Reach out to someone who previously engaged Whileone for services but is not currently an active client.
 
-## Relationship Context
-Explicit mention in the history that we successfully delivered a project or they were a client. Trust has already been established through delivery.
+## Tone & Familiarity
+Appreciative and familiar. Assume they already know the quality of our work.
 
-## Outreach Objective
-Leverage past successful delivery and established trust to pivot into a new initiative or expansion.
+## Email Structure
+Follow this exact structure for the email body:
 
-## Tone
-Appreciative, confident, partnership-oriented, familiar.
+### 1. Observation
+- Reference previous engagement briefly, then focus on "What is relevant now?". Avoid lengthy retrospectives.
+- Example: "I was reviewing [Company]'s recent announcements around edge deployments..."
 
-## Introduction Strategy
-The opening should acknowledge past success and express continued investment in their company's journey (e.g., "Our team is really proud of the work we did together on X...").
+### 2. Challenge
+- Introduce a specific challenge tied to the signal.
+- Example: "...I know from our past engagements how critical optimizing that footprint will be."
 
-## Company Context Usage
-Use recent company developments (Tavily) as the primary trigger for reaching out (e.g., "I noticed your team is now aggressively expanding into Y...").
+### 3. Proof
+- Provide ONE strong proof point as the centerpiece of the email.
+- Describe the project in terms of business, engineering, or operational outcomes.
 
-## Whileone Positioning
-Weave Whileone's capabilities in by explicitly showing how you can replicate past success in this new domain or initiative. Draw a direct line between the trust built during previous engagements and their current business trajectory. Emphasize Whileone's ability to be a reliable, known partner.
+### 4. CTA
+- The CTA should be a consultative check-in.
+- Examples: "Would be great to hear how the team is approaching this, and if our recent work might be useful.", "Happy to share some of our learnings from similar deployments."
 
-## Call To Action
-The CTA should focus on a strategic catch-up rather than a cold pitch (e.g., "Would love to reconnect and share some insights we've gathered that might help with this new rollout").
-
-## Do
-- Clearly reference the specific past success or project.
-- Treat them as an existing partner rather than a prospect.
-- Frame the outreach around their new strategic direction.
-
-## Avoid
-- Do NOT explain what Whileone does from scratch.
-- Avoid generic cold-email CTAs.
-- Do not sound transactional; maintain the partnership tone.
-
-
-Project evidence must be included whenever relevant projects are available.
+## Universal Rules
+- Projects are proof.
+- Projects are not the story.
+- Company context establishes relevance.
+- Projects establish credibility.
+- The email should be explainable in one sentence.
+- The first paragraph must identify a specific signal that triggered the outreach.
+- Avoid generic openings: "Many organizations...", "Organizations often struggle...", "A common challenge...", "The critical task of...", "Industry leaders frequently face..."
+- For VP, Director, SVP, CTO, CIO, and C-level recipients, describe project evidence primarily through: business outcomes, operational outcomes, engineering outcomes.
+- Avoid deep implementation details unless directly relevant.
+- Always optimize for:
+  1. Relevance
+  2. Credibility
+  3. Brevity
+  4. CTA

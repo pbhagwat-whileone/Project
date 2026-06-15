@@ -15,6 +15,10 @@ export const emailGenerateSchema = z.object({
   position: z.string().nullish(),
   email: z.string().nullish(),
   profile_url: z.string().nullish(),
+  location: z.string().nullish(),
+  expertise_tags: z.array(z.string()).nullish(),
+  technology_tags: z.array(z.string()).nullish(),
+  activity_signals: z.array(z.string()).nullish(),
   projects: z
     .array(
       z.object({

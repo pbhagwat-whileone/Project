@@ -163,8 +163,10 @@ async function calculateCompanyScoreAndProjects(
     if (topContact?.position) fallbackQueryParts.push(topContact.position);
 
     const fallbackQuery = fallbackQueryParts.join(" ").trim();
-    if (fallbackQuery && fallbackQuery !== query) {
-      matchingProjects = await searchKnowledgeChunks(supabase, userId, fallbackQuery, 3);
+    const ultimateQuery = fallbackQuery || "software engineering technology consulting projects";
+    
+    if (ultimateQuery !== query) {
+      matchingProjects = await searchKnowledgeChunks(supabase, userId, ultimateQuery, 3);
     }
   }
 

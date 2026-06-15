@@ -17,6 +17,19 @@ export interface RelationshipEvaluationInput {
 export async function evaluateRelationshipIntelligence(
   input: RelationshipEvaluationInput
 ): Promise<RelationshipIntelligence> {
+  if (
+    input.relationshipClassification === "no_conversation_history" ||
+    (!input.conversationSummary && (!input.messageCount || input.messageCount === 0))
+  ) {
+    return {
+      relationshipType: "cold-outreach",
+      confidence: 100,
+      reasoning: "No prior conversation history detected.",
+      outreachGoal: "cold_introduction",
+      capabilityProminence: "high"
+    };
+  }
+
   const prompt = `
 You are an expert Relationship Intelligence evaluator for a B2B technology consultancy.
 Your job is to analyze the conversation history and metadata between us and a prospect, and automatically classify the exact state of the relationship.

@@ -114,9 +114,16 @@ export function EmailsView() {
       setModel(PROVIDER_MODELS[savedProvider][0]);
     }
     setRefinementInstruction("");
-    setSelectedCompanyContext(null); // Clear context since we don't have it for old emails
-    setSelectedCompanyContextRelevance(null);
-    setSelectedRelationshipIntelligence(null);
+    
+    if (email.generation_context) {
+      setSelectedRelationshipIntelligence(email.generation_context.relationship_intelligence || null);
+      setSelectedCompanyContextRelevance(email.generation_context.company_context_relevance || null);
+      setSelectedCompanyContext(email.generation_context.company_context || null);
+    } else {
+      setSelectedCompanyContext(null);
+      setSelectedCompanyContextRelevance(null);
+      setSelectedRelationshipIntelligence(null);
+    }
   }
 
   async function copyEmail() {

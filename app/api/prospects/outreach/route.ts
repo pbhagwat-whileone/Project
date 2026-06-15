@@ -35,6 +35,21 @@ export async function POST(request: Request) {
       );
     }
 
+    if (recommendation.topContact.id && (!recommendation.topContact.expertise_tags || !recommendation.topContact.technology_tags || !recommendation.topContact.activity_signals)) {
+      const { data: profile } = await supabase
+        .from("connection_profiles")
+        .select("location, expertise_tags, technology_tags, activity_signals")
+        .eq("connection_id", recommendation.topContact.id)
+        .maybeSingle();
+
+      if (profile) {
+        recommendation.topContact.location = recommendation.topContact.location || profile.location;
+        recommendation.topContact.expertise_tags = recommendation.topContact.expertise_tags || profile.expertise_tags;
+        recommendation.topContact.technology_tags = recommendation.topContact.technology_tags || profile.technology_tags;
+        recommendation.topContact.activity_signals = recommendation.topContact.activity_signals || profile.activity_signals;
+      }
+    }
+
     const relationshipIntelligence = await evaluateRelationshipIntelligence({
       conversationSummary: recommendation.topContact.conversation_summary,
       discussionTopics: recommendation.topContact.discussion_topics,
@@ -118,6 +133,22 @@ export async function POST(request: Request) {
         body: emailContent.body,
         provider_used: parsed.data.provider ?? "gemini",
         relationship_type: relationshipIntelligence.relationshipType,
+        generation_context: {
+          relationship_intelligence: {
+            relationshipType: relationshipIntelligence.relationshipType,
+            confidence: relationshipIntelligence.confidence,
+            reasoning: relationshipIntelligence.reasoning,
+            outreachGoal: relationshipIntelligence.outreachGoal,
+            capabilityProminence: relationshipIntelligence.capabilityProminence,
+          },
+          company_context_relevance: null,
+          company_context: companyContext ? {
+            summary: companyContext.summary,
+            keyInitiatives: companyContext.keyInitiatives,
+            technologySignals: companyContext.technologySignals,
+            businessPriorities: companyContext.businessPriorities,
+          } : null,
+        },
       })
       .select()
       .single();

@@ -1,38 +1,43 @@
 # Active Relationship
 
 ## Purpose
-Use this skill when we have frequent, ongoing back-and-forth explicitly about business challenges or active collaboration.
+Recently active relationship. Use this skill when we have frequent, ongoing back-and-forth explicitly about business challenges or active collaboration.
 
-## Relationship Context
-The relationship is strong and active. There is high interaction frequency and strong alignment. We are likely already discussing a specific problem or initiative.
+## Tone & Familiarity
+Most natural tone. Assume ongoing familiarity. Direct, action-oriented, highly collaborative, and confident. Treat the email like a direct continuation of a working session or highly engaged thread. Minimal relationship recap. Skip generic pleasantries.
 
-## Outreach Objective
-Move quickly and decisively into opportunity exploration or partnership discussion, capitalizing on the momentum.
+## Email Structure
+Follow this exact structure for the email body:
 
-## Tone
-Direct, action-oriented, highly collaborative, confident.
+### 1. Observation
+- Lead with current company or technology signal based on the active discussion.
+- Example: "Following up on our discussion regarding your AI platform scale-out..."
+- Do NOT stack multiple observations or over-explain the context.
 
-## Introduction Strategy
-Assume high continuity. Treat the email like a direct continuation of a working session or highly engaged thread. Skip generic pleasantries.
+### 2. Challenge
+- State the challenge clearly based on the active discussion.
+- Example: "...The critical path seems to be maintaining SRE coverage during this transition."
 
-## Company Context Usage
-Use recent company context strictly to frame the urgency or scale of the opportunity. It should act as an accelerant to the active discussion.
+### 3. Proof
+- Provide ONE strong proof point as the centerpiece of the email.
+- Highlight specific, measurable outcomes from Whileone's project context that map 1:1 with their immediate goals.
 
-## Whileone Positioning
-Use high capability prominence. Be extremely specific about *how* Whileone's engineering services, AI optimization, or cloud cost management solves their exact problem. Highlight specific, measurable outcomes from Whileone's project context that map 1:1 with their immediate goals.
+### 4. CTA
+- The CTA should be assertive and focused on moving to the next stage, but collaborative.
+- Example: "Happy to compare notes." rather than "Can we schedule a meeting?"
 
-## Call To Action
-The CTA should be assertive and focused on moving to the next stage (e.g., "Let's schedule 30 minutes next Tuesday to map out a proof of concept," or "I'd like to bring our engineering lead in to discuss the architecture").
-
-## Do
-- Focus heavily on momentum and value delivery.
-- Speak directly to the specific problems discussed in previous interactions.
-- Provide concrete proof points.
-
-## Avoid
-- Avoid generic pleasantries or formal introductions.
-- Do not introduce the company from scratch.
-- Avoid vague or passive next steps.
-
-
-Project evidence must be included whenever relevant projects are available.
+## Universal Rules
+- Projects are proof.
+- Projects are not the story.
+- Company context establishes relevance.
+- Projects establish credibility.
+- The email should be explainable in one sentence.
+- The first paragraph must identify a specific signal that triggered the outreach.
+- Avoid generic openings: "Many organizations...", "Organizations often struggle...", "A common challenge...", "The critical task of...", "Industry leaders frequently face..."
+- For VP, Director, SVP, CTO, CIO, and C-level recipients, describe project evidence primarily through: business outcomes, operational outcomes, engineering outcomes.
+- Avoid deep implementation details unless directly relevant.
+- Always optimize for:
+  1. Relevance
+  2. Credibility
+  3. Brevity
+  4. CTA

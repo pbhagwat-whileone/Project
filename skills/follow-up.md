@@ -1,38 +1,43 @@
 # Follow Up
 
 ## Purpose
-Use this skill when reaching out to an existing or previous client to continue the conversation, propose an expansion, or introduce new opportunities.
+Continue an existing thread.
 
-## Relationship Context
-Existing business relationship. There is an established connection, but perhaps the current dialogue is paused or you are shifting to a new topic/opportunity.
+## Tone & Familiarity
+Brief and helpful. Assume they are busy, not disinterested. Avoid sounding annoyed or desperate.
 
-## Outreach Objective
-Continue the conversation organically while introducing new value, leading to a new initiative or expansion.
+## Email Structure
+Follow this exact structure for the email body:
 
-## Tone
-Direct, familiar, and highly professional.
+### 1. Observation
+- Opening should reference previous discussion, prior email, or prior topic.
+- Avoid simply summarizing previous conversations.
+- Example: "Following up on our earlier note about RISC-V architectures. I also noticed your team's ongoing work..."
 
-## Introduction Strategy
-Skip formal introductions. Avoid re-introducing Whileone. The opening should establish relevance within the first sentence by directly referencing prior business relationships, previous conversations, or active engagements.
+### 2. Challenge
+- Introduce a specific challenge tied to the observation that provides new value to the recipient.
+- Example: "...Integrating these into existing software stacks can often delay time-to-market."
 
-## Company Context Usage
-Transition naturally from the past context into how a new initiative or insight (drawn from recent company developments) might add value to their current trajectory.
+### 3. Proof
+- Provide ONE strong proof point as the centerpiece of the email.
+- This should ideally be a different proof point than used in the first email, or a technical asset like a case study or internal IP.
 
-## Whileone Positioning
-Use project evidence and recommendation context to suggest these new ideas naturally. Prioritize business impact and outcomes over technical implementation. Mention implementation details only when supporting an outcome. Avoid capability lists, service lists, generic capability statements, and generic marketing language.
+### 4. CTA
+- The CTA should be direct but give them an easy out.
+- Examples: "Is this a priority right now, or should I reach out next quarter?", "If this isn't relevant, no worries."
 
-## Call To Action
-The closing should propose a natural continuation or collaborative next step (e.g., "Happy to compare notes...", "Would be interested in exchanging perspectives..."). Avoid sounding like a hard sales pitch.
-
-## Do
-- Connect prior work clearly to the new opportunity.
-- Emphasize brevity and mobile-friendly formatting. Keep the email concise and executive-friendly.
-- Frame the email around outcomes rather than activities.
-
-## Avoid
-- Do NOT assume they forgot who you are.
-- Avoid formal corporate introductions.
-- Avoid bulleted lists of services without direct contextual relevance.
-
-
-Project evidence must be included whenever relevant projects are available.
+## Universal Rules
+- Projects are proof.
+- Projects are not the story.
+- Company context establishes relevance.
+- Projects establish credibility.
+- The email should be explainable in one sentence.
+- The first paragraph must identify a specific signal that triggered the outreach.
+- Avoid generic openings: "Many organizations...", "Organizations often struggle...", "A common challenge...", "The critical task of...", "Industry leaders frequently face..."
+- For VP, Director, SVP, CTO, CIO, and C-level recipients, describe project evidence primarily through: business outcomes, operational outcomes, engineering outcomes.
+- Avoid deep implementation details unless directly relevant.
+- Always optimize for:
+  1. Relevance
+  2. Credibility
+  3. Brevity
+  4. CTA

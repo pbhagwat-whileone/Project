@@ -5,10 +5,15 @@ import { getEmailSkill } from "@/services/email-skills";
 const OUTCOME_KEYWORDS = [
   "improved", "reduced", "accelerated", "optimized", "increased", 
   "saved", "performance", "efficiency", "cost", "latency", 
-  "throughput", "scalability", "reliability", "automation", "productivity"
+  "throughput", "scalability", "reliability", "automation", "productivity",
+  "burden", "visibility", "observability"
 ];
 
 const WHILEONE_MESSAGING_RULES = `Whileone Messaging & Vocabulary:
+- Observation First: The opening MUST be based on a concrete signal (e.g., Hiring Signal, Company Initiative). NEVER use generic consultant-like openings like "I've observed...", "Many organizations...", or "A common challenge...".
+- One Angle: Every email should be explainable in one sentence. Do NOT mix multiple disparate angles in the same email.
+- Projects Support the Story: Projects should validate the outreach angle, NOT become the angle. Describe projects in terms of business, engineering, or operational outcomes, NOT technical implementation details (unless reaching out to a deeply technical IC).
+- Business Outcomes > Technical Details: Prefer outcomes like "Reduced validation effort", "Improved reliability", "Accelerated deployment", "Reduced operational burden", "Improved observability", "Enhanced scalability" over technical jargon like "Socket optimization" or "Kernel tuning".
 - Use Whileone core vocabulary naturally when relevant (do NOT force keywords or sound like marketing copy): Reliable AI, AI-powered solutions, ML-powered solutions, performance tuning, workload characterization, unbiased benchmarking, cloud optimization, simplified cloud cost management, intelligent frameworks, in-house developed frameworks, deep domain expertise, practical experience, engineering productivity, reliability, performance optimization, scalability, HPC, edge computing, ER&D.
 - Adapt language to the target company (TARGET_COMPANY_PLACEHOLDER):
   * Semiconductor (AMD, NVIDIA, Qualcomm, Intel, TSMC, Broadcom): prefer performance tuning, benchmarking, validation, ARM, RISC-V, HPC, scalability, reliability.
@@ -145,86 +150,87 @@ export async function generateOutreachEmail(
     if (input.recommendedOutreachAngle) {
       relationshipContext += `- RECOMMENDED OUTREACH ANGLE: ${input.recommendedOutreachAngle}\n`;
     }
-    relationshipContext += `\nCRITICAL: Use this rich interaction history to personalize the email naturally. Never assume that future plans mentioned in old conversations are still valid today. Treat them as expired information. For example, if there are relevant action items or business context, start the email by referencing them directly (e.g., "We previously discussed X..."). Acknowledge our past conversations where relevant, but do not inject raw message logs. Keep it highly professional.`;
+    relationshipContext += `\nCRITICAL CONVERSATION RULE: Use this intelligence ONLY if it directly supports the selected outreach angle. Do NOT summarize past conversations or recount history. Do not let this drive the body of the email. Use it primarily for familiarity level, greeting, and CTA wording. Never assume future plans from old conversations are still valid.`;
   }
 
   const prompt = `You are drafting a B2B outreach email for Whileone, a technology consultancy.
-  
-Follow this email strategy precisely:
----
-${skillMarkdown}
----
+
+CORE PRINCIPLE:
+The purpose of the email is NOT to summarize all available intelligence. The purpose is to create interest in a conversation.
+MENTAL MODEL: Context ↓ Select Best Angle ↓ Find Best Proof ↓ Write Email.
+
+INTERNAL PLANNING STAGE:
+Before writing the email body, determine:
+- WHY THIS PERSON?
+- WHY THIS COMPANY?
+- WHY NOW?
+- WHAT IS THE SINGLE BEST OUTREACH ANGLE?
+- WHAT IS THE STRONGEST PROOF POINT?
+Provide your reasoning in the "internal_planning" JSON field. Do not output this reasoning in the email body.
+
+EMAIL STRUCTURE:
+Every email should strictly follow these blocks:
+Block 1 — Greeting (e.g., "Hello Deepak,", "Hope you are doing well.")
+Block 2 — Reason For Outreach (One sentence answering "Why am I receiving this email?". e.g., "I noticed Cisco is actively hiring for SRE roles.")
+Block 3 — Relevant Industry Challenge (Optional. Only if it strengthens the angle. Max 2 sentences. Never use generic consultant language.)
+Block 4 — WhileOne Proof (The most important block. Use ONE: Customer Success Story, Relevant Project, Technical Asset. This should feel like "Here's why we're relevant", NOT "Here's what we sell".)
+Block 5 — Supporting Evidence (Choose ONE: Customer Outcome, Service Capability, or Technical Asset. Max 3 bullets.)
+Block 6 — CTA (Simple. e.g., "Would you be open to a brief discussion?")
+Block 7 — Attachment Mention (Always include: "I am attaching our corporate overview and technical capabilities presentation for your reference.")
+
+SUBJECT LINE RULES:
+Subject should come from: Company Signal + Outreach Angle.
+Examples: "Cisco and SRE Operations", "Thoughts on Cloud Reliability".
+Avoid generic topics unless those exact topics appear in signals.
+
+CONTEXT USAGE RULES:
+- Relationship Intelligence: Use only for greeting, familiarity level, and CTA wording. Never drive the body.
+- Conversation Intelligence: Use only if it directly supports the outreach angle. Do not summarize conversations or recount history.
+- Company Context: Primary purpose is "Why now?". Use one signal only. Do not dump context.
+- Profile Intelligence: Primary purpose is to select outreach angle. Do not list tags.
+- Matching Projects: Purpose is Proof, not Topic. Project proves credibility.
 
 Target company: ${input.targetCompany}
 Contact: ${contactName}
 Contact title: ${input.contact.position ?? "Unknown"}
-Relationship Context: ${relationship}${relationshipContext}
-${input.connectionOwnerName ? `Connection Owner: This contact belongs to ${input.connectionOwnerName}'s LinkedIn network.\n` : ""}
-Relevant Whileone Matching Projects (ONLY reference facts from this context. Projects are the STRONGEST source of evidence. Do not invent case studies, metrics, or clients. Do not generate generic capability lists when relevant project evidence exists here):
-${projectContext || "No specific matching projects available — keep the email general about Whileone's AI and software capabilities."}
 
-${input.relationshipIntelligence ? `RELATIONSHIP INTELLIGENCE
-Detected Relationship Type: ${input.relationshipIntelligence.relationshipType}
-Outreach Goal: ${input.relationshipIntelligence.outreachGoal}
-Capability Prominence: ${input.relationshipIntelligence.capabilityProminence.toUpperCase()}
+PROFILE INTELLIGENCE:
+${input.contact.location ? `Location: ${input.contact.location}` : ""}
+${input.contact.technology_tags?.length ? `Technology Tags: ${input.contact.technology_tags.join(", ")}` : ""}
+${input.contact.expertise_tags?.length ? `Expertise Tags: ${input.contact.expertise_tags.join(", ")}` : ""}
+${input.contact.activity_signals?.length ? `Activity Signals: ${input.contact.activity_signals.join("; ")}` : ""}
 
-CRITICAL CAPABILITY RULES:
-- If Capability Prominence is LOW: Mention Whileone briefly only if extremely natural. Focus almost entirely on the relationship / goal.
-- If Capability Prominence is MEDIUM: Weave Whileone capabilities organically into the recent context.
-- If Capability Prominence is HIGH: Directly position Whileone as a solution to their initiatives. Use specific proof points.
-` : ""}
+COMPANY CONTEXT:
+${input.companyContext ? `Summary: ${input.companyContext.summary}
+Key Initiatives: ${input.companyContext.keyInitiatives.join(", ")}
+Technology Signals: ${input.companyContext.technologySignals.join(", ")}
+Hiring Signals: ${input.companyContext.hiringSignals.join(", ")}` : "None"}
 
-${input.companyContextRelevance ? `COMPANY CONTEXT RELEVANCE
-Score: ${input.companyContextRelevance.relevanceScore}
-Recommended Usage: ${input.companyContextRelevance.recommendedUsage}
-Reasoning: ${input.companyContextRelevance.reasoning}
+RELATIONSHIP & CONVERSATION INTELLIGENCE:
+Relationship Type: ${relationship}
+${relationshipContext}
 
-CRITICAL CONTEXT RULES:
-Follow the Recommended Usage exactly:
-- If usage = ignore: Do NOT mention company context at all.
-- If usage = light_reference: Use at most one brief reference.
-- If usage = conversation_starter: Use company context only as a reason to reconnect.
-- If usage = primary_outreach_angle: Company context may drive the main outreach angle.
-` : ""}
-
-${input.companyContext && input.companyContext.confidence !== "low" && (!input.companyContextRelevance || input.companyContextRelevance.recommendedUsage !== "ignore") ? `COMPANY CONTEXT
-Summary: ${input.companyContext.summary}
-${input.companyContext.keyInitiatives.length > 0 ? `Key Initiatives: ${input.companyContext.keyInitiatives.join(", ")}` : ""}
-${input.companyContext.businessPriorities.length > 0 ? `Business Priorities: ${input.companyContext.businessPriorities.join(", ")}` : ""}
-${input.companyContext.technologySignals.length > 0 ? `Technology Signals: ${input.companyContext.technologySignals.join(", ")}` : ""}
-${input.companyContext.hiringSignals.length > 0 ? `Hiring Signals: ${input.companyContext.hiringSignals.join(", ")}` : ""}
-${input.companyContext.outreachOpportunities.length > 0 ? `Outreach Opportunities: ${input.companyContext.outreachOpportunities.join(", ")}` : ""}
-` : ""}
-
-${input.recommendationReason ? `Why this company is recommended:\n${input.recommendationReason}\n` : ""}
-${input.prospectNotes ? `Additional notes:\n${input.prospectNotes}` : ""}
+MATCHING PROJECTS (PROOF):
+${projectContext || "No specific matching projects available."}
 
 ${WHILEONE_MESSAGING_RULES.replace("TARGET_COMPANY_PLACEHOLDER", input.targetCompany)}
-Requirements:
-- The purpose of this outreach is business development. Do not merely reconnect.
-- Demonstrate Whileone's credibility through relevant project evidence.
-- If matching projects are available, include a concise bullet section containing 2-4 project-backed outcomes.
-- Prefer measurable outcomes and numerical results whenever available.
-- Project evidence should be specific enough to establish credibility but concise enough to remain mobile-friendly.
-- Follow this exact CONTEXT HIERARCHY for generation:
-  1. Introduction: Relationship Intelligence → Conversation History. Use conversation history primarily for opening, relationship framing, and setting the tone.
-  2. Body: Company Context Intelligence → Matching Projects. Actively connect recent Company Context with Matching Projects. Do not list company developments and capabilities separately. Make the connection explicit (e.g. "Since you are building X, our work on Y is highly relevant").
-  3. Credibility: Matching Project Outcomes. Project evidence should always take precedence over generic capability statements.
-  4. CTA: Driven by Relationship Type and Outreach Goal.
-- Subject line must be 5-9 words, curiosity-driven, highly relevant, and NOT spammy.
-- Incorporate the company name (${input.targetCompany}) into the subject line naturally if possible. Prioritize in this order: 1) Relevance 2) Company Name 3) Curiosity 4) Brevity.
-- Do NOT use clickbait or generic phrases like "Introduction from Whileone", "Quick Chat", "Exploring Opportunities", "Following Up", or "Checking In".
-- Implicitly position Whileone as a domain expert using evidence from Matching Projects, NOT generic claims. Never say "We provide performance tuning services" or "We offer AI infrastructure expertise" if specific project evidence can be used instead.
-- The offering section must be easy to scan. When discussing Whileone experience or relevant work, use concise bullet points.
-  - Good Example: "At Whileone we've recently helped engineering teams:\n• Reduce validation effort by 40%...\n• Improve compiler reliability..."
-- Use actual bullet symbols (•) for bulleted lists. Do NOT use asterisks (*) or hyphens (-).
-- Keep references concise and do not invent metrics.
-- Entire email must be 120-150 words maximum (prefer 80-130 words) and mobile-friendly with short sentences. Avoid large paragraphs describing capabilities.
-- Instead of showing the raw link, use the exact phrase "Contact Us" as a markdown hyperlink pointing to the CTA at the end of the email: [Contact Us](https://calendly.com/snatu-whileone/30min)
-- Sign off as "The Whileone Team".
+
+SKILL STRATEGY (Adjust Tone & Familiarity based on this):
+---
+${skillMarkdown}
+---
+
+SUCCESS CRITERIA:
+A human sales leader reading the email should think: "They understand what I work on. They have done something relevant. This is worth a reply." Not "This sounds like an AI summarizing a project database."
+Use actual bullet symbols (•) for bulleted lists. Instead of showing the raw link, use the exact phrase "Contact Us" as a markdown hyperlink pointing to the CTA at the end of the email: [Contact Us](https://calendly.com/snatu-whileone/30min)
+Sign off as "The Whileone Team".
 
 Respond in JSON only with this exact shape:
-{"subject": "...", "body": "..."}`;
+{
+  "internal_planning": "Your internal reasoning answering the 5 planning questions",
+  "subject": "...",
+  "body": "..."
+}`;
 
   const providerName = input.provider;
   const provider = getEmailProvider();
@@ -252,9 +258,23 @@ export async function refineOutreachEmail(
   const skillMarkdown = await getEmailSkill(relationship);
 
   const prompt = `You are a professional B2B outreach copywriter for Whileone.
-Your task is to refine an existing email draft based on specific user instructions while strictly adhering to the selected email strategy.
+Your task is to refine an existing email draft based on specific user instructions while strictly adhering to the selected email strategy and new Strategic Redesign principles.
 
-Follow this email strategy precisely:
+EMAIL STRUCTURE:
+Every email should strictly follow these blocks:
+Block 1 — Greeting (e.g., "Hello Deepak,", "Hope you are doing well.")
+Block 2 — Reason For Outreach (One sentence answering "Why am I receiving this email?". e.g., "I noticed Cisco is actively hiring for SRE roles.")
+Block 3 — Relevant Industry Challenge (Optional. Only if it strengthens the angle. Max 2 sentences.)
+Block 4 — WhileOne Proof (Use ONE: Customer Success Story, Relevant Project, Technical Asset.)
+Block 5 — Supporting Evidence (Choose ONE: Customer Outcome, Service Capability, or Technical Asset. Max 3 bullets.)
+Block 6 — CTA (Simple.)
+Block 7 — Attachment Mention (Always include: "I am attaching our corporate overview and technical capabilities presentation for your reference.")
+
+SUBJECT LINE RULES:
+Subject should come from: Company Signal + Outreach Angle.
+Examples: "Cisco and SRE Operations", "Thoughts on Cloud Reliability".
+
+SKILL STRATEGY (Adjust Tone & Familiarity based on this):
 ---
 ${skillMarkdown}
 ---
@@ -275,26 +295,19 @@ Refinement Instructions from User:
 
 ${WHILEONE_MESSAGING_RULES.replace("TARGET_COMPANY_PLACEHOLDER", context ? context.company : "their company")}
 
-Apply the instructions carefully to the existing draft. 
-- The purpose of this outreach is business development. Do not merely reconnect.
-- Demonstrate Whileone's credibility through relevant project evidence.
-- If matching projects are available, include a concise bullet section containing 2-4 project-backed outcomes.
-- Prefer measurable outcomes and numerical results whenever available.
-- Project evidence should be specific enough to establish credibility but concise enough to remain mobile-friendly.
-- Do NOT generate a completely unrelated email. Modify the existing one.
+Apply the instructions carefully to the existing draft. Do NOT generate a completely unrelated email. Modify the existing one, but enforce the strict email structure and strategy rules.
+- The purpose of this outreach is business development.
 - Preserve factual project references or names unless instructed otherwise.
-- Subject line must be 5-9 words, curiosity-driven, highly relevant, and NOT spammy.
-- Incorporate the company name (${context ? context.company : "their company"}) into the subject line naturally if possible. Prioritize in this order: 1) Relevance 2) Company Name 3) Curiosity 4) Brevity.
-- Do NOT use clickbait or generic phrases like "Introduction from Whileone", "Quick Chat", "Exploring Opportunities", "Following Up", or "Checking In".
-- Implicitly position Whileone as a domain expert using evidence.
-- Email must remain short (80-130 words) and mobile-friendly.
-- Prefer a format with an opening, max 3 short bullet points, and a CTA.
 - Use actual bullet symbols (•) for bulleted lists. Do NOT use asterisks (*) or hyphens (-).
 - Instead of showing the raw link, use the exact phrase "Contact Us" as a markdown hyperlink pointing to the CTA at the end of the email: [Contact Us](https://calendly.com/snatu-whileone/30min)
 - Sign off as "The Whileone Team".
 
 Respond in JSON only with this exact shape (with the updated subject and body):
-{"subject": "...", "body": "..."}`;
+{
+  "internal_planning": "Your reasoning for the refinement",
+  "subject": "...",
+  "body": "..."
+}`;
 
   const provider = getEmailProvider();
   

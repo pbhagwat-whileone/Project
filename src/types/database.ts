@@ -215,6 +215,7 @@ export interface Database {
           relationship_type: string | null;
           edited_content: string | null;
           refinement_history: any | null;
+          generation_context: any | null;
         };
         Insert: {
           id?: string;
@@ -228,6 +229,7 @@ export interface Database {
           relationship_type?: string | null;
           edited_content?: string | null;
           refinement_history?: any | null;
+          generation_context?: any | null;
         };
         Update: Partial<Database["public"]["Tables"]["generated_emails"]["Insert"]>;
         Relationships: [];
@@ -540,6 +542,9 @@ export type RankedContact = {
   company: string | null;
   position: string | null;
   location?: string | null;
+  expertise_tags?: string[] | null;
+  technology_tags?: string[] | null;
+  activity_signals?: string[] | null;
   email: string | null;
   profile_url: string | null;
   score: number;

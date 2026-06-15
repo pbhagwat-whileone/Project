@@ -3,37 +3,44 @@
 ## Purpose
 Use this skill when introducing Whileone to a new prospect or when there is absolutely no prior relationship context available.
 
-## Relationship Context
-No prior interaction, or extremely generic/unresponsive connection. Assume the prospect has no prior knowledge of you or Whileone.
+## Tone & Familiarity
+Professional, warm, and highly concise. Avoid sounding like a sales blast or overly formal. Assume the prospect has no prior knowledge of you or Whileone.
 
-## Outreach Objective
-Establish relevance quickly without assuming any prior relationship, build credibility, and propose a lightweight next step.
+## Email Structure
+Follow this exact structure for the email body:
 
-## Tone
-Professional, warm, and highly concise. Avoid sounding like a sales blast or overly formal.
+### 1. Observation
+- Lead with ONE concrete signal. Priority: Hiring Signal > Company Initiative > Activity Signal > Technology Tag > Role.
+- Example: "I noticed [Company] is actively hiring for SRE roles..." or "I saw [Company]'s continued investment in cloud infrastructure..."
+- The recipient should immediately understand "Why me?" and "Why now?"
+- Avoid generic openings completely.
 
-## Introduction Strategy
-The opening sentence must be short, create curiosity, and establish relevance immediately before delivering value. Lead with relevance, outcomes, and customer value. Let the reader quickly understand why they are being contacted based on their role, company, industry, or recommendation context.
+### 2. Challenge
+- Introduce a challenge relevant to the recipient based on the specific signal. This should naturally flow from the signal.
+- Example: "...Many organizations scaling these environments face challenges around reliability, operational visibility, and support coverage."
 
-## Company Context Usage
-Use the prospect's company context, role, or industry to anchor the email. Transition smoothly from their context into how Whileone may be relevant.
+### 3. Proof
+- Provide ONE strong proof point as the centerpiece of the email to validate the outreach angle.
+- Describe the project in terms of business, engineering, or operational outcomes, NOT technical implementation details.
+- Example: "One of our customers, Cerebras, partnered with WhileOne to help their engineering teams focus on core product development by offloading operational support responsibilities."
 
-## Whileone Positioning
-Use high capability prominence. Use specific project evidence as your primary source of credibility (do not invent facts, outcomes, or metrics). Prioritize business impact and outcomes over technical implementation (e.g., "Reduced validation effort..." rather than "Implemented X"). When using bullets, the benefit or outcome must appear before the implementation detail. Avoid capability lists, service lists, generic capability statements, and generic marketing-heavy language.
+### 4. CTA
+- Keep it low-pressure, conversational, and peer-to-peer. Let it emerge naturally.
+- Examples: "Would you be open to a brief discussion?", "Happy to compare notes."
+- Avoid hard sales pitches or vague requests like "Quick chat" or "Exploring synergies".
 
-## Call To Action
-Let the CTA emerge naturally as a low-pressure, conversational, peer-to-peer continuation of the discussion (e.g., "Happy to compare notes...", "Would be interested in exchanging perspectives..."). Avoid sounding like a hard sales pitch.
-
-## Do
-- Emphasize brevity and mobile-friendly formatting. Keep the email concise and executive-friendly.
-- Structure thoughts internally as Why (relevance) → How (credibility/expertise) → What (next step).
-- Use recommendation context when available.
-- Connect prior work directly to the recipient's current situation.
-
-## Avoid
-- Do NOT use headings or section labels like "Why" or "How".
-- Avoid long, formal introductions.
-- Avoid forcing technical details unless they explicitly support a business outcome.
-
-
-Project evidence must be included whenever relevant projects are available.
+## Universal Rules
+- Projects are proof.
+- Projects are not the story.
+- Company context establishes relevance.
+- Projects establish credibility.
+- The email should be explainable in one sentence.
+- The first paragraph must identify a specific signal that triggered the outreach.
+- Avoid generic openings: "Many organizations...", "Organizations often struggle...", "A common challenge...", "The critical task of...", "Industry leaders frequently face..."
+- For VP, Director, SVP, CTO, CIO, and C-level recipients, describe project evidence primarily through: business outcomes, operational outcomes, engineering outcomes.
+- Avoid deep implementation details unless directly relevant.
+- Always optimize for:
+  1. Relevance
+  2. Credibility
+  3. Brevity
+  4. CTA

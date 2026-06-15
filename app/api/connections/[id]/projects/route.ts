@@ -30,8 +30,8 @@ export async function POST(
       const generatedAt = new Date(cache.generated_at);
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-      if (generatedAt > thirtyDaysAgo) {
-        // console.log("[ProjectMatching Cache] Loaded:", cache.matched_projects);
+      if (generatedAt > thirtyDaysAgo && cache.matched_projects && cache.matched_projects.length > 0) {
+        console.log("[ProjectMatching Cache] Loaded:", cache.matched_projects.length, "projects");
         return NextResponse.json({
           projects: cache.matched_projects,
           source: "cache",
@@ -42,18 +42,13 @@ export async function POST(
     // Cache missing or expired, generate new matches
     const { data: profile } = await supabase
       .from("connection_profiles")
-      .select("expertise_tags, technology_tags, activity_signals")
+      .select("expertise_tags, technology_tags, activity_signals, headline")
       .eq("connection_id", connectionId)
       .maybeSingle();
 
     let profileData = profile;
 
     if (!profileData) {
-      // console.log("[ProjectMatching] Connection ID:", connectionId);
-      // console.log("[ProjectMatching] Profile Lookup Result:", profileData);
-      // console.log("[ProjectMatching] Profile Table Source:", "connection_profiles");
-      // console.log("[ProjectMatching] Auto-triggering Profile Enrichment...");
-
       const { data: conn } = await supabase
         .from("connections")
         .select("profile_url")
@@ -68,6 +63,7 @@ export async function POST(
               expertise_tags: enriched.expertise_tags,
               technology_tags: enriched.technology_tags,
               activity_signals: enriched.activity_signals,
+              headline: enriched.headline,
             };
           }
         } catch (enrichErr) {
@@ -76,18 +72,15 @@ export async function POST(
       }
     }
 
-    const safeProfile = profileData || { expertise_tags: [], technology_tags: [], activity_signals: [] };
+    const safeProfile = profileData || { expertise_tags: [], technology_tags: [], activity_signals: [], headline: null };
 
-    // console.log("[ProjectMatching] Expertise:", safeProfile.expertise_tags);
-    // console.log("[ProjectMatching] Technology:", safeProfile.technology_tags);
-    // console.log("[ProjectMatching] Activity:", safeProfile.activity_signals);
+    console.log("--- PROJECT MATCHING PIPELINE TRACE ---");
+    console.log("1. Profile enrichment values:");
+    console.log("   - expertise_tags:", safeProfile.expertise_tags);
+    console.log("   - technology_tags:", safeProfile.technology_tags);
+    console.log("   - activity_signals:", safeProfile.activity_signals);
 
     const queryParts: string[] = [];
-
-    // console.log("[ProjectMatching] Connection:", connectionId);
-    // console.log("[ProjectMatching] Expertise Tags:", safeProfile.expertise_tags);
-    // console.log("[ProjectMatching] Technology Tags:", safeProfile.technology_tags);
-    // console.log("[ProjectMatching] Activity Signals:", safeProfile.activity_signals);
 
     if (Array.isArray(safeProfile.expertise_tags)) {
       queryParts.push(safeProfile.expertise_tags.join(" "));
@@ -100,26 +93,26 @@ export async function POST(
     }
 
     const finalQuery = queryParts.join(" ").trim();
-    // console.log("[ProjectMatching] Retrieval Query:", finalQuery);
 
     let projects: MatchedChunk[] = [];
+    let queryUsed = "";
 
     if (finalQuery) {
+      queryUsed = finalQuery;
+      console.log("2. Final retrieval query sent to vector search:", queryUsed);
       projects = await searchKnowledgeChunks(supabase, user.id, finalQuery, 3);
     } else {
-      // Fallback if no tags: get connection role/company
       const { data: conn } = await supabase
         .from("connections")
         .select("company, position")
         .eq("id", connectionId)
         .maybeSingle();
 
-      if (conn) {
-        const fallbackQuery = [conn.company, conn.position].filter(Boolean).join(" ");
-        if (fallbackQuery) {
-          projects = await searchKnowledgeChunks(supabase, user.id, fallbackQuery, 3);
-        }
-      }
+      const fallbackQuery = [conn?.company, conn?.position, safeProfile.headline].filter(Boolean).join(" ");
+      const ultimateQuery = fallbackQuery || "software engineering technology consulting projects";
+      queryUsed = ultimateQuery;
+      console.log("2. Final retrieval query sent to vector search (FALLBACK):", queryUsed);
+      projects = await searchKnowledgeChunks(supabase, user.id, ultimateQuery, 3);
     }
 
     const projectsWithSummary = projects.map((p) => ({
@@ -127,23 +120,27 @@ export async function POST(
       summary: p.chunk_text.slice(0, 200),
     }));
 
+    console.log("[ProjectMatching] Writing Cache:", projectsWithSummary.length, "projects");
+    console.log("[ProjectMatching] Cache Payload:", projectsWithSummary);
+
     // Upsert to cache
-    // console.log("[ProjectMatching] Writing Cache:", projectsWithSummary.length);
     await supabase.from("connection_project_cache").upsert({
       connection_id: connectionId,
       user_id: user.id,
-      retrieval_query: finalQuery,
+      retrieval_query: finalQuery || "fallback",
       matched_projects: projectsWithSummary,
       generated_at: new Date().toISOString(),
     } as any);
 
-    // console.log("[ProjectMatching API] Returning Projects:", projectsWithSummary);
-    // console.log("[ProjectMatching API] Count:", projectsWithSummary.length);
+    console.log("[ProjectMatching API] Returning Projects Count:", projectsWithSummary.length);
+    console.log("[ProjectMatching API] Returning Projects Payload:", projectsWithSummary);
+
     return NextResponse.json({
       projects: projectsWithSummary,
       source: "generated",
     });
   } catch (err) {
+    console.error("[ProjectMatching API Error]:", err);
     const message = err instanceof Error ? err.message : "Failed to generate projects";
     return NextResponse.json({ error: message }, { status: 500 });
   }

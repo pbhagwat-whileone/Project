@@ -86,9 +86,21 @@ function parseDeterministicFields(rawText: string) {
   if (lines.length > 2) {
     headline = lines[1] || "";
     if (headline.startsWith("##") || headline.length > 200) headline = "";
+  }
+
+  const rejectRegex = /connections|followers|following|posts|mutual connections/i;
+  const numericRegex = /^[\d\s,.\+kKmM]+$/;
+  
+  for (let i = 1; i < Math.min(8, lines.length); i++) {
+    const candidate = lines[i];
+    if (candidate === headline) continue;
+    if (candidate.startsWith("##") || candidate.length > 100) continue;
+    if (rejectRegex.test(candidate)) continue;
+    if (numericRegex.test(candidate)) continue;
     
-    if (lines[2] && !lines[2].startsWith("##") && lines[2].length < 100) {
-      location = lines[2];
+    if (candidate.includes(",")) {
+      location = candidate;
+      break;
     }
   }
 
@@ -156,10 +168,20 @@ Data:
 ${reducedContext}
 
 Extract structured intelligence. Focus strictly on factual signals explicitly mentioned or strongly implied in the text.
-If no clear signals exist for a category, use an empty array.
+If no clear signals exist for a category, use an empty array or null.
 Merge Interest Areas and Professional Focus Areas into expertiseTags.
+
+If a location appears near the top of the profile and another nearby line contains connection counts or follower counts, always extract the geographic location and ignore the connection/follower statistics.
+
+Example:
+San Jose, California, United States
+500 connections, 954 followers
+
+Location = San Jose, California, United States
+
 Respond in JSON ONLY with exactly the following structure:
 {
+  "location": "extracted geographic location, or null",
   "certifications": ["Cert 1", "Cert 2"],
   "expertiseTags": ["Expertise 1", "Expertise 2"],
   "technologyTags": ["Tech 1", "Tech 2"],
@@ -180,6 +202,10 @@ Respond in JSON ONLY with exactly the following structure:
     profileData.expertise_tags = parsed.expertiseTags || [];
     profileData.technology_tags = parsed.technologyTags || [];
     profileData.activity_signals = parsed.activitySignals || [];
+    
+    if (!profileData.location && parsed.location) {
+      profileData.location = parsed.location;
+    }
 
     // console.log("[ProfileEnrichment] LLM Enrichment:", parsed);
   } catch (err: any) {

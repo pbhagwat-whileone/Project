@@ -63,6 +63,10 @@ export async function POST(request: Request) {
         personalization_points: parsed.data.personalization_points,
         persistent_context: parsed.data.persistent_context,
         time_bound_context: parsed.data.time_bound_context,
+        location: parsed.data.location ?? null,
+        expertise_tags: parsed.data.expertise_tags ?? null,
+        technology_tags: parsed.data.technology_tags ?? null,
+        activity_signals: parsed.data.activity_signals ?? null,
       };
     } else if (recContext.recommendation?.topContact) {
       contact = recContext.recommendation.topContact;
@@ -82,6 +86,22 @@ export async function POST(request: Request) {
         score: 0,
       };
       projects = [];
+    }
+
+    // Attempt to fetch profile intelligence if not provided but we have an ID
+    if (contact.id && (!contact.expertise_tags || !contact.technology_tags || !contact.activity_signals)) {
+      const { data: profile } = await supabase
+        .from("connection_profiles")
+        .select("location, expertise_tags, technology_tags, activity_signals")
+        .eq("connection_id", contact.id)
+        .maybeSingle();
+
+      if (profile) {
+        contact.location = contact.location || profile.location;
+        contact.expertise_tags = contact.expertise_tags || profile.expertise_tags;
+        contact.technology_tags = contact.technology_tags || profile.technology_tags;
+        contact.activity_signals = contact.activity_signals || profile.activity_signals;
+      }
     }
 
     const resolvedCompany = contact?.company || parsed.data.company_name;
@@ -157,6 +177,26 @@ export async function POST(request: Request) {
         body: emailContent.body,
         provider_used: parsed.data.provider ?? "gemini",
         relationship_type: relationshipIntelligence.relationshipType,
+        generation_context: {
+          relationship_intelligence: {
+            relationshipType: relationshipIntelligence.relationshipType,
+            confidence: relationshipIntelligence.confidence,
+            reasoning: relationshipIntelligence.reasoning,
+            outreachGoal: relationshipIntelligence.outreachGoal,
+            capabilityProminence: relationshipIntelligence.capabilityProminence,
+          },
+          company_context_relevance: companyContextRelevance ? {
+            relevanceScore: companyContextRelevance.relevanceScore,
+            recommendedUsage: companyContextRelevance.recommendedUsage,
+            reasoning: companyContextRelevance.reasoning,
+          } : null,
+          company_context: companyContext ? {
+            summary: companyContext.summary,
+            keyInitiatives: companyContext.keyInitiatives,
+            technologySignals: companyContext.technologySignals,
+            businessPriorities: companyContext.businessPriorities,
+          } : null,
+        },
       })
       .select()
       .single();

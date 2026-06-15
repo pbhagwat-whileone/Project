@@ -42,7 +42,49 @@ export async function POST(
       .order("date", { ascending: true });
 
     if (!messages || messages.length === 0) {
-      return NextResponse.json({ error: "No messages found for this connection" }, { status: 400 });
+      const intelligence = {
+        relationship_summary: null,
+        discussion_topics: [],
+        interaction_timeline: [],
+        recent_highlights: [],
+        relationship_classification: "no_conversation_history",
+        persistent_context: [],
+        time_bound_context: [],
+        key_interests: [],
+        business_context: null,
+        action_items: [],
+        engagement_quality: "none",
+        recommended_outreach_angle: "cold",
+        personalization_points: []
+      };
+
+      const { data: metrics, error: metricsError } = await supabase
+        .from("connection_relationship_metrics")
+        .upsert({
+          connection_id: id,
+          user_id: user.id,
+          conversation_summary: intelligence.relationship_summary,
+          discussion_topics: Array.isArray(intelligence.discussion_topics) ? intelligence.discussion_topics.join(", ") : intelligence.discussion_topics,
+          interaction_timeline: intelligence.interaction_timeline,
+          recent_highlights: intelligence.recent_highlights,
+          relationship_classification: intelligence.relationship_classification,
+          key_interests: intelligence.key_interests,
+          business_context: intelligence.business_context,
+          action_items: intelligence.action_items,
+          engagement_quality: intelligence.engagement_quality,
+          recommended_outreach_angle: intelligence.recommended_outreach_angle,
+          personalization_points: intelligence.personalization_points,
+          persistent_context: intelligence.persistent_context,
+          time_bound_context: intelligence.time_bound_context,
+          message_count: 0,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "connection_id" })
+        .select()
+        .single();
+
+      if (metricsError) throw metricsError;
+
+      return NextResponse.json({ success: true, metrics });
     }
 
     const contactName = [connection.first_name, connection.last_name].filter(Boolean).join(" ");

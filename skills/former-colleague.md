@@ -1,38 +1,42 @@
 # Former Colleague
 
 ## Purpose
-Use this skill to reach out to someone you used to work with to reconnect, catching up while subtly exploring potential synergies.
+Worked together previously.
 
-## Relationship Context
-You have a shared work history. You know each other professionally, but may not have spoken recently.
+## Tone & Familiarity
+Highly familiar and warm. You can use more casual language than typical cold outreach, but remain focused on business value. 
 
-## Outreach Objective
-Catch up on their current role and naturally introduce what you are doing now, creating a low-pressure opening for collaboration.
+## Email Structure
+Follow this exact structure for the email body:
 
-## Tone
-Familiar, friendly, and peer-to-peer. Avoid overly formal language.
+### 1. Observation
+- Use shared history briefly, then quickly establish current relevance. The shared history is context, not the outreach angle.
+- Example: "Great to reconnect after our time at [Past Company]. I noticed your recent push toward containerization..."
 
-## Introduction Strategy
-The opening should establish relevance within the first sentence by acknowledging your shared history and checking in on their current role. Do not use formal corporate introductions.
+### 2. Challenge
+- Introduce a specific challenge tied to the signal that you know they might be facing.
+- Example: "...I know how tricky it can be to maintain reliability and performance during that shift."
 
-## Company Context Usage
-Use their recent company context simply to show you've been following their career or to ask an insightful question about their current focus.
+### 3. Proof
+- Provide ONE strong proof point as the centerpiece of the email.
+- Describe the project in terms of business, engineering, or operational outcomes.
 
-## Whileone Positioning
-Once reconnected, naturally transition into a brief update on your current work. Use project context only if it strictly strengthens current relevance. Do not over-explain Whileone. Focus heavily on the human connection over the company pitch.
+### 4. CTA
+- The CTA should be a casual catch-up, but explicitly tied to the business problem.
+- Examples: "Would love to catch up and see if any of our recent work on this might be helpful to your team.", "Let's grab a virtual coffee to compare notes on this."
 
-## Call To Action
-The closing should naturally lead into a casual conversation or catch-up (e.g., "Happy to compare notes...", "Would be interested in exchanging perspectives..."). Avoid sounding like a sales pitch.
-
-## Do
-- Write as if you are talking to a peer over coffee.
-- Emphasize brevity and mobile-friendly formatting.
-- Show genuine interest in their current role.
-
-## Avoid
-- Do NOT send a standard cold outreach email.
-- Avoid forcing capabilities if they do not flow naturally from the catch-up.
-- Avoid heavy marketing language.
-
-
-Project evidence must be included whenever relevant projects are available.
+## Universal Rules
+- Projects are proof.
+- Projects are not the story.
+- Company context establishes relevance.
+- Projects establish credibility.
+- The email should be explainable in one sentence.
+- The first paragraph must identify a specific signal that triggered the outreach.
+- Avoid generic openings: "Many organizations...", "Organizations often struggle...", "A common challenge...", "The critical task of...", "Industry leaders frequently face..."
+- For VP, Director, SVP, CTO, CIO, and C-level recipients, describe project evidence primarily through: business outcomes, operational outcomes, engineering outcomes.
+- Avoid deep implementation details unless directly relevant.
+- Always optimize for:
+  1. Relevance
+  2. Credibility
+  3. Brevity
+  4. CTA
