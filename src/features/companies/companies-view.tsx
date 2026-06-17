@@ -350,12 +350,7 @@ export function CompaniesView() {
         method: "POST"
       });
       
-      // console.log("[ProjectMatching UI] Full Response:", data);
-      // console.log("[ProjectMatching UI] Projects Received:", data.projects);
 
-      // console.log("[ProjectMatching UI] Setting Projects:", data.projects);
-      console.log("Projects in state (before update):", searchResult?.projects);
-      console.log("Projects from API:", data.projects);
       setSearchResult(prev => prev ? {
         ...prev,
         projects: data.projects
@@ -550,7 +545,6 @@ export function CompaniesView() {
     }
   }
 
-  // console.log("[ProjectMatching UI] Current Projects State:", searchResult?.projects);
 
   return (
     <div>

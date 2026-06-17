@@ -12,7 +12,6 @@ export async function searchKnowledgeChunks(
   matchCount = 3
 ): Promise<MatchedChunk[]> {
   const embedding = await generateEmbedding(query);
-  console.log("queryEmbedding.length:", embedding?.length);
   const vector = embeddingToPgVector(embedding);
 
   const { data, error } = await supabase.rpc("match_knowledge_chunks", {
@@ -27,7 +26,6 @@ export async function searchKnowledgeChunks(
 
   const chunks = (data ?? []) as MatchedChunk[];
   
-  console.log("3. Raw Vector Results:", chunks.length);
 
   const uniqueProjects = new Map<string, MatchedChunk>();
   for (const chunk of chunks) {
@@ -46,7 +44,6 @@ export async function searchKnowledgeChunks(
     .sort((a, b) => b.similarity - a.similarity)
     .slice(0, matchCount);
 
-  console.log("4. Filtered Results:", topUnique.length);
 
   // Return early if no relevant projects are found
   if (topUnique.length === 0) return topUnique;
@@ -70,7 +67,6 @@ export async function searchKnowledgeChunks(
     }
   }
 
-  // console.log("[ProjectMatching] Final Results:", topUnique);
 
   return topUnique;
 }

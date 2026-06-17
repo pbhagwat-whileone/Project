@@ -89,9 +89,17 @@ GOOGLE_REDIRECT_URI="http://localhost:3000/api/google/callback"
 
 ## 8. Setup Instructions
 1. Clone the repository and run `npm install`.
-2. Configure your `.env.local` based on the variables listed above.
+2. Configure your environment variables in `.env.production` (for Docker) or `.env.local` (for local dev) based on the variables listed above.
 3. Apply Supabase database migrations (schema matches `src/types/database.ts`).
-4. Run the development server using `npm run dev`.
+
+### Local Development
+Run the Next.js development server using `npm run dev`.
+
+### Docker Production Deployment
+The application is fully containerized using a secure Next.js + Nginx architecture.
+1. Ensure `.env.production` is populated with all required variables.
+2. Run `docker compose --env-file .env.production up -d --build`.
+3. The application will be securely available on port 80 via the Nginx reverse proxy.
 
 ## 9. Project Structure
 - `app/`: Next.js App Router pages and API routes (`app/api/`).

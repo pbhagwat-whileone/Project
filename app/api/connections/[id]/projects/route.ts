@@ -31,7 +31,6 @@ export async function POST(
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
       if (generatedAt > thirtyDaysAgo && cache.matched_projects && cache.matched_projects.length > 0) {
-        console.log("[ProjectMatching Cache] Loaded:", cache.matched_projects.length, "projects");
         return NextResponse.json({
           projects: cache.matched_projects,
           source: "cache",
@@ -74,11 +73,6 @@ export async function POST(
 
     const safeProfile = profileData || { expertise_tags: [], technology_tags: [], activity_signals: [], headline: null };
 
-    console.log("--- PROJECT MATCHING PIPELINE TRACE ---");
-    console.log("1. Profile enrichment values:");
-    console.log("   - expertise_tags:", safeProfile.expertise_tags);
-    console.log("   - technology_tags:", safeProfile.technology_tags);
-    console.log("   - activity_signals:", safeProfile.activity_signals);
 
     const queryParts: string[] = [];
 
@@ -99,7 +93,6 @@ export async function POST(
 
     if (finalQuery) {
       queryUsed = finalQuery;
-      console.log("2. Final retrieval query sent to vector search:", queryUsed);
       projects = await searchKnowledgeChunks(supabase, user.id, finalQuery, 3);
     } else {
       const { data: conn } = await supabase
@@ -111,7 +104,6 @@ export async function POST(
       const fallbackQuery = [conn?.company, conn?.position, safeProfile.headline].filter(Boolean).join(" ");
       const ultimateQuery = fallbackQuery || "software engineering technology consulting projects";
       queryUsed = ultimateQuery;
-      console.log("2. Final retrieval query sent to vector search (FALLBACK):", queryUsed);
       projects = await searchKnowledgeChunks(supabase, user.id, ultimateQuery, 3);
     }
 
@@ -120,8 +112,6 @@ export async function POST(
       summary: p.chunk_text.slice(0, 200),
     }));
 
-    console.log("[ProjectMatching] Writing Cache:", projectsWithSummary.length, "projects");
-    console.log("[ProjectMatching] Cache Payload:", projectsWithSummary);
 
     // Upsert to cache
     await supabase.from("connection_project_cache").upsert({
@@ -132,8 +122,6 @@ export async function POST(
       generated_at: new Date().toISOString(),
     } as any);
 
-    console.log("[ProjectMatching API] Returning Projects Count:", projectsWithSummary.length);
-    console.log("[ProjectMatching API] Returning Projects Payload:", projectsWithSummary);
 
     return NextResponse.json({
       projects: projectsWithSummary,

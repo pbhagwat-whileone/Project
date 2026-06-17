@@ -60,7 +60,6 @@ export async function fetchEvents(): Promise<EventItem[]> {
   const allExtractedEvents: EventItem[] = [];
 
   try {
-    // console.log(`[Events Intelligence] Starting ${SEARCH_QUERIES.length} parallel searches in batches...`);
 
     // Process in batches
     for (let i = 0; i < SEARCH_QUERIES.length; i += CHUNK_SIZE) {
@@ -212,27 +211,12 @@ Respond in JSON ONLY with exactly the following structure:
       return dateA - dateB;
     });
 
-    // console.log("=========================================");
-    // console.log("[Events Intelligence Debug Report]");
-    // console.log(`- Tavily searches executed: ${totalTavilySearches}`);
-    // console.log(`- Raw results returned: ${totalRawResults}`);
-    // console.log(`- Candidate events extracted: ${totalCandidateEvents}`);
-    // console.log(`- Removed as duplicates: ${duplicatesRemoved}`);
-    // console.log(`- Removed due to invalid/past dates: ${pastEventsRemoved}`);
-    // console.log(`- Final number returned to UI: ${finalEvents.length}`);
 
     if (firstRawResult) {
-      // console.log("\n[Example Raw Tavily Result]");
-      // console.log(`Title: ${firstRawResult.title}`);
-      // console.log(`URL: ${firstRawResult.url}`);
-      // console.log(`Snippet: ${firstRawResult.content.substring(0, 100)}...`);
     }
 
     if (firstExtractedEvent) {
-      // console.log("\n[Example Extracted Event]");
-      // console.log(JSON.stringify(firstExtractedEvent, null, 2));
     }
-    // console.log("=========================================");
 
     return finalEvents;
   } catch (error) {

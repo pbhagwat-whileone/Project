@@ -32,7 +32,6 @@ export async function fetchAllRecords<T>(
     }
 
     if (data && data.length > 0) {
-      // console.log(`[fetchAllRecords] fetched ${data.length} rows for page ${page}`);
       
       // check for duplicates within the current batch and allData
       const currentIds = (data as any[]).map(d => d.id).filter(Boolean);

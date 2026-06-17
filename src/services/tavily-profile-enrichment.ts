@@ -16,7 +16,6 @@ export async function enrichProfile(
       return null;
     }
 
-    // console.log(`[ProfileEnrichment] Fetching Tavily extract for ${profileUrl}`);
     const response = await fetch("https://api.tavily.com/extract", {
       method: "POST",
       headers: {
@@ -130,17 +129,14 @@ async function parseAndSave(
   rawContext: string,
   rawTavilyResponse?: any
 ): Promise<ConnectionProfile | null> {
-  // console.log("[ProfileEnrichment] Tavily Response Received");
   
   if (!rawContext) {
     console.warn(`[ProfileEnrichment] No raw context for connection ${connectionId}`);
     return null;
   }
   
-  // console.log("[ProfileEnrichment] Raw Content Length:", rawContext.length);
 
   const deterministic = parseDeterministicFields(rawContext);
-  // console.log("[ProfileEnrichment] Deterministic Fields:", deterministic);
 
   const profileData: any = {
     connection_id: connectionId,
@@ -207,7 +203,6 @@ Respond in JSON ONLY with exactly the following structure:
       profileData.location = parsed.location;
     }
 
-    // console.log("[ProfileEnrichment] LLM Enrichment:", parsed);
   } catch (err: any) {
     console.warn(`[ProfileEnrichment] LLM Enrichment failed for connection ${connectionId}:`, err?.message);
     llmFailedError = err; // Store error to bubble up after saving deterministic fields
@@ -223,13 +218,6 @@ Respond in JSON ONLY with exactly the following structure:
   if (upsertError) {
     console.error(`[ProfileEnrichment] Error caching profile for connection ${connectionId}:`, upsertError);
   } else {
-    // console.log("[ProfileEnrichment] Saved To:", "connection_profiles");
-    // console.log("[ProfileEnrichment] Connection:", connectionId);
-    console.log("[ProfileEnrichment] Saved Payload:", {
-      expertiseTags: profileData.expertise_tags,
-      technologyTags: profileData.technology_tags,
-      activitySignals: profileData.activity_signals
-    });
   }
 
   if (llmFailedError) {

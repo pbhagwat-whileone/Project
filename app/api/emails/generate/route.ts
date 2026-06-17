@@ -15,7 +15,6 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     // TEMPORARY LOGGING: Inspect the full payload before schema validation
-    // console.log("[EMAIL GENERATE ROUTE] Incoming Payload:", JSON.stringify(body, null, 2));
 
     const parsed = emailGenerateSchema.safeParse(body);
 
@@ -37,7 +36,6 @@ export async function POST(request: Request) {
 
     if (parsed.data.projects?.length) {
       projects = parsed.data.projects as MatchedChunk[];
-      // console.log("[EMAIL_GENERATION] Existing Dashboard Projects:", projects.map(p => p.project_name || p.document_id));
       contact = {
         id: parsed.data.contact_id ?? "",
         first_name: parsed.data.contact_name?.split(" ")[0] ?? null,
@@ -71,7 +69,6 @@ export async function POST(request: Request) {
     } else if (recContext.recommendation?.topContact) {
       contact = recContext.recommendation.topContact;
       projects = recContext.matchingProjects;
-      // console.log("[EMAIL_GENERATION] Existing Dashboard Projects (Rec):", projects.map(p => p.project_name || p.document_id));
       recommendationReason ??= recContext.recommendation.suggestedReason;
     } else {
       contact = {
@@ -137,8 +134,6 @@ export async function POST(request: Request) {
       engagementQuality: contact?.engagement_quality,
     });
 
-    // console.log("[EMAIL_GENERATION] Projects Before Prompt:", projects.map(p => p.project_name || p.document_id));
-    // console.log("[EMAIL_GENERATION] Projects Used:", projects.map(p => p.project_name || p.document_id));
 
     const emailContent = await generateOutreachEmail({
       targetCompany: resolvedCompany,
@@ -203,10 +198,10 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
-    return NextResponse.json({ 
-      email: saved, 
-      companyContext, 
-      companyContextRelevance, 
+    return NextResponse.json({
+      email: saved,
+      companyContext,
+      companyContextRelevance,
       relationshipIntelligence,
       projects: projects.map((p) => ({
         ...p,

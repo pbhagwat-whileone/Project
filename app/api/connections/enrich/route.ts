@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   try {
     const user = await requireUser();
     const supabase = await createClient();
-    
+
     // 1. Fail Fast: Check if enrichment task models are available
     if (!isTaskAvailable("PROFILE_ENRICHMENT_INTELLIGENCE")) {
       return NextResponse.json(
@@ -49,13 +49,13 @@ export async function POST(request: Request) {
         results.push({ id: conn.id, status: 'skipped', reason: 'No profile URL' });
         continue;
       }
-      
+
       let profileResult = null;
       let profileStatus = 'skipped';
       let profileError = null;
 
       // --- Tavily Profile Enrichment ---
-      const isProfileCacheValid = conn.connection_profiles?.enriched_at && 
+      const isProfileCacheValid = conn.connection_profiles?.enriched_at &&
         (now - new Date(conn.connection_profiles.enriched_at).getTime() < THIRTY_DAYS_MS);
 
       if (isProfileCacheValid) {
@@ -80,20 +80,20 @@ export async function POST(request: Request) {
       // --- Apollo Email Enrichment ---
       let apolloResult = null;
       let apolloStatus = 'skipped';
-      
+
       // Do not overwrite manual/CSV emails
       const hasEmailNotFromApollo = conn.email && conn.email_source !== 'apollo';
-      const isApolloCacheValid = conn.email_source === 'apollo' && conn.email_last_enriched_at && 
+      const isApolloCacheValid = conn.email_source === 'apollo' && conn.email_last_enriched_at &&
         (now - new Date(conn.email_last_enriched_at).getTime() < THIRTY_DAYS_MS);
 
       if (!hasEmailNotFromApollo && !isApolloCacheValid) {
         // Provide company name for better match rate if possible
         const companyName = profileResult?.company || conn.company;
-        
+
         const emailData = await getApolloEmailByLinkedInUrl(conn.profile_url, companyName);
         if (emailData && emailData.email) {
           apolloStatus = 'success';
-          
+
           // Persist email to connections table
           const { error: updateError } = await supabase
             .from("connections")
@@ -105,12 +105,12 @@ export async function POST(request: Request) {
               email_last_enriched_at: new Date().toISOString()
             })
             .eq("id", conn.id);
-            
+
           if (!updateError) {
-             apolloResult = emailData;
+            apolloResult = emailData;
           } else {
-             console.error(`[ApolloEnrichment] Failed to update connection ${conn.id}:`, updateError);
-             apolloStatus = 'failed';
+            console.error(`[ApolloEnrichment] Failed to update connection ${conn.id}:`, updateError);
+            apolloStatus = 'failed';
           }
         } else {
           apolloStatus = 'failed';
@@ -124,8 +124,8 @@ export async function POST(request: Request) {
         failedCount++;
       }
 
-      results.push({ 
-        id: conn.id, 
+      results.push({
+        id: conn.id,
         status: profileStatus === 'success' || apolloStatus === 'success' ? 'success' : (profileStatus === 'cached' ? 'cached' : 'failed'),
         profile: profileResult,
         apollo: apolloResult,
@@ -134,16 +134,16 @@ export async function POST(request: Request) {
 
       // Stop batch if Tavily model cooldown was hit
       if (profileError) {
-        break; 
+        break;
       }
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      enrichedCount, 
-      failedCount, 
+    return NextResponse.json({
+      success: true,
+      enrichedCount,
+      failedCount,
       results,
-      aborted: results.length < connections.length 
+      aborted: results.length < connections.length
     });
   } catch (err) {
     console.error("ENRICHMENT ERROR", err);

@@ -92,19 +92,14 @@ export async function POST(request: Request) {
     let emailProjects = matchingProjects;
     if (enhancedQuery) {
       const freshProjects = await searchKnowledgeChunks(supabase, user.id, enhancedQuery, 3);
-      // console.log("[EMAIL_GENERATION] Fresh Retrieval Projects:", freshProjects.map(p => p.project_name || p.document_id));
       
       if (freshProjects.length > 0) {
         emailProjects = freshProjects;
-        // console.log("[EMAIL_GENERATION] Project Source: enhanced_retrieval");
       } else {
-        // console.log("[EMAIL_GENERATION] Project Source: dashboard_fallback_due_to_empty_fresh");
       }
     } else {
-      // console.log("[EMAIL_GENERATION] Project Source: dashboard_fallback_due_to_empty_query");
     }
 
-    // console.log("[EMAIL_GENERATION] Projects Used:", emailProjects.map(p => p.project_name || p.document_id));
 
     const emailContent = await generateOutreachEmail({
       targetCompany: recommendation.company,
