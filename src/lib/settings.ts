@@ -19,6 +19,12 @@ export async function getDriveFolderIds(
 }
 
 export function getAppUrl(): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL;
+  }
+  if (process.env.APP_URL) {
+    return process.env.APP_URL;
+  }
   if (process.env.NEXT_PUBLIC_APP_URL) {
     return process.env.NEXT_PUBLIC_APP_URL;
   }

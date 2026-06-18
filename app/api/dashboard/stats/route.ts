@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient, requireUser } from "@/lib/supabase/server";
-import { fetchAllRecords } from "@/utils/supabase-utils";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
+import { fetchAllRecords } from "@/infrastructure/database/supabase/supabaseUtils";
 
 export async function GET() {
   try {
@@ -9,15 +9,13 @@ export async function GET() {
 
     const { data: userDocs } = await supabase
       .from("knowledge_documents")
-      .select("id")
-      .eq("user_id", user.id);
+      .select("id");
 
     const docIds = (userDocs ?? []).map((d) => d.id);
 
     const connectionsQuery = supabase
       .from("connections")
-      .select("id, company, connection_owner_name, created_at")
-      .eq("user_id", user.id);
+      .select("id, company, connection_owner_name, created_at");
 
     const connectionsData = await fetchAllRecords<{id: string; company: string | null; connection_owner_name: string; created_at: string}>(connectionsQuery);
 
@@ -60,8 +58,7 @@ export async function GET() {
     ] = await Promise.all([
       supabase
         .from("knowledge_documents")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id),
+        .select("*", { count: "exact", head: true }),
       docIds.length
         ? supabase
             .from("knowledge_chunks")
@@ -70,12 +67,10 @@ export async function GET() {
         : Promise.resolve({ count: 0, data: null, error: null }),
       supabase
         .from("generated_emails")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id),
+        .select("*", { count: "exact", head: true }),
         supabase
         .from("sync_logs")
         .select("*")
-        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(50),
     ]);

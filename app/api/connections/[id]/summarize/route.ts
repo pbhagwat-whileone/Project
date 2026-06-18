@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient, requireUser } from "@/lib/supabase/server";
-import { generateConversationIntelligence } from "@/services/conversation-intelligence";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
+import { generateConversationIntelligence } from "@/domains/connections/services/conversationIntelligence";
 
 export async function POST(
   request: Request,
@@ -16,7 +16,6 @@ export async function POST(
       .from("connections")
       .select("*")
       .eq("id", id)
-      .eq("user_id", user.id)
       .single();
 
     if (!connection || !connection.profile_url) {
@@ -37,7 +36,6 @@ export async function POST(
     const { data: messages } = await supabase
       .from("linkedin_messages")
       .select("*")
-      .eq("user_id", user.id)
       .or(`from_profile_url.ilike.${urlPattern},to_profile_url.ilike.${urlPattern}`)
       .order("date", { ascending: true });
 

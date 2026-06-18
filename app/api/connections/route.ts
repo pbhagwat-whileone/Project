@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient, requireUser } from "@/lib/supabase/server";
-import { fetchAllRecords } from "@/utils/supabase-utils";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
+import { fetchAllRecords } from "@/infrastructure/database/supabase/supabaseUtils";
 import type { Connection } from "@/types/database";
 
 export async function GET(request: Request) {
@@ -13,8 +13,7 @@ export async function GET(request: Request) {
 
     let query = supabase
       .from("connections")
-      .select("*, connection_profiles(*)")
-      .eq("user_id", user.id)
+      .select("id, first_name, last_name, company, position, email, profile_url, connected_on, connection_owner_name, created_at, connection_profiles(*)")
       .order("created_at", { ascending: false })
       .order("id", { ascending: true });
 

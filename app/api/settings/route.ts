@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { settingsSchema } from "@/lib/validators";
-import { createClient, requireUser } from "@/lib/supabase/server";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
 
 export async function GET() {
   try {
@@ -14,12 +14,10 @@ export async function GET() {
           .select("*")
           .eq("user_id", user.id)
           .maybeSingle(),
-        supabase
-          .from("sync_logs")
+        (supabase as any)
+          .from("global_sync_state")
           .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
+          .eq("id", 1)
           .maybeSingle(),
         supabase
           .from("google_tokens")

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { recommendationDetailSchema } from "@/lib/validators";
-import { createClient, requireUser } from "@/lib/supabase/server";
-import { getCompanyDetail } from "@/services/prospect-recommendation";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
+import { getCompanyDetail } from "@/domains/prospects/services/prospectRecommendation";
 
 export async function GET(request: Request) {
   try {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient, requireUser } from "@/lib/supabase/server";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
 
 export async function GET(request: Request) {
   try {
@@ -11,8 +11,7 @@ export async function GET(request: Request) {
     const { data: documents, error } = await supabase
       .from("knowledge_documents")
       .select("*")
-      .eq("user_id", user.id)
-      .order("last_modified", { ascending: false });
+      .order("created_at", { ascending: false });
 
     if (error) throw error;
 

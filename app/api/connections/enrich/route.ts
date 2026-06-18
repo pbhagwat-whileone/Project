@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { createClient, requireUser } from "@/lib/supabase/server";
-import { enrichProfile } from "@/services/tavily-profile-enrichment";
-import { getApolloEmailByLinkedInUrl } from "@/services/apollo";
-import { fetchAllRecords } from "@/utils/supabase-utils";
-import { isTaskAvailable } from "@/ai/generation";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
+import { enrichProfile } from "@/services/integrations/tavily/tavilyProfileEnrichment";
+import { getApolloEmailByLinkedInUrl } from "@/services/integrations/apollo/apollo";
+import { fetchAllRecords } from "@/infrastructure/database/supabase/supabaseUtils";
+import { isTaskAvailable } from "@/services/ai/generation/generation";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +31,6 @@ export async function POST(request: Request) {
     const query = supabase
       .from("connections")
       .select("id, profile_url, email, email_source, email_last_enriched_at, company, connection_profiles(enriched_at)")
-      .eq("user_id", user.id)
       .in("id", connectionIds);
 
     const connections = await fetchAllRecords<any>(query);

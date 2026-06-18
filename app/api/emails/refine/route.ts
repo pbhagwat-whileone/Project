@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { emailRefineSchema } from "@/lib/validators";
-import { createClient, requireUser } from "@/lib/supabase/server";
-import { refineOutreachEmail } from "@/services/email-generator";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
+import { refineOutreachEmail } from "@/domains/emails/services/emailGenerator";
 
 export async function POST(request: Request) {
   try {
@@ -24,7 +24,6 @@ export async function POST(request: Request) {
       .from("generated_emails")
       .select("*")
       .eq("id", parsed.data.email_id)
-      .eq("user_id", user.id)
       .single();
 
     if (fetchError || !existingEmail) {

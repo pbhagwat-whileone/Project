@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient, requireUser } from "@/lib/supabase/server";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -12,8 +12,7 @@ export async function DELETE(_request: Request, { params }: Params) {
     const { error } = await supabase
       .from("generated_emails")
       .delete()
-      .eq("id", id)
-      .eq("user_id", user.id);
+      .eq("id", id);
 
     if (error) throw error;
 
@@ -50,7 +49,6 @@ export async function PUT(request: Request, { params }: Params) {
         edited_content: parsed.data.body,
       })
       .eq("id", id)
-      .eq("user_id", user.id)
       .select()
       .single();
 

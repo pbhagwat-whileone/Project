@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient, requireUser } from "@/lib/supabase/server";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
 
 export async function DELETE(
   request: Request,
@@ -16,13 +16,12 @@ export async function DELETE(
     }
 
     // Delete connections for this owner (PostgreSQL CASCADE will handle related metrics)
-    const { error: deleteError } = await supabase
+    const { error } = await supabase
       .from("connections")
       .delete()
-      .eq("user_id", user.id)
       .eq("connection_owner_name", ownerName);
 
-    if (deleteError) throw deleteError;
+    if (error) throw error;
 
     // Log the deletion activity
     await supabase.from("sync_logs").insert({

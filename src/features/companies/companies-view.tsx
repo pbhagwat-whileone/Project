@@ -44,9 +44,9 @@ import { apiFetch } from "@/lib/api";
 import type {
   CompanyDetail,
   CompanyRecommendation,
-} from "@/services/prospect-recommendation";
+} from "@/domains/prospects/services/prospectRecommendation";
 import type { GeneratedEmail, MatchedChunk, RankedContact, CompanyContext, CompanyContextRelevance, RelationshipIntelligence } from "@/types/database";
-import { PROVIDER_MODELS, PROVIDERS, type ProviderType } from "@/ai/models";
+import { PROVIDER_MODELS, PROVIDERS, type ProviderType } from "@/services/ai/models/models";
 
 type RankedRecommendation = CompanyRecommendation & { rank: number };
 

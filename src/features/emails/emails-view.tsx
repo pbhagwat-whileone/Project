@@ -34,7 +34,7 @@ import {
 import { apiFetch } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import type { GeneratedEmail, CompanyContext, CompanyContextRelevance, RelationshipIntelligence } from "@/types/database";
-import { PROVIDER_MODELS, PROVIDERS, type ProviderType } from "@/ai/models";
+import { PROVIDER_MODELS, PROVIDERS, type ProviderType } from "@/services/ai/models/models";
 import { Badge } from "@/components/ui/badge";
 import { Users } from "lucide-react";
 

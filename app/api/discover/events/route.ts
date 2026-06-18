@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { fetchEvents } from "@/services/events-intelligence";
-import { createClient, requireUser } from "@/lib/supabase/server";
+import { fetchEvents } from "@/domains/discover/services/eventsIntelligence";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
 
 export async function GET(request: Request) {
   try {

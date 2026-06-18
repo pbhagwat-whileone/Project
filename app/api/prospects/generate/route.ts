@@ -1,5 +1,5 @@
-import { createClient, requireUser } from "@/lib/supabase/server";
-import { getCompanyRecommendationsStream } from "@/services/prospect-recommendation";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
+import { getCompanyRecommendationsStream } from "@/domains/prospects/services/prospectRecommendation";
 
 export async function POST(request: Request) {
   try {

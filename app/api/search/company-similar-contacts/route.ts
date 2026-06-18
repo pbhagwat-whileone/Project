@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient, requireUser } from "@/lib/supabase/server";
-import { searchApolloPeople, enrichApolloPerson } from "@/services/apollo";
-import { generateCompanyStakeholderSearchStrategy } from "@/services/stakeholder-discovery";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
+import { searchApolloPeople, enrichApolloPerson } from "@/services/integrations/apollo/apollo";
+import { generateCompanyStakeholderSearchStrategy } from "@/domains/prospects/services/stakeholderDiscovery";
 
 export async function POST(request: Request) {
   try {
@@ -20,7 +20,6 @@ export async function POST(request: Request) {
     const { data: cacheHit } = await supabase
       .from("company_similar_contacts_cache")
       .select("results, created_at")
-      .eq("user_id", user.id)
       .eq("company_name", companyNormalized)
       .single();
 
@@ -39,9 +38,8 @@ export async function POST(request: Request) {
     // 2. Fetch existing connections
     const { data: existingConnections } = await supabase
       .from("connections")
-      .select("profile_url, first_name, last_name, position")
-      .eq("user_id", user.id)
-      .ilike("company", company);
+      .select("first_name, last_name, company, position, profile_url")
+      .not("profile_url", "is", null);
 
     const existingRoles = existingConnections?.map(c => c.position).filter(Boolean) as string[] || [];
     
@@ -151,7 +149,7 @@ export async function POST(request: Request) {
         company_name: companyNormalized,
         results: finalContacts,
         created_at: new Date().toISOString()
-      }, { onConflict: "user_id, company_name" });
+      }, { onConflict: "company_name" });
     }
 
     return NextResponse.json({

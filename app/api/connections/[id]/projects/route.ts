@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient, requireUser } from "@/lib/supabase/server";
-import { searchKnowledgeChunks } from "@/services/vector-search";
-import { enrichProfile } from "@/services/tavily-profile-enrichment";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
+import { searchKnowledgeChunks } from "@/infrastructure/vector-store/vectorSearch";
+import { enrichProfile } from "@/services/integrations/tavily/tavilyProfileEnrichment";
 import type { MatchedChunk } from "@/types/database";
 
 export async function POST(
@@ -18,27 +18,8 @@ export async function POST(
 
     const supabase = await createClient();
 
-    // Check cache
-    const { data: cache } = await supabase
-      .from("connection_project_cache")
-      .select("*")
-      .eq("connection_id", connectionId)
-      .eq("user_id", user.id)
-      .maybeSingle() as { data: any };
-
-    if (cache) {
-      const generatedAt = new Date(cache.generated_at);
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-
-      if (generatedAt > thirtyDaysAgo && cache.matched_projects && cache.matched_projects.length > 0) {
-        return NextResponse.json({
-          projects: cache.matched_projects,
-          source: "cache",
-        });
-      }
-    }
-
-    // Cache missing or expired, generate new matches
+    // Cache mechanism disabled due to removal of connection_project_cache
+    // Generating new matches directly
     const { data: profile } = await supabase
       .from("connection_profiles")
       .select("expertise_tags, technology_tags, activity_signals, headline")
@@ -113,16 +94,7 @@ export async function POST(
     }));
 
 
-    // Upsert to cache
-    await supabase.from("connection_project_cache").upsert({
-      connection_id: connectionId,
-      user_id: user.id,
-      retrieval_query: finalQuery || "fallback",
-      matched_projects: projectsWithSummary,
-      generated_at: new Date().toISOString(),
-    } as any);
-
-
+    // Upsert to cache logic removed (connection_project_cache table deleted)
     return NextResponse.json({
       projects: projectsWithSummary,
       source: "generated",

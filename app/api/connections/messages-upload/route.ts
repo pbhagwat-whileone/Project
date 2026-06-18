@@ -6,10 +6,10 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
-import { createClient, requireUser } from "@/lib/supabase/server";
-import { fetchAllRecords } from "@/utils/supabase-utils";
-import { generateWithFallback } from "@/ai/generation";
-import { normalizeUrl } from "@/utils/format-utils";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
+import { fetchAllRecords } from "@/infrastructure/database/supabase/supabaseUtils";
+import { generateWithFallback } from "@/services/ai/generation/generation";
+import { normalizeUrl } from "@/lib/shared/formatUtils";
 
 type MessageRow = {
   FROM?: string;
@@ -94,8 +94,7 @@ export async function POST(request: Request) {
 
     const existingRecordsQuery = supabase
       .from("linkedin_messages")
-      .select("message_hash, from_name")
-      .eq("user_id", user.id);
+      .select("message_hash, from_name");
     const existingRecords = await fetchAllRecords<{ message_hash: string; from_name: string | null }>(existingRecordsQuery);
     
     // Map of message_hash -> from_name
@@ -122,7 +121,7 @@ export async function POST(request: Request) {
     for (let i = 0; i < newMessagesToInsert.length; i += BATCH_SIZE) {
       const batch = newMessagesToInsert.slice(i, i + BATCH_SIZE);
       const result = await supabase.from("linkedin_messages").upsert(batch, {
-        onConflict: "user_id,message_hash"
+        onConflict: "message_hash"
       });
       if (result.error) {
         console.error("UPSERT ERROR:", result.error);
@@ -136,7 +135,6 @@ export async function POST(request: Request) {
     const connectionsQuery = supabase
       .from("connections")
       .select("id, profile_url")
-      .eq("user_id", user.id)
       .not("profile_url", "is", null);
 
     const connections = await fetchAllRecords<{ id: string; profile_url: string | null }>(connectionsQuery);

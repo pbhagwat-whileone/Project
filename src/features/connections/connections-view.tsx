@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Upload, RefreshCw, Building } from "lucide-react";
-import { normalizeCompany } from "@/utils/company-utils";
+import { normalizeCompany } from "@/domains/companies/services/companyUtils";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";

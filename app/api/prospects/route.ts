@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient, requireUser } from "@/lib/supabase/server";
-import { getCompanyRecommendations } from "@/services/prospect-recommendation";
-import { handleApiError } from "@/lib/api-utils";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
+import { getCompanyRecommendations } from "@/domains/prospects/services/prospectRecommendation";
+import { handleApiError } from "@/lib/shared/apiUtils";
 
 export async function GET(request: Request) {
   try {

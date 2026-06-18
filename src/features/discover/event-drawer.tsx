@@ -3,7 +3,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon, MapPin, ExternalLink, Globe } from "lucide-react";
-import type { EventItem } from "@/services/events-intelligence";
+import type { EventItem } from "@/domains/discover/services/eventsIntelligence";
 import { Badge } from "@/components/ui/badge";
 
 interface EventDrawerProps {

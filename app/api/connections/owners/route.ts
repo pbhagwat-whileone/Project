@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient, requireUser } from "@/lib/supabase/server";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +22,7 @@ export async function GET() {
     
     const { data, error } = await supabase
       .from("connections")
-      .select("connection_owner_name")
-      .eq("user_id", user.id);
+      .select("connection_owner_name");
 
     if (error) throw error;
 

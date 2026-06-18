@@ -24,7 +24,7 @@ import type { SyncLog } from "@/types/database";
 export function SettingsView() {
   const searchParams = useSearchParams();
   const [folderIds, setFolderIds] = useState("");
-  const [lastSync, setLastSync] = useState<SyncLog | null>(null);
+  const [globalSyncState, setGlobalSyncState] = useState<any>(null);
   const [googleConnected, setGoogleConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -33,11 +33,11 @@ export function SettingsView() {
     try {
       const data = await apiFetch<{
         google_drive_folder_ids: string[];
-        last_sync: SyncLog | null;
+        last_sync: any;
         google_connected: boolean;
       }>("/api/settings");
       setFolderIds(data.google_drive_folder_ids?.join("\n") ?? "");
-      setLastSync(data.last_sync);
+      setGlobalSyncState(data.last_sync);
       setGoogleConnected(data.google_connected);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load settings");
@@ -148,29 +148,24 @@ export function SettingsView() {
           <CardContent className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Last Sync</span>
-              <span>{formatDate(lastSync?.created_at)}</span>
+              <span>{formatDate(globalSyncState?.last_successful_sync)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Status</span>
-              {lastSync ? (
+              {globalSyncState ? (
                 <Badge
                   variant={
-                    lastSync.status === "success"
-                      ? "success"
-                      : lastSync.status === "partial"
-                        ? "warning"
-                        : "destructive"
+                    globalSyncState.sync_in_progress
+                      ? "warning"
+                      : "success"
                   }
                 >
-                  {lastSync.status}
+                  {globalSyncState.sync_in_progress ? "Syncing..." : "Idle"}
                 </Badge>
               ) : (
                 <span>—</span>
               )}
             </div>
-            {lastSync?.message && (
-              <p className="mt-2 text-muted-foreground">{lastSync.message}</p>
-            )}
           </CardContent>
         </Card>
       </div>

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { getAuthenticatedClient } from "@/services/google-oauth";
+import { getAuthenticatedClient } from "@/services/integrations/google/googleOauth";
 import { getAppUrl, getDriveFolderIds } from "@/lib/settings";
-import { createClient, requireUser } from "@/lib/supabase/server";
-import { syncKnowledgeBase } from "@/services/knowledge-sync";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
+import { syncKnowledgeBase } from "@/domains/knowledge/services/knowledgeSync";
 
 export async function POST() {
   try {

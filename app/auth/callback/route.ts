@@ -28,9 +28,11 @@ export async function GET(request: Request) {
 
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin;
+      return NextResponse.redirect(`${siteUrl}${next}`);
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth`);
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin;
+  return NextResponse.redirect(`${siteUrl}/login?error=auth`);
 }

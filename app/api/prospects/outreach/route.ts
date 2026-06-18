@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { recommendationOutreachSchema } from "@/lib/validators";
-import { createClient, requireUser } from "@/lib/supabase/server";
-import { generateOutreachEmail } from "@/services/email-generator";
-import { getRecommendationForEmail } from "@/services/prospect-recommendation";
-import { evaluateRelationshipIntelligence } from "@/services/relationship-intelligence";
-import { searchKnowledgeChunks } from "@/services/vector-search";
-import { getCompanyContext } from "@/services/company-context-intelligence";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
+import { generateOutreachEmail } from "@/domains/emails/services/emailGenerator";
+import { getRecommendationForEmail } from "@/domains/prospects/services/prospectRecommendation";
+import { evaluateRelationshipIntelligence } from "@/domains/connections/services/relationshipIntelligence";
+import { searchKnowledgeChunks } from "@/infrastructure/vector-store/vectorSearch";
+import { getCompanyContext } from "@/domains/companies/services/companyContextIntelligence";
 
 export async function POST(request: Request) {
   try {
@@ -68,7 +68,6 @@ export async function POST(request: Request) {
     const { data: cacheRow } = await supabase
       .from("company_industry_cache")
       .select("industry")
-      .eq("user_id", user.id)
       .ilike("company_name", recommendation.company)
       .maybeSingle();
       

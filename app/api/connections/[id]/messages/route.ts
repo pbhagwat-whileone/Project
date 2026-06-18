@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient, requireUser } from "@/lib/supabase/server";
-import { createUrlPattern } from "@/utils/format-utils";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
+import { createUrlPattern } from "@/lib/shared/formatUtils";
 
 export async function GET(
   request: Request,
@@ -16,7 +16,6 @@ export async function GET(
       .from("connections")
       .select("profile_url")
       .eq("id", id)
-      .eq("user_id", user.id)
       .single();
 
     if (!connection || !connection.profile_url) {
@@ -30,7 +29,6 @@ export async function GET(
     const combined = await supabase
       .from("linkedin_messages")
       .select("*")
-      .eq("user_id", user.id)
       .or(`from_profile_url.ilike.${urlPattern},to_profile_url.ilike.${urlPattern}`)
       .order("date", { ascending: false });
 

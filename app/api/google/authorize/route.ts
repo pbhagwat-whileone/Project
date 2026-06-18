@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getAuthorizationUrl } from "@/services/google-oauth";
+import { getAuthorizationUrl } from "@/services/integrations/google/googleOauth";
 import { getAppUrl } from "@/lib/settings";
-import { requireUser } from "@/lib/supabase/server";
+import { requireUser } from "@/infrastructure/database/supabase/server";
 
 export async function GET() {
   try {

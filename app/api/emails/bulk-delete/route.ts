@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient, requireUser } from "@/lib/supabase/server";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
 
 export async function POST(request: Request) {
   try {
@@ -15,8 +15,7 @@ export async function POST(request: Request) {
     const { error } = await supabase
       .from("generated_emails")
       .delete()
-      .in("id", body.ids)
-      .eq("user_id", user.id);
+      .in("id", body.ids);
 
     if (error) throw error;
 

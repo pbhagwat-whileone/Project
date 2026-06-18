@@ -5,9 +5,9 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
-import { createClient, requireUser } from "@/lib/supabase/server";
-import { fetchAllRecords } from "@/utils/supabase-utils";
-import { parseConnectedOn } from "@/utils/format-utils";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
+import { fetchAllRecords } from "@/infrastructure/database/supabase/supabaseUtils";
+import { parseConnectedOn } from "@/lib/shared/formatUtils";
 
 type LinkedInRow = {
   "First Name"?: string;
@@ -58,7 +58,6 @@ export async function POST(request: Request) {
     const query = supabase
       .from("connections")
       .select("id, profile_url, first_name, last_name, company, connection_owner_name")
-      .eq("user_id", user.id)
       .order("id", { ascending: true });
 
     const existingConnections = await fetchAllRecords<{ id: string; profile_url: string | null; first_name: string | null; last_name: string | null; company: string | null; connection_owner_name: string }>(query);

@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { emailGenerateSchema } from "@/lib/validators";
-import { createClient, requireUser } from "@/lib/supabase/server";
-import { generateOutreachEmail } from "@/services/email-generator";
-import { getRecommendationForEmail } from "@/services/prospect-recommendation";
-import { searchKnowledgeChunks } from "@/services/vector-search";
-import { getCompanyContext } from "@/services/company-context-intelligence";
-import { evaluateCompanyContextRelevance } from "@/services/company-context-relevance";
-import { evaluateRelationshipIntelligence } from "@/services/relationship-intelligence";
+import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
+import { generateOutreachEmail } from "@/domains/emails/services/emailGenerator";
+import { getRecommendationForEmail } from "@/domains/prospects/services/prospectRecommendation";
+import { searchKnowledgeChunks } from "@/infrastructure/vector-store/vectorSearch";
+import { getCompanyContext } from "@/domains/companies/services/companyContextIntelligence";
+import { evaluateCompanyContextRelevance } from "@/domains/companies/services/companyContextRelevance";
+import { evaluateRelationshipIntelligence } from "@/domains/connections/services/relationshipIntelligence";
 import type { MatchedChunk, RankedContact } from "@/types/database";
 
 export async function POST(request: Request) {
