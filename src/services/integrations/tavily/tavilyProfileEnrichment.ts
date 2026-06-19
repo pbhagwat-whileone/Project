@@ -53,7 +53,7 @@ export async function enrichProfile(
         console.warn(`[ProfileEnrichment] No search results for ${profileUrl}`);
         return null;
       }
-      
+
       const rawContext = searchData.results.map((r: any) => `Source: ${r.title}\nURL: ${r.url}\nContent: ${r.content}\nRaw: ${r.raw_content || ''}`).join("\n\n");
       return await parseAndSave(supabase, connectionId, rawContext, searchData);
     }
@@ -81,7 +81,7 @@ function parseDeterministicFields(rawText: string) {
   let education: any[] = [];
 
   const lines = rawText.split("\n").map(l => l.trim()).filter(l => l.length > 0);
-  
+
   if (lines.length > 2) {
     headline = lines[1] || "";
     if (headline.startsWith("##") || headline.length > 200) headline = "";
@@ -89,14 +89,14 @@ function parseDeterministicFields(rawText: string) {
 
   const rejectRegex = /connections|followers|following|posts|mutual connections/i;
   const numericRegex = /^[\d\s,.\+kKmM]+$/;
-  
+
   for (let i = 1; i < Math.min(8, lines.length); i++) {
     const candidate = lines[i];
     if (candidate === headline) continue;
     if (candidate.startsWith("##") || candidate.length > 100) continue;
     if (rejectRegex.test(candidate)) continue;
     if (numericRegex.test(candidate)) continue;
-    
+
     if (candidate.includes(",")) {
       location = candidate;
       break;
@@ -129,12 +129,12 @@ async function parseAndSave(
   rawContext: string,
   rawTavilyResponse?: any
 ): Promise<ConnectionProfile | null> {
-  
+
   if (!rawContext) {
     console.warn(`[ProfileEnrichment] No raw context for connection ${connectionId}`);
     return null;
   }
-  
+
 
   const deterministic = parseDeterministicFields(rawContext);
 
@@ -185,7 +185,7 @@ Respond in JSON ONLY with exactly the following structure:
 }`;
 
     const aiResult = await generateWithFallback(prompt, "PROFILE_ENRICHMENT_INTELLIGENCE", { isJson: true });
-    
+
     let parsed: any;
     try {
       parsed = JSON.parse(aiResult.text);
@@ -198,7 +198,7 @@ Respond in JSON ONLY with exactly the following structure:
     profileData.expertise_tags = parsed.expertiseTags || [];
     profileData.technology_tags = parsed.technologyTags || [];
     profileData.activity_signals = parsed.activitySignals || [];
-    
+
     if (!profileData.location && parsed.location) {
       profileData.location = parsed.location;
     }

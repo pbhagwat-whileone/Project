@@ -59,7 +59,7 @@ type SearchResult = {
 export function CompaniesView() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   // -- URL Parameter State --
   const activeCompanyParam = searchParams.get("company");
   const isSearchMode = !!activeCompanyParam;
@@ -112,7 +112,7 @@ export function CompaniesView() {
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No stream found");
-      
+
       const decoder = new TextDecoder("utf-8");
       let buffer = "";
       let currentRecs: CompanyRecommendation[] = [];
@@ -122,12 +122,12 @@ export function CompaniesView() {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        
+
         let boundary = buffer.indexOf("\n\n");
         while (boundary !== -1) {
           const message = buffer.slice(0, boundary);
           buffer = buffer.slice(boundary + 2);
-          
+
           if (message.startsWith("data: ")) {
             const dataStr = message.slice(6);
             try {
@@ -240,7 +240,7 @@ export function CompaniesView() {
     if (activeCompanyParam && !hasAutoSearched) {
       setHasAutoSearched(true);
       setSearchInput(activeCompanyParam);
-      
+
       const runSearch = async () => {
         setSearchLoading(true);
         setSearchResult(null);
@@ -262,7 +262,7 @@ export function CompaniesView() {
             if (targetContact.relationship_classification) {
               setRelationshipType(targetContact.relationship_classification);
             }
-            
+
             // Set highlight and scroll
             setHighlightedContactId(targetContact.id);
             setTimeout(() => {
@@ -271,7 +271,7 @@ export function CompaniesView() {
             setTimeout(() => {
               setHighlightedContactId(null);
             }, 3000);
-            
+
           } else {
             setSelectedContact(null);
           }
@@ -349,15 +349,15 @@ export function CompaniesView() {
       const data = await apiFetch<{ projects: any[] }>(`/api/connections/${contactId}/projects`, {
         method: "POST"
       });
-      
+
 
       setSearchResult(prev => prev ? {
         ...prev,
         projects: data.projects
       } : null);
-      
+
       toast.success("Matching projects generated!");
-      
+
       return data.projects;
     } catch (err) {
       toast.error("Failed to generate projects");
@@ -379,12 +379,12 @@ export function CompaniesView() {
         const sumData = await apiFetch<{ success: boolean, metrics: any }>(`/api/connections/${currentContact.id}/summarize`, { method: "POST" });
         if (sumData.success && sumData.metrics) {
           currentContact = {
-             ...currentContact,
-             conversation_summary: sumData.metrics.conversation_summary,
-             discussion_topics: sumData.metrics.discussion_topics,
-             interaction_timeline: sumData.metrics.interaction_timeline,
-             recent_highlights: sumData.metrics.recent_highlights,
-             relationship_classification: sumData.metrics.relationship_classification,
+            ...currentContact,
+            conversation_summary: sumData.metrics.conversation_summary,
+            discussion_topics: sumData.metrics.discussion_topics,
+            interaction_timeline: sumData.metrics.interaction_timeline,
+            recent_highlights: sumData.metrics.recent_highlights,
+            relationship_classification: sumData.metrics.relationship_classification,
           };
           setSelectedContact(currentContact);
           if (sumData.metrics.relationship_classification) {
@@ -687,8 +687,8 @@ export function CompaniesView() {
                     ) : (
                       <div className="space-y-4">
                         {searchResult.contacts.map((contact) => (
-                          <div 
-                            key={contact.id} 
+                          <div
+                            key={contact.id}
                             ref={(el) => {
                               if (el) contactRefs.current[contact.id] = el;
                             }}
@@ -790,14 +790,14 @@ export function CompaniesView() {
                                     </Button>
                                   </>
                                 )}
-                                <details 
-                                  className="group border border-border/50 rounded-lg bg-muted/10 w-full" 
-                                  open={projectsOpen} 
+                                <details
+                                  className="group border border-border/50 rounded-lg bg-muted/10 w-full"
+                                  open={projectsOpen}
                                   onToggle={async (e) => {
                                     const isOpen = e.currentTarget.open;
                                     setProjectsOpen(isOpen);
                                     if (isOpen && (!searchResult.projects || searchResult.projects.length === 0)) {
-                                       await handleGenerateProjects(contact.id);
+                                      await handleGenerateProjects(contact.id);
                                     }
                                   }}
                                 >
@@ -809,30 +809,30 @@ export function CompaniesView() {
                                     <span className="transition-transform group-open:rotate-180 text-muted-foreground">▼</span>
                                   </summary>
                                   <div className="p-3 pt-0 border-t border-border/50 space-y-3 mt-3">
-                                     {contactProjectsLoading ? (
-                                        <div className="flex items-center justify-center p-4 text-xs text-muted-foreground">Loading projects...</div>
-                                     ) : searchResult.projects?.length ? (
-                                        searchResult.projects.map(p => (
-                                          <div key={p.id} className="text-sm bg-background p-3 rounded border border-border/50">
-                                            <div className="font-medium flex justify-between items-start gap-4">
-                                              <span>{p.project_name || "Project"}</span>
-                                              {p.similarity !== undefined && (
-                                                <span className={`text-xs shrink-0 px-2 py-1 rounded-full border font-medium ${p.similarity >= 0.75 ? "bg-green-50 text-green-700 border-green-200" : p.similarity >= 0.5 ? "bg-yellow-50 text-yellow-700 border-yellow-200" : "bg-gray-50 text-gray-700 border-gray-200"}`}>
-                                                  {p.similarity >= 0.75 ? "High Match" : p.similarity >= 0.5 ? "Medium Match" : "Low Match"} <span className="opacity-75 font-normal">({(p.similarity * 100).toFixed(0)}%)</span>
-                                                </span>
-                                              )}
-                                            </div>
-                                            <div className="text-muted-foreground mt-2 text-xs leading-relaxed line-clamp-3">{p.summary}</div>
-                                            {p.reference_link && (
-                                              <a href={p.reference_link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                                                View Source <ExternalLink className="h-3 w-3" />
-                                              </a>
+                                    {contactProjectsLoading ? (
+                                      <div className="flex items-center justify-center p-4 text-xs text-muted-foreground">Loading projects...</div>
+                                    ) : searchResult.projects?.length ? (
+                                      searchResult.projects.map(p => (
+                                        <div key={p.id} className="text-sm bg-background p-3 rounded border border-border/50">
+                                          <div className="font-medium flex justify-between items-start gap-4">
+                                            <span>{p.project_name || "Project"}</span>
+                                            {p.similarity !== undefined && (
+                                              <span className={`text-xs shrink-0 px-2 py-1 rounded-full border font-medium ${p.similarity >= 0.75 ? "bg-green-50 text-green-700 border-green-200" : p.similarity >= 0.5 ? "bg-yellow-50 text-yellow-700 border-yellow-200" : "bg-gray-50 text-gray-700 border-gray-200"}`}>
+                                                {p.similarity >= 0.75 ? "High Match" : p.similarity >= 0.5 ? "Medium Match" : "Low Match"} <span className="opacity-75 font-normal">({(p.similarity * 100).toFixed(0)}%)</span>
+                                              </span>
                                             )}
                                           </div>
-                                        ))
-                                     ) : (
-                                        <p className="text-xs text-muted-foreground">No projects found.</p>
-                                     )}
+                                          <div className="text-muted-foreground mt-2 text-xs leading-relaxed line-clamp-3">{p.summary}</div>
+                                          {p.reference_link && (
+                                            <a href={p.reference_link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                                              View Source <ExternalLink className="h-3 w-3" />
+                                            </a>
+                                          )}
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <p className="text-xs text-muted-foreground">No projects found.</p>
+                                    )}
                                   </div>
                                 </details>
                                 <Button
@@ -877,8 +877,8 @@ export function CompaniesView() {
                       <LoadingSpinner label="Analyzing account and discovering stakeholders..." />
                     ) : similarContacts.length === 0 ? (
                       <p className="text-sm text-muted-foreground">
-                        {hasGeneratedCompanyContacts 
-                          ? "No additional unique stakeholders found." 
+                        {hasGeneratedCompanyContacts
+                          ? "No additional unique stakeholders found."
                           : "Click to generate net-new stakeholders at this company."}
                       </p>
                     ) : (

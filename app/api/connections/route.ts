@@ -18,12 +18,12 @@ export async function GET(request: Request) {
       .order("id", { ascending: true });
 
     let fetched: Connection[] = await fetchAllRecords<Connection>(query);
-    
+
     // Group connections by profile_url (or fallback) to merge connection_owner_name
     const uniqueMap = new Map<string, Connection & { connection_owners?: string[] }>();
     fetched.forEach((c) => {
       const key = c.profile_url?.toLowerCase()?.trim() || `${c.first_name?.toLowerCase()?.trim() || ""}|${c.last_name?.toLowerCase()?.trim() || ""}|${c.company?.toLowerCase()?.trim() || ""}`;
-      
+
       if (uniqueMap.has(key)) {
         const existing = uniqueMap.get(key)!;
         if (c.connection_owner_name && !existing.connection_owners!.includes(c.connection_owner_name)) {

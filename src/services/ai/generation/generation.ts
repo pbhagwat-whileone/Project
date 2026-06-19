@@ -101,7 +101,7 @@ export async function generateWithFallback(
     } catch (error: any) {
       const duration = Date.now() - startTime;
       console.error(`[AI] Task=${task} Provider=${provider} Model=${model} Duration=${duration}ms Success=false Error=${error?.message}`);
-      
+
       lastError = error;
       const msg = error?.message?.toLowerCase() || "";
       const status = error?.status || error?.code;

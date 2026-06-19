@@ -114,7 +114,7 @@ export function EmailsView() {
       setModel(PROVIDER_MODELS[savedProvider][0]);
     }
     setRefinementInstruction("");
-    
+
     if (email.generation_context) {
       setSelectedRelationshipIntelligence(email.generation_context.relationship_intelligence || null);
       setSelectedCompanyContextRelevance(email.generation_context.company_context_relevance || null);
@@ -261,11 +261,11 @@ export function EmailsView() {
         setSelected(null);
       }
       setDeleteTarget(null);
-      
+
       const newSelectedEmails = new Set(selectedEmails);
       newSelectedEmails.delete(deleteTarget.id);
       setSelectedEmails(newSelectedEmails);
-      
+
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Delete failed");
@@ -349,51 +349,51 @@ export function EmailsView() {
                     />
                   </TableHead>
                   <TableHead>Subject</TableHead>
-                <TableHead>Company</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-center">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {emails.map((email) => (
-                <TableRow key={email.id}>
-                  <TableCell className="text-center">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
-                      checked={selectedEmails.has(email.id)}
-                      onChange={(e) => handleSelectEmail(email.id, e.target.checked)}
-                    />
-                  </TableCell>
-                  <TableCell className="max-w-xs truncate font-medium">
-                    {email.subject}
-                  </TableCell>
-                  <TableCell>{email.company_name}</TableCell>
-                  <TableCell>{email.contact_name ?? "—"}</TableCell>
-                  <TableCell>{formatDate(email.created_at)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openEmail(email)}
-                      >
-                        View
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => setDeleteTarget(email)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </TableCell>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-center">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
+              </TableHeader>
+              <TableBody>
+                {emails.map((email) => (
+                  <TableRow key={email.id}>
+                    <TableCell className="text-center">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                        checked={selectedEmails.has(email.id)}
+                        onChange={(e) => handleSelectEmail(email.id, e.target.checked)}
+                      />
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate font-medium">
+                      {email.subject}
+                    </TableCell>
+                    <TableCell>{email.company_name}</TableCell>
+                    <TableCell>{email.contact_name ?? "—"}</TableCell>
+                    <TableCell>{formatDate(email.created_at)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openEmail(email)}
+                        >
+                          View
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTarget(email)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
             </Table>
           </div>
         </div>
