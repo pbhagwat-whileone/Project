@@ -572,9 +572,9 @@ export type RankedContact = {
 
 export type CompanyIndustryCache =
   Database["public"]["Tables"]["company_industry_cache"]["Row"];
-export type ConnectionRelationshipMetrics = 
+export type ConnectionRelationshipMetrics =
   Database["public"]["Tables"]["connection_relationship_metrics"]["Row"];
-export type LinkedinMessage = 
+export type LinkedinMessage =
   Database["public"]["Tables"]["linkedin_messages"]["Row"];
 
 export interface CompanyContext {
@@ -594,10 +594,10 @@ export interface CompanyContextRelevance {
   useCompanyContext: boolean;
   reasoning: string;
   recommendedUsage:
-    | "ignore"
-    | "light_reference"
-    | "conversation_starter"
-    | "primary_outreach_angle";
+  | "ignore"
+  | "light_reference"
+  | "conversation_starter"
+  | "primary_outreach_angle";
 }
 
 export interface RelationshipIntelligence {
@@ -605,11 +605,11 @@ export interface RelationshipIntelligence {
   confidence: number;
   reasoning: string;
   outreachGoal:
-    | "reconnect"
-    | "follow_up"
-    | "introduction_request"
-    | "opportunity_exploration"
-    | "partnership_discussion"
-    | string;
+  | "reconnect"
+  | "follow_up"
+  | "introduction_request"
+  | "opportunity_exploration"
+  | "partnership_discussion"
+  | string;
   capabilityProminence: "low" | "medium" | "high";
 }
