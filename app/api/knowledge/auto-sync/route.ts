@@ -11,6 +11,7 @@ export async function POST() {
   try {
     const supabase = createAdminClient();
 
+
     const { data } = await (supabase as any).from("global_sync_state").select("*").eq("id", 1).single();
     const state = data as any;
     if (state?.last_successful_sync) {

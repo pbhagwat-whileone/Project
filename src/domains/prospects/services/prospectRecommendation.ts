@@ -155,7 +155,7 @@ async function calculateCompanyScoreAndProjects(
   if (industry && industry !== "Unknown") queryParts.push(industry);
 
   const query = queryParts.join(" ").trim();
-  let matchingProjects = await searchKnowledgeChunks(supabase, userId, query, 3);
+  let matchingProjects = await searchKnowledgeChunks(supabase, userId, query, 5);
 
   if (matchingProjects.length === 0) {
     const fallbackQueryParts = [];
@@ -166,7 +166,7 @@ async function calculateCompanyScoreAndProjects(
     const ultimateQuery = fallbackQuery || "software engineering technology consulting projects";
     
     if (ultimateQuery !== query) {
-      matchingProjects = await searchKnowledgeChunks(supabase, userId, ultimateQuery, 3);
+      matchingProjects = await searchKnowledgeChunks(supabase, userId, ultimateQuery, 5);
     }
   }
 
@@ -504,7 +504,7 @@ export async function getRecommendationForEmail(
       supabase,
       userId,
       companyName,
-      3
+      5
     );
     return { recommendation: null, matchingProjects };
   }

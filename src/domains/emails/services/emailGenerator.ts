@@ -120,12 +120,22 @@ export async function generateOutreachEmail(
     .filter(Boolean)
     .join(" ");
 
-  const projectContext = input.projects
-    .map(
-      (p, i) =>
-        `Project ${i + 1}: ${p.project_name ?? "Unknown"}\nSummary: ${extractOutcomeContext(p.chunk_text)}`
-    )
-    .join("\n\n");
+  const primaryProject = input.projects.length > 0 ? input.projects[0] : null;
+
+
+
+  let projectContext = "No specific matching projects available.";
+  if (primaryProject) {
+    projectContext = `PRIMARY PROJECT
+
+Name:
+${primaryProject.project_name ?? "Unknown"}
+
+Summary:
+${primaryProject.project_summary || extractOutcomeContext(primaryProject.chunk_text)}`;
+  }
+
+
 
   const relationship = input.relationshipIntelligence?.relationshipType || "cold-outreach";
   const skillMarkdown = await getEmailSkill(relationship);
@@ -205,7 +215,14 @@ Every email should strictly follow this flow (do not use block headers in the ou
 1. Greeting: Natural and brief (e.g., "Hi Deepak," or "Hello Deepak,")
 2. Observation: Start with a specific observation about the recipient's architecture, workload, or infrastructure. Write as if continuing a thought. Keep it brief (2-3 sentences max) before transitioning.
 3. Engineering Insight: Allow a technical insight or challenge to emerge from the observation. Treat them as a peer.
-4. Relevant Project Experience: Share a concrete finding from a past project (e.g., "We recently worked on analyzing token-generation performance..."). Keep project stories concise.
+4. Relevant Project Experience: Share a concrete finding from a past project (e.g., "We recently worked on analyzing token-generation performance..."). Keep project stories concise. 
+
+IMPORTANT:
+The PRIMARY PROJECT has already been selected by the recommendation engine.
+Do not choose a different project.
+If you reference a Whileone project, reference the PRIMARY PROJECT.
+Do not ignore the PRIMARY PROJECT in favor of lower-ranked projects.
+
 5. Lesson Learned: Share what was discovered briefly. Reward conversational tone ("What surprised us was...").
 6. Supporting Capability Summary (bullets): Introduce 3-5 outcome-oriented bullets that reinforce the narrative. Use phrases like "A few areas where we've spent considerable time include:". Focus on specific technical achievements. Connect the lesson to their context and introduce what Whileone does here.
 7. Conversational Question (CTA): A simple question replacing sales language with curiosity ("Curious whether you've encountered similar challenges"). DO NOT ask for a meeting or calendar time.
@@ -270,11 +287,32 @@ Respond in JSON only with this exact shape:
   const providerName = input.provider;
   const provider = getEmailProvider();
 
-  return provider.generateEmail({
+  const generated = await provider.generateEmail({
     prompt,
     provider: providerName,
     model: input.model
   });
+
+  let selectedBlogUrl: string | null = null;
+  for (const project of input.projects) {
+    if (project.blog_url) {
+      selectedBlogUrl = project.blog_url;
+      break;
+    }
+  }
+
+  if (selectedBlogUrl && !generated.body.includes(selectedBlogUrl)) {
+    const attachmentMention = "I am attaching our corporate overview";
+    const urlSection = `Relevant Link:\n${selectedBlogUrl}\n\n`;
+    
+    if (generated.body.includes(attachmentMention)) {
+      generated.body = generated.body.replace(attachmentMention, urlSection + attachmentMention);
+    } else {
+      generated.body += `\n\n${urlSection.trim()}`;
+    }
+  }
+
+  return generated;
 }
 
 export async function refineOutreachEmail(
@@ -300,7 +338,14 @@ Every email should strictly follow this flow (do not use block headers in the ou
 1. Greeting: Natural and brief.
 2. Observation: Start with a specific observation about the recipient's architecture, workload, or infrastructure. Write as if continuing a thought. Keep it brief (2-3 sentences max) before transitioning.
 3. Engineering Insight: Allow a technical insight or challenge to emerge from the observation. Treat them as a peer.
-4. Relevant Project Experience: Share a concrete finding from a past project (e.g., "We recently worked on analyzing token-generation performance..."). Keep project stories concise.
+4. Relevant Project Experience: Share a concrete finding from a past project (e.g., "We recently worked on analyzing token-generation performance..."). Keep project stories concise. 
+
+IMPORTANT:
+The PRIMARY PROJECT has already been selected by the recommendation engine.
+Do not choose a different project.
+If you reference a Whileone project, reference the PRIMARY PROJECT.
+Do not ignore the PRIMARY PROJECT in favor of lower-ranked projects.
+
 5. Lesson Learned: Share what was discovered briefly. Reward conversational tone ("What surprised us was...").
 6. Supporting Capability Summary (bullets): Introduce 3-5 outcome-oriented bullets that reinforce the narrative. Use phrases like "A few areas where we've spent considerable time include:". Focus on specific technical achievements. Connect the lesson to their context and introduce what Whileone does here.
 7. Conversational Question (CTA): A simple question replacing sales language with curiosity ("Curious whether you've encountered similar challenges"). DO NOT ask for a meeting or calendar time.

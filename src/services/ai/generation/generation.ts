@@ -1,7 +1,6 @@
 import { getGeminiClient } from "./gemini";
 import { TASK_MODEL_CONFIG, TaskType, PROVIDER_MODELS, ProviderType } from "../models/models";
-import { generateClaude } from "../providers/claude";
-import { generateCerebras } from "../providers/cerebras";
+
 
 type ModelStatus = {
   unavailableUntil: number;
@@ -25,7 +24,7 @@ export function isTaskAvailable(task: TaskType, options?: { overrideProvider?: P
 export async function generateWithFallback(
   prompt: string,
   task: TaskType,
-  options?: { isJson?: boolean; overrideProvider?: ProviderType; overrideModel?: string }
+  options?: { isJson?: boolean; responseSchema?: any; overrideProvider?: ProviderType; overrideModel?: string }
 ): Promise<{ text: string }> {
   const config = TASK_MODEL_CONFIG[task];
   if (!config) {
@@ -50,14 +49,6 @@ export async function generateWithFallback(
     throw new Error(`No fallback chain configured for task: ${task} with provider: ${provider}`);
   }
 
-  if (provider === "cerebras") {
-    const validModels = PROVIDER_MODELS["cerebras"];
-    for (const m of chain) {
-      if (!validModels.includes(m)) {
-        throw new Error(`Invalid model '${m}' configured for task '${task}' with provider 'cerebras'. Valid models are: ${validModels.join(", ")}`);
-      }
-    }
-  }
 
   if (chain.every((m) => modelHealth[m]?.unavailableUntil > Date.now())) {
     throw new Error(
@@ -83,15 +74,12 @@ export async function generateWithFallback(
         const response = await ai.models.generateContent({
           model,
           contents: prompt,
-          config: options?.isJson
-            ? { responseMimeType: "application/json" }
-            : undefined,
+          config: {
+            responseMimeType: options?.isJson ? "application/json" : undefined,
+            responseSchema: options?.responseSchema,
+          },
         });
         text = response.text || "";
-      } else if (provider === "claude") {
-        text = await generateClaude(prompt, model, options?.isJson);
-      } else if (provider === "cerebras") {
-        text = await generateCerebras(prompt, model, options?.isJson);
       } else {
         throw new Error(`Unknown provider: ${provider}`);
       }

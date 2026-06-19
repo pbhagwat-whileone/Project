@@ -13,5 +13,4 @@ export function getGeminiClient(): GoogleGenAI {
   return client;
 }
 
-export const EMBEDDING_MODEL = "gemini-embedding-001";
-export const EMBEDDING_DIMENSION = 768;
+export const EMBEDDING_MODEL = "gemini-embedding-001";

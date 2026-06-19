@@ -8,7 +8,7 @@ The production Docker environment runs **only** the following two containers via
 1. **Next.js Web Application** (`web`)
 2. **Nginx Reverse Proxy** (`nginx`)
 
-All other services (Supabase, Google APIs, Apollo, Tavily, Cerebras, Gemini, Claude) remain hosted externally. The environment explicitly relies on a Monolith architecture—there are no separate backend workers, pg-boss instances, or Redis caches deployed in this stack.
+All other services (Supabase, Google APIs, Apollo, Tavily, Gemini) remain hosted externally. The environment explicitly relies on a Monolith architecture—there are no separate backend workers, pg-boss instances, or Redis caches deployed in this stack. Next.js handles background refreshes entirely asynchronously.
 
 ## Core Commands
 

@@ -33,6 +33,9 @@ async function processDocument(
 
   const text = await fetchDocumentText(auth, file);
 
+  const urlMatch = text.match(/https?:\/\/[^\s"'<>()]+/i);
+  const blogUrl = urlMatch ? urlMatch[0] : null;
+
   if (file.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
   }
 
@@ -61,6 +64,7 @@ async function processDocument(
         project_name: projectName,
         industry: null,
         embedding: embeddingToPgVector(embedding),
+        blog_url: blogUrl,
       });
 
     if (insertError) throw insertError;
@@ -73,6 +77,7 @@ async function processDocument(
       last_modified: file.modifiedTime,
       document_name: file.name,
       source_type: (file.mimeType === "application/vnd.google-apps.spreadsheet" || file.mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") ? "google_sheet" : "document",
+      blog_url: blogUrl,
     })
     .eq("id", documentId);
 

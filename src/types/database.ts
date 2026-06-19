@@ -82,6 +82,7 @@ export interface Database {
           status: DocumentStatus;
           source_type: string;
           created_at: string;
+          blog_url: string | null;
         };
         Insert: {
           id?: string;
@@ -92,6 +93,7 @@ export interface Database {
           status?: DocumentStatus;
           source_type?: string;
           created_at?: string;
+          blog_url?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["knowledge_documents"]["Insert"]>;
         Relationships: [];
@@ -105,6 +107,7 @@ export interface Database {
           industry: string | null;
           embedding: string | null;
           created_at: string;
+          blog_url: string | null;
         };
         Insert: {
           id?: string;
@@ -114,6 +117,7 @@ export interface Database {
           industry?: string | null;
           embedding?: string | null;
           created_at?: string;
+          blog_url?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["knowledge_chunks"]["Insert"]>;
         Relationships: [];
@@ -501,6 +505,8 @@ export interface Database {
           project_name: string | null;
           industry: string | null;
           similarity: number;
+          blog_url: string | null;
+          project_summary: string | null;
         }[];
       };
     };
@@ -533,6 +539,8 @@ export type MatchedChunk = {
   industry: string | null;
   similarity: number;
   reference_link?: string;
+  blog_url?: string | null;
+  project_summary?: string | null;
 };
 
 export type RankedContact = {

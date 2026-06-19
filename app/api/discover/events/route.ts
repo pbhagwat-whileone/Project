@@ -17,12 +17,28 @@ export async function GET(request: Request) {
       .eq("id", 1)
       .maybeSingle() as { data: any };
 
-    // 1. Return cache if not explicitly refreshing
-    if (!refresh && cacheRow && cacheRow.events && cacheRow.events.length > 0) {
-      return NextResponse.json({ data: cacheRow.events, source: "cache" });
+    const hasCache = cacheRow && cacheRow.events && cacheRow.events.length > 0;
+
+    // 1. If we have cache, return it immediately to unblock UI.
+    if (hasCache) {
+      if (refresh) {
+        // Background refresh
+        fetchEvents().then(async (freshEvents) => {
+          if (freshEvents && freshEvents.length > 0) {
+            await supabase.from("discover_events_cache").upsert({
+              id: 1,
+              events: freshEvents,
+              updated_at: new Date().toISOString()
+            } as any);
+          }
+        }).catch(err => {
+          console.error("[Events API] Background refresh failed:", err);
+        });
+      }
+      return NextResponse.json({ data: cacheRow.events, source: refresh ? "cache_stale_refreshing" : "cache" });
     }
 
-    // 2. Fetch fresh events
+    // 2. No cache exists. We must await the fetch.
     const freshEvents = await fetchEvents();
     
     // 3. Cache Policy: Only overwrite if we got valid data
@@ -35,12 +51,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ data: freshEvents, source: "fresh" });
     }
 
-    // 4. Fallback Policy: Fetch returned 0. Keep existing cache.
-    if (cacheRow && cacheRow.events && cacheRow.events.length > 0) {
-       return NextResponse.json({ data: cacheRow.events, source: "cache_fallback" });
-    }
-
-    // 5. Total failure: No cache exists, and fetch returned 0.
+    // 4. Total failure: No cache exists, and fetch returned 0.
     return NextResponse.json({ data: [], source: "empty" });
 
   } catch (error: any) {

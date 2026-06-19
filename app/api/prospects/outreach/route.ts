@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     const enhancedQuery = enhancedQueryParts.join(" ").trim();
     let emailProjects = matchingProjects;
     if (enhancedQuery) {
-      const freshProjects = await searchKnowledgeChunks(supabase, user.id, enhancedQuery, 3);
+      const freshProjects = await searchKnowledgeChunks(supabase, user.id, enhancedQuery, 5);
       
       if (freshProjects.length > 0) {
         emailProjects = freshProjects;

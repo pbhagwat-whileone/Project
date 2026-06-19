@@ -13,7 +13,3 @@ export function formatDate(date: string | Date | null | undefined): string {
   }).format(new Date(date));
 }
 
-export function truncate(text: string, max = 120): string {
-  if (text.length <= max) return text;
-  return `${text.slice(0, max)}…`;
-}

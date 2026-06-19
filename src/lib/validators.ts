@@ -27,6 +27,8 @@ export const emailGenerateSchema = z.object({
         industry: z.string().nullable(),
         chunk_text: z.string(),
         similarity: z.number(),
+        blog_url: z.string().nullable().optional(),
+        project_summary: z.string().nullable().optional(),
       })
     )
     .optional(),

@@ -9,7 +9,7 @@ export async function searchKnowledgeChunks(
   supabase: SupabaseClient<Database>,
   userId: string,
   query: string,
-  matchCount = 3
+  limit = 5
 ): Promise<MatchedChunk[]> {
   const embedding = await generateEmbedding(query);
   const vector = embeddingToPgVector(embedding);
@@ -24,7 +24,6 @@ export async function searchKnowledgeChunks(
   }
 
   const chunks = (data ?? []) as MatchedChunk[];
-  
 
   const uniqueProjects = new Map<string, MatchedChunk>();
   for (const chunk of chunks) {
@@ -41,8 +40,7 @@ export async function searchKnowledgeChunks(
 
   const topUnique = Array.from(uniqueProjects.values())
     .sort((a, b) => b.similarity - a.similarity)
-    .slice(0, matchCount);
-
+    .slice(0, limit);
 
   // Return early if no relevant projects are found
   if (topUnique.length === 0) return topUnique;

@@ -26,23 +26,39 @@ const TECH_AREAS = [
 
 // Target searches prioritizing India as requested
 const SEARCH_QUERIES = [
-  "AI conferences India 2026",
-  "GenAI conferences India 2026",
-  "Cloud conferences India 2026",
-  "Semiconductor conferences India 2026",
-  "Data Center conferences India 2026",
-  "RISC-V conferences India 2026",
-  "AI conferences Asia 2026",
-  "Cloud Infrastructure conferences Asia 2026",
+  "AI and GenAI conferences India 2026",
+  "Cloud, Data Center, and Infrastructure conferences India 2026",
+  "Semiconductor and RISC-V conferences India 2026",
+  "AI and Cloud conferences Asia 2026",
   "Semiconductor conferences Asia 2026",
-  "AI conferences Europe 2026",
-  "Cloud conferences Europe 2026",
-  "HPC conferences Europe 2026",
-  "AI conferences North America 2026",
-  "Semiconductor conferences North America 2026"
+  "AI, Cloud, and HPC conferences Europe 2026",
+  "AI and Semiconductor conferences North America 2026"
 ];
 
-const CHUNK_SIZE = 5; // number of parallel Tavily/LLM calls at once
+const EVENT_SCHEMA = {
+  type: "object",
+  properties: {
+    events: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          date: { type: "string" },
+          location: { type: "string" },
+          website: { type: "string" },
+          description: { type: "string" },
+          techTags: { 
+            type: "array", 
+            items: { type: "string" } 
+          }
+        },
+        required: ["name", "date", "location", "website", "description", "techTags"]
+      }
+    }
+  },
+  required: ["events"]
+};
 
 export async function fetchEvents(): Promise<EventItem[]> {
   const tavilyKey = process.env.TAVILY_API_KEY;
@@ -51,116 +67,98 @@ export async function fetchEvents(): Promise<EventItem[]> {
     return [];
   }
 
-  let totalTavilySearches = 0;
-  let totalRawResults = 0;
-  let totalCandidateEvents = 0;
-  let firstRawResult: any = null;
-  let firstExtractedEvent: any = null;
-
   const allExtractedEvents: EventItem[] = [];
 
   try {
+    const promises = SEARCH_QUERIES.map(async (query) => {
+      const requestStart = Date.now();
+      let tavilyDuration = 0;
+      let llmDuration = 0;
+      let parseDuration = 0;
 
-    // Process in batches
-    for (let i = 0; i < SEARCH_QUERIES.length; i += CHUNK_SIZE) {
-      const batchQueries = SEARCH_QUERIES.slice(i, i + CHUNK_SIZE);
+      try {
+        const tavilyStart = Date.now();
+        const searchResponse = await fetch("https://api.tavily.com/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            api_key: tavilyKey,
+            query: query,
+            search_depth: "advanced",
+            include_answer: false,
+            include_raw_content: false,
+            max_results: 5,
+            days: 30,
+          }),
+        });
+        
+        tavilyDuration = Date.now() - tavilyStart;
 
-      const batchPromises = batchQueries.map(async (query) => {
-        try {
-          totalTavilySearches++;
-          const searchResponse = await fetch("https://api.tavily.com/search", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              api_key: tavilyKey,
-              query: query,
-              search_depth: "advanced",
-              include_answer: false,
-              include_raw_content: false,
-              max_results: 5, // keep it focused per query
-              days: 30, // recent announcements
-            }),
-          });
+        if (!searchResponse.ok) return [];
 
-          if (!searchResponse.ok) return [];
+        const searchData = await searchResponse.json();
+        if (!searchData.results || searchData.results.length === 0) return [];
 
-          const searchData = await searchResponse.json();
-          if (!searchData.results || searchData.results.length === 0) return [];
+        const rawContext = searchData.results.map((r: any) => `Title: ${r.title}\nURL: ${r.url}\nContent: ${r.content}`).join("\n\n");
 
-          totalRawResults += searchData.results.length;
-          if (!firstRawResult) firstRawResult = searchData.results[0];
-
-          const rawContext = searchData.results.map((r: any) => `Title: ${r.title}\nURL: ${r.url}\nContent: ${r.content}`).join("\n\n");
-
-          const prompt = `Extract a list of upcoming technology events, conferences, summits, or expos from the following search results.
-          
+        const prompt = `Extract a list of upcoming technology events, conferences, summits, or expos from the following search results.
+        
 Search Results:
 ${rawContext}
 
-Respond in JSON ONLY with exactly the following structure:
-{
-  "events": [
-    {
-      "name": "Event Name",
-      "date": "YYYY-MM-DD",
-      "location": "City, Country or Virtual",
-      "website": "URL from the search result",
-      "description": "Short description of the event",
-      "techTags": ["Tag1", "Tag2"]
-    }
-  ]
-}
-
-- For date, do your best to format it as YYYY-MM-DD or Month DD, YYYY.
+- For date, format it as YYYY-MM-DD or Month DD, YYYY.
 - Filter strictly to only include events relevant to: ${TECH_AREAS.join(", ")}.
 - If no upcoming events are found, return an empty array for events.`;
 
-          const aiResult = await generateWithFallback(prompt, "EVENTS_INTELLIGENCE", { isJson: true });
+        const llmStart = Date.now();
+        const aiResult = await generateWithFallback(prompt, "EVENTS_INTELLIGENCE", { 
+          isJson: true,
+          responseSchema: EVENT_SCHEMA
+        });
+        llmDuration = Date.now() - llmStart;
 
-          let parsed: any;
-          try {
-            parsed = JSON.parse(aiResult.text);
-          } catch (parseErr) {
-            const cleaned = aiResult.text.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-            parsed = JSON.parse(cleaned);
-          }
-
-          return parsed.events || [];
-        } catch (err) {
-          console.warn(`[Events Intelligence] Error processing query "${query}":`, err);
-          return [];
+        const parseStart = Date.now();
+        let parsed: any;
+        try {
+          parsed = JSON.parse(aiResult.text);
+        } catch (parseErr) {
+          const cleaned = aiResult.text.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+          parsed = JSON.parse(cleaned);
         }
-      });
+        parseDuration = Date.now() - parseStart;
+        
+        const totalDuration = Date.now() - requestStart;
 
-      const batchResults = await Promise.all(batchPromises);
 
-      for (const extractedArr of batchResults) {
-        if (extractedArr && extractedArr.length > 0) {
-          totalCandidateEvents += extractedArr.length;
-          if (!firstExtractedEvent) firstExtractedEvent = extractedArr[0];
+        return parsed.events || [];
+      } catch (err) {
+        console.warn(`[Events Intelligence] Error processing query "${query}":`, err);
+        return [];
+      }
+    });
 
-          for (const ev of extractedArr) {
-            allExtractedEvents.push({
-              ...ev,
-              id: `evt-${Date.now()}-${Math.random().toString(36).substring(2)}`
-            });
-          }
+    const batchResults = await Promise.all(promises);
+
+    for (const extractedArr of batchResults) {
+      if (extractedArr && extractedArr.length > 0) {
+        for (const ev of extractedArr) {
+          allExtractedEvents.push({
+            ...ev,
+            id: `evt-${Date.now()}-${Math.random().toString(36).substring(2)}`
+          });
         }
       }
     }
 
     // Deduplication (by name and location similarity)
     const uniqueEventsMap = new Map<string, EventItem>();
-    let duplicatesRemoved = 0;
 
     for (const event of allExtractedEvents) {
       if (!event.name || event.name.length < 5) continue; // skip junk
 
       // simple normalized key
       const key = event.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (uniqueEventsMap.has(key)) {
-        duplicatesRemoved++;
-      } else {
+      if (!uniqueEventsMap.has(key)) {
         uniqueEventsMap.set(key, event);
       }
     }
@@ -172,34 +170,25 @@ Respond in JSON ONLY with exactly the following structure:
     // Reset to start of day for fair comparison
     now.setHours(0, 0, 0, 0);
 
-    let pastEventsRemoved = 0;
     const finalEvents: EventItem[] = [];
 
     for (const event of deduplicatedEvents) {
       if (!event.date) continue;
 
-      // attempt to parse the date. If it fails or is past, drop it.
       let eventDate: Date;
       try {
         eventDate = new Date(event.date);
         if (isNaN(eventDate.getTime())) {
-          // If we can't parse it, we might want to keep it just in case, or drop it.
-          // Since strict validation is requested, let's keep it if it contains "2026" or "2027" as a fallback check
           if (event.date.includes("2026") || event.date.includes("2027")) {
             finalEvents.push(event);
-          } else {
-            pastEventsRemoved++;
           }
           continue;
         }
       } catch (e) {
-        pastEventsRemoved++;
         continue;
       }
 
-      if (eventDate < now) {
-        pastEventsRemoved++;
-      } else {
+      if (eventDate >= now) {
         finalEvents.push(event);
       }
     }
@@ -210,13 +199,6 @@ Respond in JSON ONLY with exactly the following structure:
       const dateB = new Date(b.date).getTime() || 0;
       return dateA - dateB;
     });
-
-
-    if (firstRawResult) {
-    }
-
-    if (firstExtractedEvent) {
-    }
 
     return finalEvents;
   } catch (error) {

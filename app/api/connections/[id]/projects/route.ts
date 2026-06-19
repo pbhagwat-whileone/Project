@@ -74,7 +74,7 @@ export async function POST(
 
     if (finalQuery) {
       queryUsed = finalQuery;
-      projects = await searchKnowledgeChunks(supabase, user.id, finalQuery, 3);
+      projects = await searchKnowledgeChunks(supabase, user.id, finalQuery, 5);
     } else {
       const { data: conn } = await supabase
         .from("connections")
@@ -85,7 +85,7 @@ export async function POST(
       const fallbackQuery = [conn?.company, conn?.position, safeProfile.headline].filter(Boolean).join(" ");
       const ultimateQuery = fallbackQuery || "software engineering technology consulting projects";
       queryUsed = ultimateQuery;
-      projects = await searchKnowledgeChunks(supabase, user.id, ultimateQuery, 3);
+      projects = await searchKnowledgeChunks(supabase, user.id, ultimateQuery, 5);
     }
 
     const projectsWithSummary = projects.map((p) => ({

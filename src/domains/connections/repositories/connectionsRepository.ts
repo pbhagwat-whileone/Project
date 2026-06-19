@@ -7,9 +7,25 @@ export class ConnectionsRepository {
   async getUserConnections(userId: string) {
     const queryBuilder = this.supabase
       .from("connections")
-      .select("id, first_name, last_name, company, position");
+      .select("id, first_name, last_name, company, position, email, profile_url, connected_on, connection_owner_name, created_at, connection_profiles(*)");
 
-    return fetchAllRecords<any>(queryBuilder);
+    const records = await fetchAllRecords<any>(queryBuilder);
+    
+    return records.map((c: any) => {
+      const profile = c.connection_profiles || {};
+      return {
+        ...c,
+        location: profile.location || null,
+        company: c.company || profile.company || null,
+        position: c.position || profile.position || null,
+        certifications: profile.certifications || [],
+        expertise_tags: profile.expertise_tags || [],
+        technology_tags: profile.technology_tags || [],
+        activity_signals: profile.activity_signals || [],
+        education: profile.education || [],
+        raw_tavily_response: profile.raw_tavily_response || null,
+      };
+    });
   }
 
   async getConnectionMetrics(contactIds: string[]) {
