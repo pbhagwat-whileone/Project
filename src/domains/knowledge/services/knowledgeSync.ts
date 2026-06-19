@@ -12,6 +12,11 @@ import {
 } from "@/services/integrations/google/googleDrive";
 import { chunkText } from "@/lib/shared/chunkText";
 
+export function extractBlogUrl(text: string): string | null {
+  const match = text.match(/(https?:\/\/[^\s]+)/);
+  return match ? match[0].replace(/[.,;:!)"']+$/, "") : null;
+}
+
 type SyncResult = {
   documentsProcessed: number;
   status: "success" | "error" | "partial";
@@ -32,12 +37,20 @@ async function processDocument(
     .eq("id", documentId);
 
   const text = await fetchDocumentText(auth, file);
+  const blogUrl = extractBlogUrl(text);
+
+  console.log("=================================");
+  console.log("FILE:", file.name);
+  console.log("BLOG URL:", blogUrl);
+  console.log("TEXT PREVIEW:");
+  console.log(text.substring(0, 1000));
+  console.log("=================================");
 
   if (file.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
   }
 
   const chunks = chunkText(text);
-  
+
   let projectName = file.name.trim();
   const extMatch = projectName.match(/^(.*?)(\.[a-zA-Z0-9]+)$/);
   if (extMatch) {
@@ -73,6 +86,7 @@ async function processDocument(
       last_modified: file.modifiedTime,
       document_name: file.name,
       source_type: (file.mimeType === "application/vnd.google-apps.spreadsheet" || file.mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") ? "google_sheet" : "document",
+      blog_url: blogUrl,
     })
     .eq("id", documentId);
 
@@ -103,7 +117,7 @@ export async function syncKnowledgeBase(
         errors.push(`Folder ${fid}: ${err instanceof Error ? err.message : "List failed"}`);
       }
     }
-    
+
     const driveFiles = Array.from(driveFilesMap.values());
     const driveFileIds = new Set(driveFilesMap.keys());
 

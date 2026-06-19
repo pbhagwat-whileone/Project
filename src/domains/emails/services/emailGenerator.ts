@@ -3,8 +3,8 @@ import { getEmailProvider } from "@/services/ai/providers/factory";
 import { getEmailSkill } from "@/domains/emails/services/emailSkills";
 
 const OUTCOME_KEYWORDS = [
-  "improved", "reduced", "accelerated", "optimized", "increased", 
-  "saved", "performance", "efficiency", "cost", "latency", 
+  "improved", "reduced", "accelerated", "optimized", "increased",
+  "saved", "performance", "efficiency", "cost", "latency",
   "throughput", "scalability", "reliability", "automation", "productivity",
   "burden", "visibility", "observability"
 ];
@@ -27,24 +27,24 @@ const WHILEONE_MESSAGING_RULES = `Whileone Messaging & Vocabulary:
 function extractOutcomeContext(text: string): string {
   if (!text) return "";
   const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-  
-  const outcomeSentences = sentences.filter(s => 
+
+  const outcomeSentences = sentences.filter(s =>
     OUTCOME_KEYWORDS.some(k => s.toLowerCase().includes(k))
   );
-  
+
   let result = outcomeSentences.join(" ").trim();
-  
+
   if (result.length < 400) {
-     if (result.length === 0) {
-       return text.slice(0, 400);
-     }
-     const nonOutcome = sentences.filter(s => !outcomeSentences.includes(s));
-     for (const s of nonOutcome) {
-       if (result.length >= 400) break;
-       result += " " + s.trim();
-     }
+    if (result.length === 0) {
+      return text.slice(0, 400);
+    }
+    const nonOutcome = sentences.filter(s => !outcomeSentences.includes(s));
+    for (const s of nonOutcome) {
+      if (result.length >= 400) break;
+      result += " " + s.trim();
+    }
   }
-  
+
   return result.slice(0, 400).trim();
 }
 
@@ -91,9 +91,15 @@ export async function generateOutreachEmail(
   const projectContext = input.projects
     .map(
       (p, i) =>
-        `Project ${i + 1}: ${p.project_name ?? "Unknown"}\nSummary: ${extractOutcomeContext(p.chunk_text)}`
+        `Project ${i + 1}: ${p.project_name ?? "Unknown"}\nSummary: ${extractOutcomeContext(p.chunk_text)}${p.blog_url ? `\nBlog Link: ${p.blog_url}` : ""}`
     )
     .join("\n\n");
+
+  console.log("========== PROJECTS RECEIVED ==========");
+  console.log(JSON.stringify(input.projects, null, 2));
+  console.log("========== PROJECT CONTEXT ==========");
+  console.log(projectContext);
+  console.log("======================================");
 
   const relationship = input.relationshipIntelligence?.relationshipType || "cold-outreach";
   const skillMarkdown = await getEmailSkill(relationship);
@@ -131,7 +137,7 @@ export async function generateOutreachEmail(
     if (input.persistentContext) {
       relationshipContext += `- Persistent Context: ${input.persistentContext}\n`;
     }
-    
+
     let daysSinceLastInteraction = 0;
     if (input.lastInteractionDate) {
       daysSinceLastInteraction = Math.floor((new Date().getTime() - new Date(input.lastInteractionDate).getTime()) / (1000 * 3600 * 24));
@@ -177,6 +183,23 @@ Block 4 — WhileOne Proof (The most important block. Use ONE: Customer Success 
 Block 5 — Supporting Evidence (Choose ONE: Customer Outcome, Service Capability, or Technical Asset. Max 3 bullets.)
 Block 6 — CTA (Simple. e.g., "Would you be open to a brief discussion?")
 Block 7 — Attachment Mention (Always include: "I am attaching our corporate overview and technical capabilities presentation for your reference.")
+
+BLOG URL USAGE RULES:
+If any matching project contains a Blog Link, you MUST include exactly one
+blog reference in the email.
+The blog reference should appear in either:
+- Block 4 (WhileOne Proof), or
+- Block 5 (Supporting Evidence)
+Do NOT expose raw internal project data.
+Instead write naturally, for example:
+"We recently worked on a similar initiative and documented some of the
+key learnings here: <blog_url>"
+or
+"For additional context, we published a short write-up on this work:
+<blog_url>"
+If multiple projects contain blog links, use only the most relevant one.
+A matching project with a blog link should be preferred over a matching
+project without a blog link when selecting proof points.
 
 SUBJECT LINE RULES:
 Subject should come from: Company Signal + Outreach Angle.
@@ -234,11 +257,11 @@ Respond in JSON only with this exact shape:
 
   const providerName = input.provider;
   const provider = getEmailProvider();
-  
-  return provider.generateEmail({ 
-    prompt, 
-    provider: providerName, 
-    model: input.model 
+
+  return provider.generateEmail({
+    prompt,
+    provider: providerName,
+    model: input.model
   });
 }
 
@@ -269,6 +292,9 @@ Block 4 — WhileOne Proof (Use ONE: Customer Success Story, Relevant Project, T
 Block 5 — Supporting Evidence (Choose ONE: Customer Outcome, Service Capability, or Technical Asset. Max 3 bullets.)
 Block 6 — CTA (Simple.)
 Block 7 — Attachment Mention (Always include: "I am attaching our corporate overview and technical capabilities presentation for your reference.")
+
+BLOG URL USAGE RULES:
+If a relevant blog URL is available and supports the outreach message, naturally reference it in the email. Do not force inclusion if it feels unrelated.
 
 SUBJECT LINE RULES:
 Subject should come from: Company Signal + Outreach Angle.
@@ -310,11 +336,11 @@ Respond in JSON only with this exact shape (with the updated subject and body):
 }`;
 
   const provider = getEmailProvider();
-  
-  return provider.generateEmail({ 
-    prompt, 
-    isRefinement: true, 
-    provider: providerName, 
-    model: modelName 
+
+  return provider.generateEmail({
+    prompt,
+    isRefinement: true,
+    provider: providerName,
+    model: modelName
   });
 }

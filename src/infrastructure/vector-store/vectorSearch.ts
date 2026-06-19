@@ -24,7 +24,10 @@ export async function searchKnowledgeChunks(
   }
 
   const chunks = (data ?? []) as MatchedChunk[];
-  
+
+  console.log("=== RAW RPC DATA ===");
+  console.log(JSON.stringify(data, null, 2));
+
 
   const uniqueProjects = new Map<string, MatchedChunk>();
   for (const chunk of chunks) {
@@ -50,10 +53,13 @@ export async function searchKnowledgeChunks(
   const docIds = [...new Set(topUnique.map(c => c.document_id))];
   const { data: docs } = await supabase
     .from("knowledge_documents")
-    .select("id, google_file_id, source_type")
+    .select("id, google_file_id, source_type, blog_url")
     .in("id", docIds);
 
-  const docMap = new Map(docs?.map(d => [d.id, { fileId: d.google_file_id, sourceType: d.source_type }]));
+  console.log("=== MATCHED DOCS ===");
+  console.log(JSON.stringify(docs, null, 2));
+
+  const docMap = new Map(docs?.map(d => [d.id, { fileId: d.google_file_id, sourceType: d.source_type, blogUrl: d.blog_url }]));
 
   for (const chunk of topUnique) {
     const docInfo = docMap.get(chunk.document_id);
@@ -63,8 +69,19 @@ export async function searchKnowledgeChunks(
       } else {
         chunk.reference_link = `https://docs.google.com/document/d/${docInfo.fileId}/edit`;
       }
+      if (docInfo.blogUrl) {
+        chunk.blog_url = docInfo.blogUrl;
+      }
     }
   }
+
+  console.log("TOP UNIQUE PROJECTS:");
+  console.log(JSON.stringify(topUnique, null, 2));
+
+  console.log("DOCUMENT LOOKUP:");
+  console.log(JSON.stringify(docs, null, 2));
+  console.log("=== FINAL PROJECTS ===");
+  console.log(JSON.stringify(topUnique, null, 2));
 
 
   return topUnique;

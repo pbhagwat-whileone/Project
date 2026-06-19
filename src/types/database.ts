@@ -81,6 +81,7 @@ export interface Database {
           last_modified: string | null;
           status: DocumentStatus;
           source_type: string;
+          blog_url: string | null;
           created_at: string;
         };
         Insert: {
@@ -91,6 +92,7 @@ export interface Database {
           last_modified?: string | null;
           status?: DocumentStatus;
           source_type?: string;
+          blog_url?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["knowledge_documents"]["Insert"]>;
@@ -533,6 +535,7 @@ export type MatchedChunk = {
   industry: string | null;
   similarity: number;
   reference_link?: string;
+  blog_url?: string | null;
 };
 
 export type RankedContact = {
