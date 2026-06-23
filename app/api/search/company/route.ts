@@ -18,16 +18,8 @@ export async function POST(request: Request) {
 
     const supabase = await createClient();
     const useCase = new SearchCompaniesUseCase(supabase);
-    
-    const result = await useCase.execute(user.id, parsed.data.company);
 
-    try {
-      const fs = require('fs');
-      const path = require('path');
-      fs.writeFileSync(path.join(process.cwd(), 'test-output.json'), JSON.stringify(result, null, 2));
-    } catch (e) {
-      console.error("Failed to write to test-output.json", e);
-    }
+    const result = await useCase.execute(user.id, parsed.data.company);
 
     return NextResponse.json(result);
   } catch (err) {
