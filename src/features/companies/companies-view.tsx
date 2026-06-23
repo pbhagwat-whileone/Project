@@ -54,6 +54,7 @@ type SearchResult = {
   contacts: RankedContact[];
   projects: (MatchedChunk & { summary?: string })[];
   message: string | null;
+  companyContext?: CompanyContext;
 };
 
 export function CompaniesView() {
@@ -249,6 +250,8 @@ export function CompaniesView() {
             method: "POST",
             body: JSON.stringify({ company: activeCompanyParam.trim() }),
           });
+          if (data?.companyContext?.classification) {
+          }
           setSearchResult(data);
           const contactParam = searchParams.get("contact");
           let targetContact = data.contacts?.[0] || null;
@@ -593,6 +596,76 @@ export function CompaniesView() {
           </Button>
         </form>
       </div>
+
+      {(() => {
+        if (isSearchMode) {
+           if (searchResult) {
+             if (searchResult.companyContext) {
+             }
+           }
+        }
+        return null;
+      })()}
+
+      {isSearchMode && searchResult?.companyContext?.classification && (
+        <div className="mb-6 space-y-2 p-4 bg-muted/20 border border-border/50 rounded-lg">
+          <div className="text-sm font-semibold mb-3">Company Classification</div>
+          {searchResult.companyContext.classification.domains?.length > 0 && (
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className="text-xs font-medium text-muted-foreground w-24">Domain</span>
+              {searchResult.companyContext.classification.domains.map(tag => (
+                <Badge key={tag} variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-100/80 border-blue-200">{tag}</Badge>
+              ))}
+            </div>
+          )}
+          {searchResult.companyContext.classification.architectures?.length > 0 && (
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className="text-xs font-medium text-muted-foreground w-24">Architecture</span>
+              {searchResult.companyContext.classification.architectures.map(arch => {
+                const isObj = typeof arch !== 'string';
+                const tagStr = isObj ? (arch.fallbackSelected ? `Likely ${arch.tag}` : arch.tag) : arch;
+                const keyStr = isObj ? arch.tag : arch;
+                return (
+                  <Badge key={keyStr} variant="secondary" className="bg-purple-100 text-purple-800 hover:bg-purple-100/80 border-purple-200">{tagStr}</Badge>
+                );
+              })}
+            </div>
+          )}
+          {(searchResult.companyContext.classification.technologyLayers?.silicon?.length > 0 ||
+            searchResult.companyContext.classification.technologyLayers?.systems?.length > 0 ||
+            searchResult.companyContext.classification.technologyLayers?.software?.length > 0) && (
+            <div className="mt-4">
+              <div className="text-xs font-medium text-muted-foreground mb-2">Technology Layer</div>
+              <div className="space-y-3 pl-2">
+                {searchResult.companyContext.classification.technologyLayers.silicon?.length > 0 && (
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <span className="text-xs text-muted-foreground w-20">Silicon</span>
+                    {searchResult.companyContext.classification.technologyLayers.silicon.map(tag => (
+                      <Badge key={tag} variant="secondary" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100/80 border-emerald-200">{tag}</Badge>
+                    ))}
+                  </div>
+                )}
+                {searchResult.companyContext.classification.technologyLayers.systems?.length > 0 && (
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <span className="text-xs text-muted-foreground w-20">Systems</span>
+                    {searchResult.companyContext.classification.technologyLayers.systems.map(tag => (
+                      <Badge key={tag} variant="secondary" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100/80 border-emerald-200">{tag}</Badge>
+                    ))}
+                  </div>
+                )}
+                {searchResult.companyContext.classification.technologyLayers.software?.length > 0 && (
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <span className="text-xs text-muted-foreground w-20">Software</span>
+                    {searchResult.companyContext.classification.technologyLayers.software.map(tag => (
+                      <Badge key={tag} variant="secondary" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100/80 border-emerald-200">{tag}</Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Conditional Rendering: Recommendations vs Search Results */}
       {!isSearchMode ? (

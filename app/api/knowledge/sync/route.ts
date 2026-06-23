@@ -3,6 +3,7 @@ import { getAuthenticatedClient } from "@/services/integrations/google/googleOau
 import { getAppUrl, getDriveFolderIds } from "@/lib/settings";
 import { createClient, requireUser } from "@/infrastructure/database/supabase/server";
 import { syncKnowledgeBase } from "@/domains/knowledge/services/knowledgeSync";
+import { syncCaseStudiesSheet } from "@/domains/emails/services/caseStudiesSync";
 
 export async function POST() {
   try {
@@ -33,6 +34,20 @@ export async function POST() {
       auth,
       folderIds
     );
+
+    const { data: settings } = await supabase
+      .from("user_settings")
+      .select("case_studies_sheet_url")
+      .eq("user_id", user.id)
+      .single();
+
+    if (settings?.case_studies_sheet_url) {
+      try {
+        await syncCaseStudiesSheet(supabase, user.id, auth, settings.case_studies_sheet_url);
+      } catch (err) {
+        console.error("Failed to sync case studies sheet:", err);
+      }
+    }
 
     return NextResponse.json(result);
   } catch (err) {

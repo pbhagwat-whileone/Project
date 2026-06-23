@@ -44,11 +44,13 @@ export interface Database {
         Row: {
           user_id: string;
           google_drive_folder_ids: string[] | null;
+          case_studies_sheet_url: string | null;
           updated_at: string;
         };
         Insert: {
           user_id: string;
           google_drive_folder_ids?: string[] | null;
+          case_studies_sheet_url?: string | null;
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["user_settings"]["Insert"]>;
@@ -256,6 +258,28 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["sync_logs"]["Insert"]>;
+        Relationships: [];
+      };
+      case_studies_sheet_cache: {
+        Row: {
+          id: string;
+          user_id: string;
+          sheet_url: string;
+          parsed_content: any;
+          last_synced: string;
+          last_modified: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          sheet_url: string;
+          parsed_content?: any;
+          last_synced?: string;
+          last_modified?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["case_studies_sheet_cache"]["Insert"]>;
         Relationships: [];
       };
       company_industry_cache: {
@@ -577,10 +601,26 @@ export type RankedContact = {
 
 export type CompanyIndustryCache =
   Database["public"]["Tables"]["company_industry_cache"]["Row"];
-export type ConnectionRelationshipMetrics = 
+export type ConnectionRelationshipMetrics =
   Database["public"]["Tables"]["connection_relationship_metrics"]["Row"];
-export type LinkedinMessage = 
+export type LinkedinMessage =
   Database["public"]["Tables"]["linkedin_messages"]["Row"];
+
+export interface ArchitectureClassification {
+  tag: string;
+  confidence: number;
+  fallbackSelected?: boolean;
+}
+
+export interface CompanyClassification {
+  domains: string[];
+  architectures: (string | ArchitectureClassification)[];
+  technologyLayers: {
+    silicon: string[];
+    systems: string[];
+    software: string[];
+  };
+}
 
 export interface CompanyContext {
   companyName: string;
@@ -592,6 +632,7 @@ export interface CompanyContext {
   outreachOpportunities: string[];
   confidence: "high" | "medium" | "low";
   sources: string[];
+  classification?: CompanyClassification;
 }
 
 export interface CompanyContextRelevance {
@@ -599,10 +640,10 @@ export interface CompanyContextRelevance {
   useCompanyContext: boolean;
   reasoning: string;
   recommendedUsage:
-    | "ignore"
-    | "light_reference"
-    | "conversation_starter"
-    | "primary_outreach_angle";
+  | "ignore"
+  | "light_reference"
+  | "conversation_starter"
+  | "primary_outreach_angle";
 }
 
 export interface RelationshipIntelligence {
@@ -610,11 +651,11 @@ export interface RelationshipIntelligence {
   confidence: number;
   reasoning: string;
   outreachGoal:
-    | "reconnect"
-    | "follow_up"
-    | "introduction_request"
-    | "opportunity_exploration"
-    | "partnership_discussion"
-    | string;
+  | "reconnect"
+  | "follow_up"
+  | "introduction_request"
+  | "opportunity_exploration"
+  | "partnership_discussion"
+  | string;
   capabilityProminence: "low" | "medium" | "high";
 }

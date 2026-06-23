@@ -132,7 +132,7 @@ async function calculateCompanyScoreAndProjects(
   const companyContext = await getCompanyContext(supabase, company, { skipTavily: true });
 
   const queryParts: string[] = [];
-  
+
   // Prioritize Company, Technology, and Business-priority relevance
   queryParts.push(company);
   if (companyContext?.technologySignals?.length) {
@@ -164,7 +164,7 @@ async function calculateCompanyScoreAndProjects(
 
     const fallbackQuery = fallbackQueryParts.join(" ").trim();
     const ultimateQuery = fallbackQuery || "software engineering technology consulting projects";
-    
+
     if (ultimateQuery !== query) {
       matchingProjects = await searchKnowledgeChunks(supabase, userId, ultimateQuery, 5);
     }
