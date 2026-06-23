@@ -4,6 +4,7 @@
   const PUBLIC_PATHS = ["/login", "/auth/callback"];
 
   export async function middleware(request: NextRequest) {
+
     let supabaseResponse = NextResponse.next({ request });
 
     const supabase = createServerClient(

@@ -30,6 +30,7 @@ export async function GET() {
       google_drive_folder_ids:
         settings?.google_drive_folder_ids ??
         (process.env.GOOGLE_DRIVE_FOLDER_ID ? [process.env.GOOGLE_DRIVE_FOLDER_ID] : []),
+      case_studies_sheet_url: settings?.case_studies_sheet_url ?? "",
       last_sync: lastSync,
       google_connected: Boolean(googleToken),
     });
@@ -56,6 +57,7 @@ export async function PUT(request: Request) {
     const { error } = await supabase.from("user_settings").upsert({
       user_id: user.id,
       google_drive_folder_ids: parsed.data.google_drive_folder_ids,
+      case_studies_sheet_url: parsed.data.case_studies_sheet_url,
       updated_at: new Date().toISOString(),
     });
 

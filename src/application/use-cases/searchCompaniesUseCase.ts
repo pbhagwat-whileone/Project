@@ -1,6 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { ConnectionsRepository } from "@/domains/connections/repositories/connectionsRepository";
 import { findRecommendedContacts, rankContactsWithMetrics } from "@/domains/companies/services/companyUtils";
+import { getCompanyContext } from "@/domains/companies/services/companyContextIntelligence";
 
 export class SearchCompaniesUseCase {
   constructor(private readonly supabase: SupabaseClient) {}
@@ -31,7 +32,10 @@ export class SearchCompaniesUseCase {
       connection_owner_name: c.connection_owners.join(", ")
     }));
 
-    // 3. Find recommended contacts for company
+    // 3. Get Company Context
+    const companyContext = await getCompanyContext(this.supabase, companyQuery);
+
+    // 4. Find recommended contacts for company
     const recommendedContacts = findRecommendedContacts(companyQuery, groupedConnections ?? []);
 
     if (!recommendedContacts.length) {
@@ -39,10 +43,11 @@ export class SearchCompaniesUseCase {
         contacts: [],
         projects: [],
         message: "No matching company could be identified.",
+        companyContext,
       };
     }
 
-    // 4. Fetch metrics
+    // 5. Fetch metrics
     const contactIds = recommendedContacts.map(c => c.id);
     const metricsData = await connectionsRepo.getConnectionMetrics(contactIds);
 
@@ -87,6 +92,7 @@ export class SearchCompaniesUseCase {
       contacts: rankedContacts,
       projects: [], 
       message: rankedContacts.length ? null : "No LinkedIn connection found.",
+      companyContext,
     };
   }
 }

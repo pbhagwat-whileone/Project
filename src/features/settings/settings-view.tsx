@@ -24,6 +24,7 @@ import type { SyncLog } from "@/types/database";
 export function SettingsView() {
   const searchParams = useSearchParams();
   const [folderIds, setFolderIds] = useState("");
+  const [caseStudiesUrl, setCaseStudiesUrl] = useState("");
   const [globalSyncState, setGlobalSyncState] = useState<any>(null);
   const [googleConnected, setGoogleConnected] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -33,10 +34,12 @@ export function SettingsView() {
     try {
       const data = await apiFetch<{
         google_drive_folder_ids: string[];
+        case_studies_sheet_url?: string;
         last_sync: any;
         google_connected: boolean;
       }>("/api/settings");
       setFolderIds(data.google_drive_folder_ids?.join("\n") ?? "");
+      setCaseStudiesUrl(data.case_studies_sheet_url ?? "");
       setGlobalSyncState(data.last_sync);
       setGoogleConnected(data.google_connected);
     } catch (e) {
@@ -66,6 +69,7 @@ export function SettingsView() {
             .split("\n")
             .map((id) => id.trim())
             .filter(Boolean),
+          case_studies_sheet_url: caseStudiesUrl,
         }),
       });
       toast.success("Settings saved");
@@ -133,6 +137,31 @@ export function SettingsView() {
                 rows={4}
                 value={folderIds}
                 onChange={(e) => setFolderIds(e.target.value)}
+              />
+            </div>
+            <Button onClick={saveSettings} disabled={saving}>
+              {saving ? "Saving…" : "Save Settings"}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Case Studies Master Sheet</CardTitle>
+            <CardDescription>
+              Google Sheets URL containing curated case studies for email context.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="case-studies">Sheet URL</Label>
+              <Textarea
+                id="case-studies"
+                className="mt-2 font-mono"
+                placeholder="https://docs.google.com/spreadsheets/d/..."
+                rows={2}
+                value={caseStudiesUrl}
+                onChange={(e) => setCaseStudiesUrl(e.target.value)}
               />
             </div>
             <Button onClick={saveSettings} disabled={saving}>

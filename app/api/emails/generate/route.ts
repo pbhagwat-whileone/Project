@@ -134,6 +134,11 @@ export async function POST(request: Request) {
       engagementQuality: contact?.engagement_quality,
     });
 
+    const { data: caseStudies } = await supabase
+      .from("case_studies_sheet_cache")
+      .select("parsed_content")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
     const emailContent = await generateOutreachEmail({
       targetCompany: resolvedCompany,
@@ -160,6 +165,7 @@ export async function POST(request: Request) {
       timeBoundContext: contact?.time_bound_context ?? undefined,
       companyContext,
       companyContextRelevance,
+      caseStudiesContext: caseStudies?.parsed_content as any[] | undefined,
     });
 
     const { data: saved, error } = await supabase

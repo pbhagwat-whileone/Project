@@ -80,6 +80,9 @@ export async function generateWithFallback(
           },
         });
         text = response.text || "";
+      } else if (provider === "cerebras") {
+        const { generateCerebrasContent } = await import("./cerebras");
+        text = await generateCerebrasContent(model, prompt, { isJson: options?.isJson, responseSchema: options?.responseSchema });
       } else {
         throw new Error(`Unknown provider: ${provider}`);
       }
@@ -102,16 +105,18 @@ export async function generateWithFallback(
         msg.includes("too many requests") ||
         msg.includes("exhausted");
 
-      if (isQuotaError && i < chain.length - 1) {
-        modelHealth[model] = { unavailableUntil: Date.now() + COOLDOWN_MS };
+      if (i < chain.length - 1) {
+        if (isQuotaError) {
+          modelHealth[model] = { unavailableUntil: Date.now() + COOLDOWN_MS };
+        }
         console.warn(
-          `[LLM Fallback]\nProvider: ${provider}\nModel: ${model}\nReason: Rate Limit\nTrying: ${chain[i + 1]}`
+          `[LLM Fallback]\nProvider: ${provider}\nModel: ${model}\nReason: ${error?.message}\nTrying: ${chain[i + 1]}`
         );
         continue;
-      } else if (isQuotaError) {
-        modelHealth[model] = { unavailableUntil: Date.now() + COOLDOWN_MS };
-        throw error;
       } else {
+        if (isQuotaError) {
+          modelHealth[model] = { unavailableUntil: Date.now() + COOLDOWN_MS };
+        }
         throw error;
       }
     }

@@ -70,19 +70,19 @@ export async function POST(request: Request) {
       .select("industry")
       .ilike("company_name", recommendation.company)
       .maybeSingle();
-      
+
     const industry = cacheRow?.industry && cacheRow.industry !== "Unknown" ? cacheRow.industry : "";
 
     const enhancedQueryParts = [];
     if (companyContext) {
-       if (companyContext.technologySignals?.length) enhancedQueryParts.push(companyContext.technologySignals.join(" "));
-       if (companyContext.businessPriorities?.length) enhancedQueryParts.push(companyContext.businessPriorities.join(" "));
-       if (companyContext.keyInitiatives?.length) enhancedQueryParts.push(companyContext.keyInitiatives.join(" "));
-       if (companyContext.outreachOpportunities?.length) enhancedQueryParts.push(companyContext.outreachOpportunities.join(" "));
+      if (companyContext.technologySignals?.length) enhancedQueryParts.push(companyContext.technologySignals.join(" "));
+      if (companyContext.businessPriorities?.length) enhancedQueryParts.push(companyContext.businessPriorities.join(" "));
+      if (companyContext.keyInitiatives?.length) enhancedQueryParts.push(companyContext.keyInitiatives.join(" "));
+      if (companyContext.outreachOpportunities?.length) enhancedQueryParts.push(companyContext.outreachOpportunities.join(" "));
     }
     if (recommendation.topContact.discussion_topics) enhancedQueryParts.push(recommendation.topContact.discussion_topics);
     if (recommendation.topContact.conversation_summary) enhancedQueryParts.push(recommendation.topContact.conversation_summary);
-    
+
     if (recommendation.topContact.position) enhancedQueryParts.push(recommendation.topContact.position);
     if (industry) enhancedQueryParts.push(industry);
     enhancedQueryParts.push(recommendation.company);
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
     let emailProjects = matchingProjects;
     if (enhancedQuery) {
       const freshProjects = await searchKnowledgeChunks(supabase, user.id, enhancedQuery, 5);
-      
+
       if (freshProjects.length > 0) {
         emailProjects = freshProjects;
       } else {
@@ -99,6 +99,11 @@ export async function POST(request: Request) {
     } else {
     }
 
+    const { data: caseStudies } = await supabase
+      .from("case_studies_sheet_cache")
+      .select("parsed_content")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
     const emailContent = await generateOutreachEmail({
       targetCompany: recommendation.company,
@@ -108,6 +113,7 @@ export async function POST(request: Request) {
       relationshipIntelligence,
       provider: parsed.data.provider ?? undefined,
       model: parsed.data.model ?? undefined,
+      caseStudiesContext: caseStudies?.parsed_content as any[] | undefined,
     });
 
     const contactName = [

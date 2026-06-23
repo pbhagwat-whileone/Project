@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const settingsSchema = z.object({
   google_drive_folder_ids: z.array(z.string()).min(1, "At least one folder ID is required"),
+  case_studies_sheet_url: z.string().optional().or(z.literal('')),
 });
 
 export const companySearchSchema = z.object({

@@ -23,15 +23,20 @@ const WHILEONE_MESSAGING_RULES = `Whileone Messaging & Vocabulary:
 - Prioritize Technical Credibility over Sales Messaging: If forced to choose between explaining a useful engineering insight or describing Whileone capabilities, ALWAYS prefer the engineering insight.
 - One Angle: Every email should be explainable in one sentence. Do NOT mix multiple disparate angles in the same email.
 - Conciseness & Structure Rules (CRITICAL):
+  * Target email body length: 180-220 words. Hard Maximum: 230 words. Do not add filler content.
+  * Suggested length allocation: Observation + Insight (40-60 words), Primary Project (40-60 words), Supporting Proof Paragraph (40-60 words), Bullets (25-40 words), CTA (10-20 words).
+  * Priority: If word count becomes too long, reduce case-study content first. Never reduce: company observation, outreach angle, primary matching project. The Primary Matching Project remains the dominant proof source.
+  * Prioritize one strong outreach angle over completeness.
+  * Prioritize one matching project and at most one supporting case study paragraph.
+  * Remove unnecessary background explanation.
+  * Keep observations concise.
+  * Keep project stories concise.
+  * Keep CTA to a single sentence.
+  * Focus on creating curiosity rather than explaining everything.
   * Do not add extra sections.
   * Do not introduce long engineering essays.
   * Do not introduce multi-paragraph speculative analysis.
-  * Do not spend more than 2-3 sentences on observations before transitioning to the Whileone project example.
-  * Keep project stories concise.
   * Capability bullets should remain present when relevant.
-  * The recipient should understand why they were contacted within the first few sentences.
-  * The recipient should understand what Whileone does before reaching the CTA.
-  * Optimize for reply rate, not thought leadership.
   * The recipient should understand: 1) Why they were contacted, 2) Why the Whileone example is relevant, 3) What Whileone does, 4) What action is being requested, within the first 60% of the email.
 - Adapt language to the target company (TARGET_COMPANY_PLACEHOLDER):
   * Semiconductor (AMD, NVIDIA, Qualcomm, Intel, TSMC, Broadcom): prefer performance tuning, benchmarking, validation, ARM, RISC-V, HPC, scalability, reliability.
@@ -80,6 +85,36 @@ function extractOutcomeContext(text: string): string {
   return result.slice(0, 400).trim();
 }
 
+function selectRelevantCaseStudies(input: EmailGenerationInput, caseStudies: any[]): any[] {
+  if (!caseStudies || caseStudies.length === 0) return [];
+
+  const extractKeywords = (text: string) => text.toLowerCase().match(/\b\w+\b/g) || [];
+  const keywordSet = new Set<string>();
+
+  extractKeywords(input.targetCompany).forEach(k => keywordSet.add(k));
+  if (input.contact.position) extractKeywords(input.contact.position).forEach(k => keywordSet.add(k));
+  if (input.contact.expertise_tags) input.contact.expertise_tags.forEach(t => extractKeywords(t).forEach(k => keywordSet.add(k)));
+  if (input.contact.technology_tags) input.contact.technology_tags.forEach(t => extractKeywords(t).forEach(k => keywordSet.add(k)));
+  if (input.companyContext?.keyInitiatives) input.companyContext.keyInitiatives.forEach(i => extractKeywords(i).forEach(k => keywordSet.add(k)));
+  if (input.companyContext?.technologySignals) input.companyContext.technologySignals.forEach(s => extractKeywords(s).forEach(k => keywordSet.add(k)));
+  if (input.recommendationReason) extractKeywords(input.recommendationReason).forEach(k => keywordSet.add(k));
+
+  const scoredStudies = caseStudies.map(study => {
+    let score = 0;
+    const studyText = Object.values(study).join(" ").toLowerCase();
+    const studyKeywords = extractKeywords(studyText);
+    for (const kw of studyKeywords) {
+      if (keywordSet.has(kw) && kw.length > 3) {
+        score++;
+      }
+    }
+    return { study, score };
+  });
+
+  scoredStudies.sort((a, b) => b.score - a.score);
+  return scoredStudies.slice(0, 2).map(s => s.study);
+}
+
 export type EmailGenerationInput = {
   targetCompany: string;
   contact: RankedContact;
@@ -106,6 +141,7 @@ export type EmailGenerationInput = {
   timeBoundContext?: string | null;
   companyContext?: CompanyContext | null;
   companyContextRelevance?: CompanyContextRelevance | null;
+  caseStudiesContext?: any[] | null;
 };
 
 export type GeneratedEmailContent = {
@@ -195,6 +231,10 @@ ${primaryProject.project_summary || extractOutcomeContext(primaryProject.chunk_t
     relationshipContext += `\nCRITICAL CONVERSATION RULE: Use this intelligence ONLY if it directly supports the selected outreach angle. Do NOT summarize past conversations or recount history. Do not let this drive the body of the email. Use it primarily for familiarity level, greeting, and CTA wording. Never assume future plans from old conversations are still valid.`;
   }
 
+  const relevantCaseStudies = input.caseStudiesContext
+    ? selectRelevantCaseStudies(input, input.caseStudiesContext)
+    : [];
+
   const prompt = `You are drafting a B2B outreach email for Whileone, a technology consultancy.
 
 CORE PRINCIPLE:
@@ -210,12 +250,16 @@ Before writing the email body, determine:
 - WHAT IS THE STRONGEST PROOF POINT?
 Provide your reasoning in the "internal_planning" JSON field. Do not output this reasoning in the email body.
 
-EMAIL STRUCTURE:
+EMAIL STRUCTURE (Proof Hierarchy):
 Every email should strictly follow this flow (do not use block headers in the output):
 1. Greeting: Natural and brief (e.g., "Hi Deepak," or "Hello Deepak,")
 2. Observation: Start with a specific observation about the recipient's architecture, workload, or infrastructure. Write as if continuing a thought. Keep it brief (2-3 sentences max) before transitioning.
 3. Engineering Insight: Allow a technical insight or challenge to emerge from the observation. Treat them as a peer.
-4. Relevant Project Experience: Share a concrete finding from a past project (e.g., "We recently worked on analyzing token-generation performance..."). Keep project stories concise. 
+4. Relevant Project Experience (Primary Proof): Share a concrete finding from a past project (e.g., "We recently worked on analyzing token-generation performance..."). Keep project stories concise. 
+5. Supporting Case Studies (Optional Supporting Proof Paragraph): Merge all selected case-study evidence into a single concise supporting paragraph. Maximum allocation: 1 paragraph, 2 sentences maximum, 40-60 words total. DO NOT create separate paragraphs. DO NOT describe each case study independently. DO NOT repeat customer profile, challenge, solution, or outcome for every case study. When 2 case studies are selected, extract only the most relevant challenge and outcome and combine them into a single generalized proof statement. Do not mention multiple customers separately or tell multiple stories. The reader should perceive: "Whileone has done similar work before." Example: "We have seen similar patterns across customers building AI infrastructure and custom compute platforms, where improvements in validation workflows, observability, and performance engineering helped accelerate adoption while significantly reducing evaluation effort and operational overhead."
+6. Capability Summary (bullets): Introduce 3-5 outcome-oriented bullets that reinforce the narrative. Use phrases like "A few areas where we've spent considerable time include:". Focus on specific technical achievements. Connect the lesson to their context and introduce what Whileone does here.
+7. Conversational Question (CTA): A simple question replacing sales language with curiosity ("Curious whether you've encountered similar challenges"). DO NOT ask for a meeting or calendar time. Keep CTA to a single sentence.
+8. Attachment Mention: Always include: "I am attaching our corporate overview and technical capabilities presentation for your reference."
 
 IMPORTANT:
 The PRIMARY PROJECT has already been selected by the recommendation engine.
@@ -223,15 +267,36 @@ Do not choose a different project.
 If you reference a Whileone project, reference the PRIMARY PROJECT.
 Do not ignore the PRIMARY PROJECT in favor of lower-ranked projects.
 
-5. Lesson Learned: Share what was discovered briefly. Reward conversational tone ("What surprised us was...").
-6. Supporting Capability Summary (bullets): Introduce 3-5 outcome-oriented bullets that reinforce the narrative. Use phrases like "A few areas where we've spent considerable time include:". Focus on specific technical achievements. Connect the lesson to their context and introduce what Whileone does here.
-7. Conversational Question (CTA): A simple question replacing sales language with curiosity ("Curious whether you've encountered similar challenges"). DO NOT ask for a meeting or calendar time.
-8. Attachment Mention: Always include: "I am attaching our corporate overview and technical capabilities presentation for your reference."
+COMPOSITION PRIORITY:
+Final priority order should be:
+1. Relationship Context (tone only)
+2. Company Signal (why now)
+3. Outreach Angle
+4. Primary Matching Project (main proof)
+5. One Supporting Case Study (optional)
+6. Capability Bullets
+7. CTA
+
+The Primary Matching Project remains the primary proof source and must not be replaced by case studies. The selected case studies should only strengthen credibility and provide additional supporting evidence.
 
 SUBJECT LINE RULES:
-Subject should come from: Company Signal + Outreach Angle.
-Examples: "Cisco and SRE Operations", "Thoughts on Cloud Reliability".
-Avoid generic topics unless those exact topics appear in signals.
+Generate subjects that answer: "What measurable outcome or business value have we delivered that would likely matter to this prospect?"
+Generate subjects using: Outcome + Context
+Sources for outcome (in priority order):
+1. Primary Matching Project
+2. Selected Case Study
+3. Company Context
+Examples: "Reducing AI Infrastructure Costs by 33%", "Increasing VM Density by 30%", "Improving Throughput for AI Workloads", "Reducing Cloud Costs While Scaling AI".
+Requirements:
+- Length: 4-10 words preferred. Maximum 12 words.
+- Specificity: Use REAL metrics if they exist in the matching project or case study. Do NOT invent metrics.
+- Relevance: The outcome MUST matter to this specific recipient based on their role.
+- Professional, technical, and curiosity-driven.
+- Do not use vague phrases when a concrete outcome exists.
+- Do not mention customer names or case-study company names.
+- Do not make the subject read like a generic topic summary.
+RANKING PROCESS:
+Internally generate 5 candidate subjects. Rank them by: 1) Recipient relevance 2) Business value 3) Specificity 4) Curiosity 5) Brevity. Select and return ONLY the strongest candidate.
 
 CONTEXT USAGE RULES:
 - Relationship Intelligence: Use only for greeting, familiarity level, and CTA wording. Never drive the body.
@@ -255,6 +320,21 @@ ${input.companyContext ? `Summary: ${input.companyContext.summary}
 Key Initiatives: ${input.companyContext.keyInitiatives.join(", ")}
 Technology Signals: ${input.companyContext.technologySignals.join(", ")}
 Hiring Signals: ${input.companyContext.hiringSignals.join(", ")}` : "None"}
+
+CASE STUDIES CONTEXT:
+${relevantCaseStudies.length ? `The following are supporting proof points only.
+Rules:
+* Merge all selected case-study evidence into a single concise supporting paragraph.
+* Maximum allocation: 1 paragraph, 2 sentences maximum, 40-60 words total.
+* DO NOT create separate paragraphs for case studies. DO NOT describe each case study independently.
+* DO NOT repeat customer profile, challenge, solution, or outcome for every case study.
+* When 2 case studies are selected, extract only the most relevant challenge and outcome, and combine them into a single generalized proof statement. Do not mention multiple customers separately. Do not tell multiple stories.
+* Never mention customer names, company names, brands, or organization identities from the sheet. Generalize to "customers building AI infrastructure", etc.
+* Never list spreadsheet fields or mention that information came from a database.
+* The Primary Matching Project remains the primary proof source.
+Example: "Across several customers working on AI platforms and cloud infrastructure, we identified opportunities to improve utilization, reduce validation cycles, and streamline deployment readiness, leading to measurable gains in efficiency and adoption."
+
+${JSON.stringify(relevantCaseStudies, null, 2)}` : "None"}
 
 RELATIONSHIP & CONVERSATION INTELLIGENCE:
 Relationship Type: ${relationship}
@@ -287,11 +367,24 @@ Respond in JSON only with this exact shape:
   const providerName = input.provider;
   const provider = getEmailProvider();
 
-  const generated = await provider.generateEmail({
+  let generated = await provider.generateEmail({
     prompt,
     provider: providerName,
     model: input.model
   });
+
+  let wordCount = generated.body.trim().split(/\s+/).length;
+  let attempts = 1;
+  while (wordCount > 230 && attempts < 3) {
+    const feedbackPrompt = prompt + `\n\nCRITICAL FEEDBACK ON PREVIOUS ATTEMPT:\nThe email you just generated was ${wordCount} words long, which exceeds the hard maximum of 230 words. Please regenerate the email to be strictly between 180-220 words.\nPriority: Reduce case-study content first. Never reduce company observation, outreach angle, or primary matching project. Merge any case studies into a single concise supporting paragraph (max 40-60 words).`;
+    generated = await provider.generateEmail({
+      prompt: feedbackPrompt,
+      provider: providerName,
+      model: input.model
+    });
+    wordCount = generated.body.trim().split(/\s+/).length;
+    attempts++;
+  }
 
   let selectedBlogUrl: string | null = null;
   for (const project of input.projects) {
@@ -304,7 +397,7 @@ Respond in JSON only with this exact shape:
   if (selectedBlogUrl && !generated.body.includes(selectedBlogUrl)) {
     const attachmentMention = "I am attaching our corporate overview";
     const urlSection = `Relevant Link:\n${selectedBlogUrl}\n\n`;
-    
+
     if (generated.body.includes(attachmentMention)) {
       generated.body = generated.body.replace(attachmentMention, urlSection + attachmentMention);
     } else {
@@ -330,15 +423,25 @@ export async function refineOutreachEmail(
   const relationship = context?.relationship || "Unknown Relationship";
   const skillMarkdown = await getEmailSkill(relationship);
 
+  const contextBlock = context
+    ? `Context:\nTarget Company: ${context.company}\nContact Name: ${context.contactName}\nRelationship: ${context.relationship}`
+    : "";
+
+  const messagingRules = WHILEONE_MESSAGING_RULES.replace("TARGET_COMPANY_PLACEHOLDER", context ? context.company : "their company");
+
   const prompt = `You are a professional B2B outreach copywriter for Whileone.
 Your task is to refine an existing email draft based on specific user instructions while strictly adhering to the selected email strategy and new Strategic Redesign principles.
 
-EMAIL STRUCTURE:
+EMAIL STRUCTURE (Proof Hierarchy):
 Every email should strictly follow this flow (do not use block headers in the output):
 1. Greeting: Natural and brief.
 2. Observation: Start with a specific observation about the recipient's architecture, workload, or infrastructure. Write as if continuing a thought. Keep it brief (2-3 sentences max) before transitioning.
 3. Engineering Insight: Allow a technical insight or challenge to emerge from the observation. Treat them as a peer.
-4. Relevant Project Experience: Share a concrete finding from a past project (e.g., "We recently worked on analyzing token-generation performance..."). Keep project stories concise. 
+4. Relevant Project Experience (Primary Proof): Share a concrete finding from a past project (e.g., "We recently worked on analyzing token-generation performance..."). Keep project stories concise. 
+5. Supporting Case Studies (Optional Supporting Proof Paragraph): Merge all selected case-study evidence into a single concise supporting paragraph. Maximum allocation: 1 paragraph, 2 sentences maximum, 40-60 words total. DO NOT create separate paragraphs. DO NOT describe each case study independently. DO NOT repeat customer profile, challenge, solution, or outcome for every case study. When 2 case studies are selected, extract only the most relevant challenge and outcome and combine them into a single generalized proof statement. Do not mention multiple customers separately or tell multiple stories. The reader should perceive: "Whileone has done similar work before." Example: "Across several customers working on AI platforms and cloud infrastructure, we identified opportunities to improve utilization, reduce validation cycles, and streamline deployment readiness, leading to measurable gains in efficiency and adoption."
+6. Capability Summary (bullets): Introduce 3-5 outcome-oriented bullets that reinforce the narrative. Use phrases like "A few areas where we've spent considerable time include:". Focus on specific technical achievements. Connect the lesson to their context and introduce what Whileone does here.
+7. Conversational Question (CTA): A simple question replacing sales language with curiosity ("Curious whether you've encountered similar challenges"). DO NOT ask for a meeting or calendar time. Keep CTA to a single sentence.
+8. Attachment Mention: Always include: "I am attaching our corporate overview and technical capabilities presentation for your reference."
 
 IMPORTANT:
 The PRIMARY PROJECT has already been selected by the recommendation engine.
@@ -346,24 +449,41 @@ Do not choose a different project.
 If you reference a Whileone project, reference the PRIMARY PROJECT.
 Do not ignore the PRIMARY PROJECT in favor of lower-ranked projects.
 
-5. Lesson Learned: Share what was discovered briefly. Reward conversational tone ("What surprised us was...").
-6. Supporting Capability Summary (bullets): Introduce 3-5 outcome-oriented bullets that reinforce the narrative. Use phrases like "A few areas where we've spent considerable time include:". Focus on specific technical achievements. Connect the lesson to their context and introduce what Whileone does here.
-7. Conversational Question (CTA): A simple question replacing sales language with curiosity ("Curious whether you've encountered similar challenges"). DO NOT ask for a meeting or calendar time.
-8. Attachment Mention: Always include: "I am attaching our corporate overview and technical capabilities presentation for your reference."
+COMPOSITION PRIORITY:
+Final priority order should be:
+1. Relationship Context (tone only)
+2. Company Signal (why now)
+3. Outreach Angle
+4. Primary Matching Project (main proof)
+5. One Supporting Case Study (optional)
+6. Capability Bullets
+7. CTA
 
 SUBJECT LINE RULES:
-Subject should come from: Company Signal + Outreach Angle.
-Examples: "Cisco and SRE Operations", "Thoughts on Cloud Reliability".
+Generate subjects that answer: "What measurable outcome or business value have we delivered that would likely matter to this prospect?"
+Generate subjects using: Outcome + Context
+Sources for outcome (in priority order):
+1. Primary Matching Project
+2. Selected Case Study
+3. Company Context
+Examples: "Reducing AI Infrastructure Costs by 33%", "Increasing VM Density by 30%", "Improving Throughput for AI Workloads", "Reducing Cloud Costs While Scaling AI".
+Requirements:
+- Length: 4-10 words preferred. Maximum 12 words.
+- Specificity: Use REAL metrics if they exist in the matching project or case study. Do NOT invent metrics.
+- Relevance: The outcome MUST matter to this specific recipient based on their role.
+- Professional, technical, and curiosity-driven.
+- Do not use vague phrases when a concrete outcome exists.
+- Do not mention customer names or case-study company names.
+- Do not make the subject read like a generic topic summary.
+RANKING PROCESS:
+Internally generate 5 candidate subjects. Rank them by: 1) Recipient relevance 2) Business value 3) Specificity 4) Curiosity 5) Brevity. Select and return ONLY the strongest candidate.
 
 SKILL STRATEGY (Adjust Tone & Familiarity based on this):
 ---
 ${skillMarkdown}
 ---
 
-${context ? `Context:
-Target Company: ${context.company}
-Contact Name: ${context.contactName}
-Relationship: ${context.relationship}` : ""}
+${contextBlock}
 
 Current Email Subject:
 ${currentSubject}
@@ -374,7 +494,7 @@ ${currentBody}
 Refinement Instructions from User:
 "${instructions}"
 
-${WHILEONE_MESSAGING_RULES.replace("TARGET_COMPANY_PLACEHOLDER", context ? context.company : "their company")}
+${messagingRules}
 
 ${CAPABILITY_PRESENTATION_RULES}
 
@@ -394,10 +514,26 @@ Respond in JSON only with this exact shape (with the updated subject and body):
 
   const provider = getEmailProvider();
 
-  return provider.generateEmail({
+  let generated = await provider.generateEmail({
     prompt,
     isRefinement: true,
     provider: providerName,
     model: modelName
   });
+
+  let wordCount = generated.body.trim().split(/\s+/).length;
+  let attempts = 1;
+  while (wordCount > 230 && attempts < 3) {
+    const feedbackPrompt = prompt + `\n\nCRITICAL FEEDBACK ON PREVIOUS ATTEMPT:\nThe email you just generated was ${wordCount} words long, which exceeds the hard maximum of 230 words. Please regenerate the email to be strictly between 180-220 words.\nPriority: Reduce case-study content first. Never reduce company observation, outreach angle, or primary matching project. Merge any case studies into a single concise supporting paragraph (max 40-60 words).`;
+    generated = await provider.generateEmail({
+      prompt: feedbackPrompt,
+      isRefinement: true,
+      provider: providerName,
+      model: modelName
+    });
+    wordCount = generated.body.trim().split(/\s+/).length;
+    attempts++;
+  }
+
+  return generated;
 }
