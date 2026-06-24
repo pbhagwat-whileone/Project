@@ -175,6 +175,19 @@ export async function POST(request: Request) {
       .eq("user_id", user.id)
       .maybeSingle();
 
+    const { data: crmMetrics } = await supabase
+      .from("connection_relationship_metrics")
+      .select(`
+    crm_summary,
+    crm_context
+  `)
+      .eq("connection_id", contact.id)
+      .maybeSingle();
+
+    console.log("[EMAIL CRM FETCH]");
+    console.log("CONTACT ID:", contact.id);
+    console.log("CRM METRICS:", crmMetrics);
+
     const emailContent = await generateOutreachEmail({
       targetCompany: resolvedCompany,
       contact,
@@ -200,6 +213,8 @@ export async function POST(request: Request) {
       timeBoundContext: contact?.time_bound_context ?? undefined,
       companyContext,
       companyContextRelevance,
+      crmSummary: crmMetrics?.crm_summary ?? null,
+      crmIntelligence: crmMetrics?.crm_context ?? null,
       caseStudiesContext: caseStudies?.parsed_content as any[] | undefined,
     });
 
@@ -254,3 +269,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
