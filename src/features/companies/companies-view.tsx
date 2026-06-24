@@ -408,11 +408,20 @@ export function CompaniesView() {
         .filter(Boolean)
         .join(" ");
 
+      console.log("========== EMAIL REQUEST ==========");
+      console.log({
+        contact_id: currentContact.id,
+        contact_name: contactName,
+        company: currentContact.company,
+      });
+      console.log("==================================");
+
       const data = await apiFetch<{ email: GeneratedEmail, companyContext?: CompanyContext, companyContextRelevance?: CompanyContextRelevance, relationshipIntelligence?: RelationshipIntelligence, projects?: (MatchedChunk & { summary?: string })[] }>(
         "/api/emails/generate",
         {
           method: "POST",
           body: JSON.stringify({
+            contact_id: currentContact.id,
             company_name: currentContact.company || activeCompanyParam,
             contact_name: contactName,
             position: currentContact.position,

@@ -28,6 +28,7 @@ export async function POST(request: Request) {
     let contact: RankedContact;
     let projects: MatchedChunk[];
     let recommendationReason = parsed.data.recommendation_reason;
+    let companyContext: Awaited<ReturnType<typeof getCompanyContext>> | null = null;
     const recContext = await getRecommendationForEmail(
       supabase,
       user.id,
@@ -70,6 +71,38 @@ export async function POST(request: Request) {
       contact = recContext.recommendation.topContact;
       projects = recContext.matchingProjects;
       recommendationReason ??= recContext.recommendation.suggestedReason;
+
+      const tempResolvedCompany = contact.company || parsed.data.company_name;
+      companyContext = await getCompanyContext(supabase, tempResolvedCompany);
+
+      const { data: cacheRow } = await supabase
+        .from("company_industry_cache")
+        .select("industry")
+        .ilike("company_name", tempResolvedCompany)
+        .maybeSingle();
+
+      const industry = cacheRow?.industry && cacheRow.industry !== "Unknown" ? cacheRow.industry : "";
+
+      const enhancedQueryParts = [];
+      if (companyContext) {
+        if (companyContext.technologySignals?.length) enhancedQueryParts.push(companyContext.technologySignals.join(" "));
+        if (companyContext.businessPriorities?.length) enhancedQueryParts.push(companyContext.businessPriorities.join(" "));
+        if (companyContext.keyInitiatives?.length) enhancedQueryParts.push(companyContext.keyInitiatives.join(" "));
+        if (companyContext.outreachOpportunities?.length) enhancedQueryParts.push(companyContext.outreachOpportunities.join(" "));
+      }
+      if (contact.discussion_topics) enhancedQueryParts.push(contact.discussion_topics);
+      if (contact.conversation_summary) enhancedQueryParts.push(contact.conversation_summary);
+      if (contact.position) enhancedQueryParts.push(contact.position);
+      if (industry) enhancedQueryParts.push(industry);
+      enhancedQueryParts.push(tempResolvedCompany);
+
+      const enhancedQuery = enhancedQueryParts.join(" ").trim();
+      if (enhancedQuery) {
+        const freshProjects = await searchKnowledgeChunks(supabase, user.id, enhancedQuery, 5);
+        if (freshProjects.length > 0) {
+          projects = freshProjects;
+        }
+      }
     } else {
       contact = {
         id: "",
@@ -103,7 +136,9 @@ export async function POST(request: Request) {
 
     const resolvedCompany = contact?.company || parsed.data.company_name;
 
-    const companyContext = await getCompanyContext(supabase, resolvedCompany);
+    if (!companyContext) {
+      companyContext = await getCompanyContext(supabase, resolvedCompany);
+    }
 
     let companyContextRelevance = null;
     if (companyContext) {
@@ -134,6 +169,24 @@ export async function POST(request: Request) {
       engagementQuality: contact?.engagement_quality,
     });
 
+    const { data: caseStudies } = await supabase
+      .from("case_studies_sheet_cache")
+      .select("parsed_content")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const { data: crmMetrics } = await supabase
+      .from("connection_relationship_metrics")
+      .select(`
+    crm_summary,
+    crm_context
+  `)
+      .eq("connection_id", contact.id)
+      .maybeSingle();
+
+    console.log("[EMAIL CRM FETCH]");
+    console.log("CONTACT ID:", contact.id);
+    console.log("CRM METRICS:", crmMetrics);
 
     const emailContent = await generateOutreachEmail({
       targetCompany: resolvedCompany,
@@ -160,6 +213,8 @@ export async function POST(request: Request) {
       timeBoundContext: contact?.time_bound_context ?? undefined,
       companyContext,
       companyContextRelevance,
+      crmSummary: crmMetrics?.crm_summary ?? null,
+      crmIntelligence: crmMetrics?.crm_context ?? null,
     });
 
     const { data: saved, error } = await supabase
@@ -213,3 +268,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+

@@ -15,7 +15,8 @@ export type TaskType =
   | "PROFILE_ENRICHMENT_INTELLIGENCE"
   | "STAKEHOLDER_STRATEGY"
   | "COMPANY_STAKEHOLDER_STRATEGY"
-  | "EVENTS_INTELLIGENCE";
+  | "EVENTS_INTELLIGENCE"
+  | "CRM_INTELLIGENCE_SUMMARY";
 
 export type ProviderType = "gemini";
 
@@ -98,6 +99,10 @@ export const TASK_MODEL_CONFIG: Record<TaskType, TaskConfig> = {
     models: ["gemini-2.5-flash", "gemini-2.0-flash"],
   },
   EVENTS_INTELLIGENCE: {
+    provider: "gemini",
+    models: ["gemini-2.5-flash", "gemini-2.0-flash"],
+  },
+  CRM_INTELLIGENCE_SUMMARY: {
     provider: "gemini",
     models: ["gemini-2.5-flash", "gemini-2.0-flash"],
   },

@@ -1,4 +1,4 @@
-import type { MatchedChunk, RankedContact, CompanyContext, CompanyContextRelevance, RelationshipIntelligence } from "@/types/database";
+import type { MatchedChunk, RankedContact, CompanyContext, CompanyContextRelevance, RelationshipIntelligence, CRMIntelligence } from "@/types/database";
 import { getEmailProvider } from "@/services/ai/providers/factory";
 import { getEmailSkill } from "@/domains/emails/services/emailSkills";
 
@@ -106,6 +106,8 @@ export type EmailGenerationInput = {
   timeBoundContext?: string | null;
   companyContext?: CompanyContext | null;
   companyContextRelevance?: CompanyContextRelevance | null;
+  crmIntelligence?: CRMIntelligence | null;
+  crmSummary?: string | null;
 };
 
 export type GeneratedEmailContent = {
@@ -195,6 +197,18 @@ ${primaryProject.project_summary || extractOutcomeContext(primaryProject.chunk_t
     relationshipContext += `\nCRITICAL CONVERSATION RULE: Use this intelligence ONLY if it directly supports the selected outreach angle. Do NOT summarize past conversations or recount history. Do not let this drive the body of the email. Use it primarily for familiarity level, greeting, and CTA wording. Never assume future plans from old conversations are still valid.`;
   }
 
+  console.log("========== EMAIL GENERATION ==========");
+  console.log("CONTACT:", contactName);
+
+  console.log("========== CRM PASSED TO EMAIL ==========");
+  console.log("CRM SUMMARY:");
+  console.log(input.crmSummary);
+
+  console.log("CRM INTELLIGENCE:");
+  console.log(JSON.stringify(input.crmIntelligence, null, 2));
+
+  console.log("========================================");
+
   const prompt = `You are drafting a B2B outreach email for Whileone, a technology consultancy.
 
 CORE PRINCIPLE:
@@ -233,12 +247,22 @@ Subject should come from: Company Signal + Outreach Angle.
 Examples: "Cisco and SRE Operations", "Thoughts on Cloud Reliability".
 Avoid generic topics unless those exact topics appear in signals.
 
-CONTEXT USAGE RULES:
-- Relationship Intelligence: Use only for greeting, familiarity level, and CTA wording. Never drive the body.
-- Conversation Intelligence: Use only if it directly supports the outreach angle. Do not summarize conversations or recount history.
-- Company Context: Primary purpose is "Why now?". Use one signal only. Do not dump context.
-- Profile Intelligence: Primary purpose is to select outreach angle. Do not list tags.
-- Matching Projects: Purpose is Proof, not Topic. Project proves credibility.
+CONTEXT USAGE RULES (Strict Priority):
+1. Relationship Intelligence: Use only for greeting, familiarity level, and CTA wording. Never drive the body.
+2. Conversation Intelligence: Use only if it directly supports the outreach angle. Do not summarize conversations or recount history.
+3. CRM Intelligence (HIGHEST PERSONALIZATION PRIORITY):
+If CRM data exists:
+- Treat this as an existing relationship, NOT a cold outreach.
+- Prioritize CRM discussions over company news.
+- Use previous calls, meetings, deals, notes, objections, buying signals and follow-ups as the primary reason for reaching out.
+- Reference previous discussions naturally.
+- If call summaries exist, they are the MOST IMPORTANT personalization signal.
+- Do not write the email as if this is the first interaction.
+- Use active opportunities, objections and buying signals to shape the outreach angle.
+- Company context should only support the CRM narrative, never replace it.
+4. Company Context: Primary purpose is "Why now?". Use one signal only. Do not dump context.
+5. Profile Intelligence: Primary purpose is to select outreach angle. Do not list tags.
+6. Matching Projects: Purpose is Proof, not Topic. Project proves credibility.
 
 Target company: ${input.targetCompany}
 Contact: ${contactName}
@@ -260,6 +284,25 @@ RELATIONSHIP & CONVERSATION INTELLIGENCE:
 Relationship Type: ${relationship}
 ${relationshipContext}
 
+CRM INTELLIGENCE:
+${input.crmSummary ? `CRM Summary:\n${input.crmSummary}` : "No CRM data available."}
+
+${input.crmIntelligence?.activeDeals?.length
+      ? `Active Deals:\n${JSON.stringify(input.crmIntelligence.activeDeals, null, 2)}`
+      : ""}
+
+${input.crmIntelligence?.buyingSignals?.length
+      ? `Buying Signals:\n${input.crmIntelligence.buyingSignals.join(", ")}`
+      : ""}
+
+${input.crmIntelligence?.objections?.length
+      ? `Known Objections:\n${input.crmIntelligence.objections.join(", ")}`
+      : ""}
+
+${input.crmIntelligence?.callSummaries?.length
+      ? `Recent CRM Call Notes:\n${JSON.stringify(input.crmIntelligence.callSummaries, null, 2)}`
+      : ""}
+  
 MATCHING PROJECTS (PROOF):
 ${projectContext || "No specific matching projects available."}
 
@@ -304,7 +347,7 @@ Respond in JSON only with this exact shape:
   if (selectedBlogUrl && !generated.body.includes(selectedBlogUrl)) {
     const attachmentMention = "I am attaching our corporate overview";
     const urlSection = `Relevant Link:\n${selectedBlogUrl}\n\n`;
-    
+
     if (generated.body.includes(attachmentMention)) {
       generated.body = generated.body.replace(attachmentMention, urlSection + attachmentMention);
     } else {

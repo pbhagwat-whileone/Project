@@ -367,6 +367,9 @@ export interface Database {
           personalization_points: string[] | null;
           persistent_context: string | null;
           time_bound_context: string | null;
+          crm_context: any | null;
+          crm_summary: string | null;
+          last_crm_sync: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -392,6 +395,9 @@ export interface Database {
           personalization_points?: string[] | null;
           persistent_context?: string | null;
           time_bound_context?: string | null;
+          crm_context?: any | null;
+          crm_summary?: string | null;
+          last_crm_sync?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -490,6 +496,78 @@ export interface Database {
           }
         ];
       };
+      bigin_contact_mapping: {
+        Row: {
+          id: string;
+          connection_id: string;
+          bigin_contact_id: string;
+          user_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          connection_id: string;
+          bigin_contact_id: string;
+          user_id: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["bigin_contact_mapping"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "bigin_contact_mapping_connection_id_fkey";
+            columns: ["connection_id"];
+            isOneToOne: true;
+            referencedRelation: "connections";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      bigin_raw_cache: {
+        Row: {
+          id: string;
+          user_id: string;
+          module_name: string;
+          bigin_record_id: string;
+          data: any;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          module_name: string;
+          bigin_record_id: string;
+          data: any;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["bigin_raw_cache"]["Insert"]>;
+        Relationships: [];
+      };
+      bigin_sync_state: {
+        Row: {
+          id: string;
+          user_id: string;
+          module_name: string;
+          last_sync_time: string | null;
+          next_page_token: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          module_name: string;
+          last_sync_time?: string | null;
+          next_page_token?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["bigin_sync_state"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Functions: {
       match_knowledge_chunks: {
@@ -577,10 +655,26 @@ export type RankedContact = {
 
 export type CompanyIndustryCache =
   Database["public"]["Tables"]["company_industry_cache"]["Row"];
-export type ConnectionRelationshipMetrics = 
+export type ConnectionRelationshipMetrics =
   Database["public"]["Tables"]["connection_relationship_metrics"]["Row"];
-export type LinkedinMessage = 
+export type LinkedinMessage =
   Database["public"]["Tables"]["linkedin_messages"]["Row"];
+
+export type BiginContactMapping = Database["public"]["Tables"]["bigin_contact_mapping"]["Row"];
+export type BiginRawCache = Database["public"]["Tables"]["bigin_raw_cache"]["Row"];
+export type BiginSyncState = Database["public"]["Tables"]["bigin_sync_state"]["Row"];
+
+export interface CRMIntelligence {
+  relationshipStage?: string;
+  lastMeeting?: string;
+  lastInteractionDate?: string;
+  activeDeals?: any[];
+  notes?: any[];
+  callSummaries?: any[];
+  buyingSignals?: string[];
+  objections?: string[];
+  followUps?: string[];
+}
 
 export interface CompanyContext {
   companyName: string;
@@ -599,10 +693,10 @@ export interface CompanyContextRelevance {
   useCompanyContext: boolean;
   reasoning: string;
   recommendedUsage:
-    | "ignore"
-    | "light_reference"
-    | "conversation_starter"
-    | "primary_outreach_angle";
+  | "ignore"
+  | "light_reference"
+  | "conversation_starter"
+  | "primary_outreach_angle";
 }
 
 export interface RelationshipIntelligence {
@@ -610,11 +704,11 @@ export interface RelationshipIntelligence {
   confidence: number;
   reasoning: string;
   outreachGoal:
-    | "reconnect"
-    | "follow_up"
-    | "introduction_request"
-    | "opportunity_exploration"
-    | "partnership_discussion"
-    | string;
+  | "reconnect"
+  | "follow_up"
+  | "introduction_request"
+  | "opportunity_exploration"
+  | "partnership_discussion"
+  | string;
   capabilityProminence: "low" | "medium" | "high";
 }
