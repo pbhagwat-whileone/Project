@@ -215,6 +215,7 @@ export async function POST(request: Request) {
       companyContextRelevance,
       crmSummary: crmMetrics?.crm_summary ?? null,
       crmIntelligence: crmMetrics?.crm_context ?? null,
+      caseStudiesContext: caseStudies?.parsed_content as any[] | undefined,
     });
 
     const { data: saved, error } = await supabase

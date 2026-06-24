@@ -54,6 +54,7 @@ type SearchResult = {
   contacts: RankedContact[];
   projects: (MatchedChunk & { summary?: string })[];
   message: string | null;
+  companyContext?: CompanyContext;
 };
 
 export function CompaniesView() {
@@ -75,29 +76,10 @@ export function CompaniesView() {
   const [refreshing, setRefreshing] = useState(false);
   const [cachedCount, setCachedCount] = useState(0);
   const [calculatedCount, setCalculatedCount] = useState(0);
+  const hasStartedBackgroundRefresh = useRef(false);
 
-  const loadRecommendations = useCallback(async () => {
-    try {
-      const data = await apiFetch<{
-        recommendations: RankedRecommendation[];
-      }>("/api/prospects");
-      setAllRecommendations(data.recommendations);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load recommendations");
-    } finally {
-      setRecLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isSearchMode) {
-      loadRecommendations();
-    }
-  }, [isSearchMode, loadRecommendations]);
-
-  async function handleRefresh() {
+  const handleBackgroundRefresh = useCallback(async () => {
     setRefreshing(true);
-    setAllRecommendations([]);
     setCachedCount(0);
     setCalculatedCount(0);
 
@@ -115,7 +97,6 @@ export function CompaniesView() {
 
       const decoder = new TextDecoder("utf-8");
       let buffer = "";
-      let currentRecs: CompanyRecommendation[] = [];
 
       while (true) {
         const { value, done } = await reader.read();
@@ -134,13 +115,19 @@ export function CompaniesView() {
               const event = JSON.parse(dataStr);
               if (event.type === "cached_batch") {
                 const newRecs = event.data as CompanyRecommendation[];
-                currentRecs = [...currentRecs, ...newRecs];
-                setAllRecommendations(currentRecs);
+                setAllRecommendations(prev => {
+                  const map = new Map(prev.map(r => [r.company, r]));
+                  newRecs.forEach(r => map.set(r.company, r));
+                  return Array.from(map.values());
+                });
                 setCachedCount(prev => prev + newRecs.length);
               } else if (event.type === "calculated") {
                 const newRec = event.data as CompanyRecommendation;
-                currentRecs = [...currentRecs, newRec];
-                setAllRecommendations(currentRecs);
+                setAllRecommendations(prev => {
+                  const map = new Map(prev.map(r => [r.company, r]));
+                  map.set(newRec.company, newRec);
+                  return Array.from(map.values());
+                });
                 setCalculatedCount(prev => prev + 1);
               } else if (event.type === "error") {
                 toast.error(event.data);
@@ -152,12 +139,40 @@ export function CompaniesView() {
           boundary = buffer.indexOf("\n\n");
         }
       }
-      toast.success("Recommendation refresh completed");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Generation failed");
     } finally {
       setRefreshing(false);
     }
+  }, []);
+
+  const loadRecommendations = useCallback(async () => {
+    try {
+      const data = await apiFetch<{
+        recommendations: RankedRecommendation[];
+      }>("/api/prospects");
+      setAllRecommendations(data.recommendations);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load recommendations");
+    } finally {
+      setRecLoading(false);
+    }
+    
+    if (!hasStartedBackgroundRefresh.current) {
+      hasStartedBackgroundRefresh.current = true;
+      handleBackgroundRefresh();
+    }
+  }, [handleBackgroundRefresh]);
+
+  useEffect(() => {
+    if (!isSearchMode) {
+      loadRecommendations();
+    }
+  }, [isSearchMode, loadRecommendations]);
+
+  async function handleRefresh() {
+    toast.info("Updating intelligence in the background...");
+    handleBackgroundRefresh();
   }
 
   const recommendations = useMemo(() => {
@@ -249,6 +264,8 @@ export function CompaniesView() {
             method: "POST",
             body: JSON.stringify({ company: activeCompanyParam.trim() }),
           });
+          if (data?.companyContext?.classification) {
+          }
           setSearchResult(data);
           const contactParam = searchParams.get("contact");
           let targetContact = data.contacts?.[0] || null;
@@ -567,7 +584,7 @@ export function CompaniesView() {
                 <RefreshCw
                   className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
                 />
-                {refreshing ? "Generating..." : "Refresh Recommendations"}
+                {refreshing ? "Updating intelligence..." : "Refresh Recommendations"}
               </Button>
               {refreshing && (
                 <div className="flex gap-2 text-xs font-medium">
@@ -602,6 +619,76 @@ export function CompaniesView() {
           </Button>
         </form>
       </div>
+
+      {(() => {
+        if (isSearchMode) {
+           if (searchResult) {
+             if (searchResult.companyContext) {
+             }
+           }
+        }
+        return null;
+      })()}
+
+      {isSearchMode && searchResult?.companyContext?.classification && (
+        <div className="mb-6 space-y-2 p-4 bg-muted/20 border border-border/50 rounded-lg">
+          <div className="text-sm font-semibold mb-3">Company Classification</div>
+          {searchResult.companyContext.classification.domains?.length > 0 && (
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className="text-xs font-medium text-muted-foreground w-24">Domain</span>
+              {searchResult.companyContext.classification.domains.map(tag => (
+                <Badge key={tag} variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-100/80 border-blue-200">{tag}</Badge>
+              ))}
+            </div>
+          )}
+          {searchResult.companyContext.classification.architectures?.length > 0 && (
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className="text-xs font-medium text-muted-foreground w-24">Architecture</span>
+              {searchResult.companyContext.classification.architectures.map(arch => {
+                const isObj = typeof arch !== 'string';
+                const tagStr = isObj ? (arch.fallbackSelected ? `Likely ${arch.tag}` : arch.tag) : arch;
+                const keyStr = isObj ? arch.tag : arch;
+                return (
+                  <Badge key={keyStr} variant="secondary" className="bg-purple-100 text-purple-800 hover:bg-purple-100/80 border-purple-200">{tagStr}</Badge>
+                );
+              })}
+            </div>
+          )}
+          {(searchResult.companyContext.classification.technologyLayers?.silicon?.length > 0 ||
+            searchResult.companyContext.classification.technologyLayers?.systems?.length > 0 ||
+            searchResult.companyContext.classification.technologyLayers?.software?.length > 0) && (
+            <div className="mt-4">
+              <div className="text-xs font-medium text-muted-foreground mb-2">Technology Layer</div>
+              <div className="space-y-3 pl-2">
+                {searchResult.companyContext.classification.technologyLayers.silicon?.length > 0 && (
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <span className="text-xs text-muted-foreground w-20">Silicon</span>
+                    {searchResult.companyContext.classification.technologyLayers.silicon.map(tag => (
+                      <Badge key={tag} variant="secondary" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100/80 border-emerald-200">{tag}</Badge>
+                    ))}
+                  </div>
+                )}
+                {searchResult.companyContext.classification.technologyLayers.systems?.length > 0 && (
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <span className="text-xs text-muted-foreground w-20">Systems</span>
+                    {searchResult.companyContext.classification.technologyLayers.systems.map(tag => (
+                      <Badge key={tag} variant="secondary" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100/80 border-emerald-200">{tag}</Badge>
+                    ))}
+                  </div>
+                )}
+                {searchResult.companyContext.classification.technologyLayers.software?.length > 0 && (
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <span className="text-xs text-muted-foreground w-20">Software</span>
+                    {searchResult.companyContext.classification.technologyLayers.software.map(tag => (
+                      <Badge key={tag} variant="secondary" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100/80 border-emerald-200">{tag}</Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Conditional Rendering: Recommendations vs Search Results */}
       {!isSearchMode ? (
@@ -824,7 +911,7 @@ export function CompaniesView() {
                                       searchResult.projects.map(p => (
                                         <div key={p.id} className="text-sm bg-background p-3 rounded border border-border/50">
                                           <div className="font-medium flex justify-between items-start gap-4">
-                                            <span>{p.project_name || "Project"}</span>
+                                            <span className="flex-1 min-w-0 break-words">{p.project_name || "Project"}</span>
                                             {p.similarity !== undefined && (
                                               <span className={`text-xs shrink-0 px-2 py-1 rounded-full border font-medium ${p.similarity >= 0.75 ? "bg-green-50 text-green-700 border-green-200" : p.similarity >= 0.5 ? "bg-yellow-50 text-yellow-700 border-yellow-200" : "bg-gray-50 text-gray-700 border-gray-200"}`}>
                                                 {p.similarity >= 0.75 ? "High Match" : p.similarity >= 0.5 ? "Medium Match" : "Low Match"} <span className="opacity-75 font-normal">({(p.similarity * 100).toFixed(0)}%)</span>

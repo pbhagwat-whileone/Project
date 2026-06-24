@@ -3,6 +3,7 @@ import { createAdminClient } from "@/infrastructure/database/supabase/admin";
 import { syncKnowledgeBase } from "@/domains/knowledge/services/knowledgeSync";
 import { getAuthenticatedClient } from "@/services/integrations/google/googleOauth";
 import { getAppUrl } from "@/lib/settings";
+import { syncCaseStudiesSheet } from "@/domains/emails/services/caseStudiesSync";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -35,10 +36,10 @@ export async function POST() {
     }
 
     // Fetch all users with google drive folder ids
+    // Fetch all users with google drive folder ids or case studies sheet
     const { data: allSettings, error: settingsError } = await supabase
       .from("user_settings")
-      .select("user_id, google_drive_folder_ids")
-      .not("google_drive_folder_ids", "is", null);
+      .select("user_id, google_drive_folder_ids, case_studies_sheet_url");
 
     if (settingsError || !allSettings || allSettings.length === 0) {
       await (supabase as any).from("global_sync_state").update({ sync_in_progress: false }).eq("id", 1);
@@ -50,13 +51,27 @@ export async function POST() {
     const errors: string[] = [];
 
     for (const setting of allSettings) {
-      if (!setting.google_drive_folder_ids || setting.google_drive_folder_ids.length === 0) continue;
+      const hasFolders = setting.google_drive_folder_ids && setting.google_drive_folder_ids.length > 0;
+      const hasCaseStudies = !!setting.case_studies_sheet_url;
+
+      if (!hasFolders && !hasCaseStudies) continue;
       
       try {
         const auth = await getAuthenticatedClient(supabase, setting.user_id, redirectUri);
         if (auth) {
-          const result = await syncKnowledgeBase(supabase, setting.user_id, auth, setting.google_drive_folder_ids);
-          totalDocs += result.documentsProcessed;
+          if (hasFolders) {
+            const result = await syncKnowledgeBase(supabase, setting.user_id, auth, setting.google_drive_folder_ids!);
+            totalDocs += result.documentsProcessed;
+          }
+          if (hasCaseStudies) {
+            try {
+              await syncCaseStudiesSheet(supabase, setting.user_id, auth, setting.case_studies_sheet_url!);
+            } catch (sheetErr) {
+              console.error(`Case studies sync error for user ${setting.user_id}:`, sheetErr);
+              // don't fail the entire job, just log it. You can push to errors if you want it to show up in logs.
+              errors.push(`User ${setting.user_id} (Sheet): ${sheetErr instanceof Error ? sheetErr.message : 'Unknown error'}`);
+            }
+          }
         }
       } catch (err) {
         console.error(`Sync error for user ${setting.user_id}:`, err);
