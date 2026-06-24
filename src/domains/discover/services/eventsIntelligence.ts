@@ -48,9 +48,9 @@ const EVENT_SCHEMA = {
           location: { type: "string" },
           website: { type: "string" },
           description: { type: "string" },
-          techTags: { 
-            type: "array", 
-            items: { type: "string" } 
+          techTags: {
+            type: "array",
+            items: { type: "string" }
           }
         },
         required: ["name", "date", "location", "website", "description", "techTags"]
@@ -91,7 +91,7 @@ export async function fetchEvents(): Promise<EventItem[]> {
             days: 30,
           }),
         });
-        
+
         tavilyDuration = Date.now() - tavilyStart;
 
         if (!searchResponse.ok) return [];
@@ -106,12 +106,12 @@ export async function fetchEvents(): Promise<EventItem[]> {
 Search Results:
 ${rawContext}
 
-- For date, format it as YYYY-MM-DD or Month DD, YYYY.
+- For date, format it as DD-MM-YYYYY.
 - Filter strictly to only include events relevant to: ${TECH_AREAS.join(", ")}.
 - If no upcoming events are found, return an empty array for events.`;
 
         const llmStart = Date.now();
-        const aiResult = await generateWithFallback(prompt, "EVENTS_INTELLIGENCE", { 
+        const aiResult = await generateWithFallback(prompt, "EVENTS_INTELLIGENCE", {
           isJson: true,
           responseSchema: EVENT_SCHEMA
         });
@@ -126,7 +126,7 @@ ${rawContext}
           parsed = JSON.parse(cleaned);
         }
         parseDuration = Date.now() - parseStart;
-        
+
         const totalDuration = Date.now() - requestStart;
 
 

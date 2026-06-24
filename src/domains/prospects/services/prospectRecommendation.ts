@@ -344,20 +344,77 @@ export async function getCompanyRecommendations(
   supabase: SupabaseClient<Database>,
   userId: string
 ): Promise<CompanyRecommendation[]> {
-  const recommendations: CompanyRecommendation[] = [];
-  const generator = getCompanyRecommendationsStream(supabase, userId);
+  const connectionsQuery = supabase
+    .from("connections")
+    .select("*")
+    .order("id", { ascending: true });
 
-  for await (const event of generator) {
-    if (event.type === 'cached_batch') {
-      recommendations.push(...event.data);
-    } else if (event.type === 'calculated') {
-      recommendations.push(event.data);
+  const connections = await fetchAllRecords<Connection>(connectionsQuery);
+
+  const metricsQuery = supabase
+    .from("connection_relationship_metrics")
+    .select("*");
+  const metricsRecords = await fetchAllRecords<ConnectionRelationshipMetrics>(metricsQuery);
+  const metricsMap = new Map<string, ConnectionRelationshipMetrics>();
+  metricsRecords?.forEach((m) => metricsMap.set(m.connection_id, m));
+
+  const grouped = groupConnectionsByCompany(connections ?? []);
+  if (!grouped.size) return [];
+
+  const maxConnections = Math.max(...[...grouped.values()].map((g) => g.length), 1);
+
+  const scoreCacheQuery = supabase
+    .from("company_score_cache")
+    .select("*");
+  const scoreCacheRows = await fetchAllRecords<any>(scoreCacheQuery);
+
+  const dbCache = new Map<string, any>();
+  for (const row of scoreCacheRows ?? []) {
+    dbCache.set(row.company_name.toLowerCase(), row);
+  }
+
+  const recommendations: CompanyRecommendation[] = [];
+
+  for (const [company, companyConnections] of grouped) {
+    const topContact = pickTopContact(companyConnections, metricsMap);
+    const cached = dbCache.get(company.toLowerCase());
+    
+    if (cached) {
+      recommendations.push({
+        company,
+        recommendationScore: cached.recommendation_score,
+        connectionCount: companyConnections.length,
+        topContact,
+        suggestedReason: buildSuggestedReason(companyConnections.length, topContact),
+        connectionScore: cached.connection_score,
+        seniorityScore: cached.seniority_score,
+        projectScore: cached.project_relevance_score,
+        relationshipScore: topContact?.relationship_score || 0,
+      });
+    } else {
+      const seniorityRaw = topContact?.score ?? 0;
+      const scores = scoreRecommendation(
+        0,
+        companyConnections.length,
+        maxConnections,
+        seniorityRaw,
+        topContact?.relationship_score || 0
+      );
+      recommendations.push({
+        company,
+        recommendationScore: scores.recommendationScore,
+        connectionCount: companyConnections.length,
+        topContact,
+        suggestedReason: buildSuggestedReason(companyConnections.length, topContact),
+        connectionScore: scores.connectionScore,
+        seniorityScore: scores.seniorityScoreNormalized,
+        projectScore: scores.projectScore,
+        relationshipScore: scores.relationshipScoreNormalized,
+      });
     }
   }
 
-  return recommendations.sort(
-    (a, b) => b.recommendationScore - a.recommendationScore
-  );
+  return recommendations.sort((a, b) => b.recommendationScore - a.recommendationScore);
 }
 
 export async function getCompanyDetail(
