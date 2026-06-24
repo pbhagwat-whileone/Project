@@ -82,7 +82,7 @@ export function ConversationHistoryModal({ connection, onClose }: ConversationHi
               <div className="bg-muted p-4 rounded-md text-sm shrink-0 flex flex-col md:flex-row md:items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="font-semibold mb-2">Relationship Metrics</div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                     <div>
                       <div className="text-muted-foreground text-xs">Messages</div>
                       <div>{metrics.message_count}</div>
@@ -98,6 +98,10 @@ export function ConversationHistoryModal({ connection, onClose }: ConversationHi
                     <div>
                       <div className="text-muted-foreground text-xs">Last Contact</div>
                       <div>{metrics.last_contact_date ? format(new Date(metrics.last_contact_date), "PP") : "—"}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground text-xs">Connected Through</div>
+                      <div className="max-w-[120px] truncate" title={(connection as any).connection_owner_name}>{(connection as any).connection_owner_name || "—"}</div>
                     </div>
                   </div>
                   {metrics.conversation_summary && (

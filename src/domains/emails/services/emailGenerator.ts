@@ -23,8 +23,8 @@ const WHILEONE_MESSAGING_RULES = `Whileone Messaging & Vocabulary:
 - Prioritize Technical Credibility over Sales Messaging: If forced to choose between explaining a useful engineering insight or describing Whileone capabilities, ALWAYS prefer the engineering insight.
 - One Angle: Every email should be explainable in one sentence. Do NOT mix multiple disparate angles in the same email.
 - Conciseness & Structure Rules (CRITICAL):
-  * Target email body length: 180-220 words. Hard Maximum: 230 words. Do not add filler content.
-  * Suggested length allocation: Observation + Insight (40-60 words), Primary Project (40-60 words), Supporting Proof Paragraph (40-60 words), Bullets (25-40 words), CTA (10-20 words).
+  * Target email body length: 160-180 words. Hard Maximum: 200 words. Do not add filler content.
+  * Suggested length allocation: Observation + Insight (35-45 words), Primary Project (40-50 words), Supporting Proof Paragraph (35-45 words), Bullets (20-30 words), CTA (10-15 words).
   * Priority: If word count becomes too long, reduce case-study content first. Never reduce: company observation, outreach angle, primary matching project. The Primary Matching Project remains the dominant proof source.
   * Prioritize one strong outreach angle over completeness.
   * Prioritize one matching project and at most one supporting case study paragraph.
